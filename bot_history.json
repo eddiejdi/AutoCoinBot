@@ -1,0 +1,2268 @@
+[
+  {
+    "id": "e41f5687-8a30-48b5-9dcb-6e81445cab00",
+    "timestamp": 1765542215.9291868,
+    "kind": "target_sell_1.0",
+    "symbol": "BTC-USDT",
+    "price": 92276.6,
+    "portion": 0.3,
+    "result": {
+      "simulated": true,
+      "clientOid": "903593d4-8566-4c59-9706-3f826588b25a",
+      "side": "sell",
+      "symbol": "BTC-USDT",
+      "funds": null,
+      "size": "0.0003",
+      "timestamp": 1765542215929
+    },
+    "dry_run": true
+  },
+  {
+    "id": "02b5623c-01fd-42e9-8be2-7714d5c533d4",
+    "timestamp": 1765542215.9299889,
+    "kind": "target_sell_3.0",
+    "symbol": "BTC-USDT",
+    "price": 92276.6,
+    "portion": 0.5,
+    "result": {
+      "simulated": true,
+      "clientOid": "6ca0757a-1e32-48fa-81a0-7fcfde673eb4",
+      "side": "sell",
+      "symbol": "BTC-USDT",
+      "funds": null,
+      "size": "0.0005",
+      "timestamp": 1765542215929
+    },
+    "dry_run": true
+  },
+  {
+    "id": "a9a3701e-c283-4450-9187-1a13f6c854b1",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "entry_price": 88000.0,
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "trailing_stop_pct": 1.0,
+    "stop_loss_pct": -2.0,
+    "size": 0.001,
+    "funds": null,
+    "start_ts": 1765542215.258265,
+    "end_ts": 1765542215.9306626,
+    "executed_parts": [
+      1.0,
+      3.0
+    ],
+    "remaining_fraction": 0.0,
+    "dry_run": true
+  },
+  {
+    "id": "e3b3a13b",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "start_ts": 1765626397.6344767,
+    "end_ts": 1765626412.6394885,
+    "executed_trades": [
+      {
+        "timestamp": 1765626402.6378207,
+        "kind": "target_sell_1.0%",
+        "price": 89466.78,
+        "portion": 0.3,
+        "profit_usdt": 0.44,
+        "simulated": true
+      },
+      {
+        "timestamp": 1765626407.638385,
+        "kind": "target_sell_3.0%",
+        "price": 90934.36,
+        "portion": 0.5,
+        "profit_usdt": 1.47,
+        "simulated": true
+      },
+      {
+        "timestamp": 1765626412.6391559,
+        "kind": "target_sell_5.0%",
+        "price": 92401.2,
+        "portion": 0.2,
+        "profit_usdt": 0.88,
+        "simulated": true
+      }
+    ],
+    "total_profit": 2.79,
+    "total_executed_portion": 1.0,
+    "dry_run": true,
+    "final_status": "completed"
+  },
+  {
+    "id": "8d370130",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "start_ts": 1765626460.0327694,
+    "end_ts": 1765626475.0430486,
+    "executed_trades": [
+      {
+        "timestamp": 1765626465.0384443,
+        "kind": "target_sell_1.0%",
+        "price": 89467.68,
+        "portion": 0.3,
+        "profit_usdt": 0.44,
+        "simulated": true
+      },
+      {
+        "timestamp": 1765626470.0402296,
+        "kind": "target_sell_3.0%",
+        "price": 90935.18,
+        "portion": 0.5,
+        "profit_usdt": 1.47,
+        "simulated": true
+      },
+      {
+        "timestamp": 1765626475.0417871,
+        "kind": "target_sell_5.0%",
+        "price": 92402.44,
+        "portion": 0.2,
+        "profit_usdt": 0.88,
+        "simulated": true
+      }
+    ],
+    "total_profit": 2.79,
+    "total_executed_portion": 1.0,
+    "dry_run": true,
+    "final_status": "completed"
+  },
+  {
+    "id": "3a8b3c33",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "start_ts": 1765627159.9014359,
+    "end_ts": 1765627174.9043798,
+    "executed_trades": [
+      {
+        "timestamp": 1765627164.9029167,
+        "kind": "target_sell_1.0%",
+        "price": 89466.81,
+        "portion": 0.3,
+        "profit_usdt": 0.44,
+        "simulated": true
+      },
+      {
+        "timestamp": 1765627169.9036312,
+        "kind": "target_sell_3.0%",
+        "price": 90933.87,
+        "portion": 0.5,
+        "profit_usdt": 1.47,
+        "simulated": true
+      },
+      {
+        "timestamp": 1765627174.904149,
+        "kind": "target_sell_5.0%",
+        "price": 92400.7,
+        "portion": 0.2,
+        "profit_usdt": 0.88,
+        "simulated": true
+      }
+    ],
+    "total_profit": 2.79,
+    "total_executed_portion": 1.0,
+    "dry_run": true,
+    "final_status": "completed"
+  },
+  {
+    "id": "bbd27918",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "start_ts": 1765627408.8254151,
+    "end_ts": 1765627423.8274632,
+    "executed_trades": [
+      {
+        "timestamp": 1765627413.8262312,
+        "kind": "target_sell_1.0%",
+        "price": 89466.78,
+        "portion": 0.3,
+        "profit_usdt": 0.44,
+        "simulated": true
+      },
+      {
+        "timestamp": 1765627418.8267431,
+        "kind": "target_sell_3.0%",
+        "price": 90933.62,
+        "portion": 0.5,
+        "profit_usdt": 1.47,
+        "simulated": true
+      },
+      {
+        "timestamp": 1765627423.8272886,
+        "kind": "target_sell_5.0%",
+        "price": 92400.45,
+        "portion": 0.2,
+        "profit_usdt": 0.88,
+        "simulated": true
+      }
+    ],
+    "total_profit": 2.79,
+    "total_executed_portion": 1.0,
+    "dry_run": true,
+    "final_status": "completed"
+  },
+  {
+    "id": "b46a85c6",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": false,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765634564.9479992
+  },
+  {
+    "id": "0ae305b6",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": false,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765634580.466733
+  },
+  {
+    "id": "ed86fd98",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": true,
+    "total_cycles_completed": 2,
+    "cycles_history": [
+      {
+        "cycle_number": 1,
+        "trades": [
+          {
+            "timestamp": 1765634788.4860177,
+            "cycle": 1,
+            "kind": "target_sell_1.0%",
+            "price": 89466.84,
+            "portion": 0.3,
+            "profit_usdt": 0.44,
+            "simulated": true,
+            "mode": "SIMULATION"
+          },
+          {
+            "timestamp": 1765634793.4877954,
+            "cycle": 1,
+            "kind": "target_sell_3.0%",
+            "price": 90933.81,
+            "portion": 0.5,
+            "profit_usdt": 1.47,
+            "simulated": true,
+            "mode": "SIMULATION"
+          },
+          {
+            "timestamp": 1765634798.4890206,
+            "cycle": 1,
+            "kind": "target_sell_5.0%",
+            "price": 92401.16,
+            "portion": 0.2,
+            "profit_usdt": 0.88,
+            "simulated": true,
+            "mode": "SIMULATION"
+          }
+        ],
+        "total_profit": 2.79,
+        "start_ts": 1765634783.4846427,
+        "end_ts": 1765634803.489603,
+        "duration": 20.0
+      }
+    ],
+    "total_profit": 5.71,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765634818.4967675
+  },
+  {
+    "id": "9c3962bc",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": true,
+    "total_cycles_completed": 2,
+    "cycles_history": [
+      {
+        "cycle_number": 1,
+        "trades": [
+          {
+            "timestamp": 1765635101.687847,
+            "cycle": 1,
+            "kind": "target_sell_1.0%",
+            "price": 89466.8,
+            "portion": 0.3,
+            "profit_usdt": 0.44,
+            "simulated": true,
+            "mode": "SIMULATION"
+          },
+          {
+            "timestamp": 1765635106.6884198,
+            "cycle": 1,
+            "kind": "target_sell_3.0%",
+            "price": 90933.71,
+            "portion": 0.5,
+            "profit_usdt": 1.47,
+            "simulated": true,
+            "mode": "SIMULATION"
+          },
+          {
+            "timestamp": 1765635111.689588,
+            "cycle": 1,
+            "kind": "target_sell_5.0%",
+            "price": 92400.53,
+            "portion": 0.2,
+            "profit_usdt": 0.88,
+            "simulated": true,
+            "mode": "SIMULATION"
+          }
+        ],
+        "total_profit": 2.79,
+        "start_ts": 1765635096.686811,
+        "end_ts": 1765635116.6924636,
+        "duration": 20.0
+      }
+    ],
+    "total_profit": 5.71,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765635131.6964526
+  },
+  {
+    "id": "3745d92f",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": true,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765635849.8323693
+  },
+  {
+    "id": "8c493a9a",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": false,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765636271.2368574
+  },
+  {
+    "id": "df3b24d5",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": false,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765636708.2545834
+  },
+  {
+    "id": "b7a1bb87",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": false,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": false,
+    "final_status": "completed",
+    "end_ts": 1765636716.5037637
+  },
+  {
+    "id": "c8cce401",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": false,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765642701.8422456
+  },
+  {
+    "id": "851fc1b7",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": false,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765642727.4224432
+  },
+  {
+    "id": "c06a675f",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": true,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765653736.356718
+  },
+  {
+    "id": "66e2212f",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "targets": [
+      [
+        1.0,
+        0.3
+      ],
+      [
+        3.0,
+        0.5
+      ],
+      [
+        5.0,
+        0.2
+      ]
+    ],
+    "auto_restart": true,
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "final_status": "completed",
+    "end_ts": 1765653743.8985152
+  },
+  {
+    "id": "96fa8f3b",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765659156.0601025
+  },
+  {
+    "id": "824be665",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 0,
+    "cycles_history": [],
+    "total_profit": 0,
+    "dry_run": false,
+    "end_ts": 1765659430.1855304
+  },
+  {
+    "id": "7469983c",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 0,
+    "cycles_history": [],
+    "total_profit": 0,
+    "dry_run": false,
+    "end_ts": 1765660959.2080631
+  },
+  {
+    "id": "3dcd2884",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765662935.9145014
+  },
+  {
+    "id": "0a73d1f9",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765663104.1375825
+  },
+  {
+    "id": "c473cbba",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765663179.4879818
+  },
+  {
+    "id": "6eb7e046",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765663768.8708868
+  },
+  {
+    "id": "5b70720c",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765665042.158628
+  },
+  {
+    "id": "ede128a7",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765721797.9328876
+  },
+  {
+    "id": "6d616f0f",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765723345.5596066
+  },
+  {
+    "id": "d34e156d",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765723862.8255253
+  },
+  {
+    "id": "19ba1ffb",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765724771.755677
+  },
+  {
+    "id": "1e893426",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 0,
+    "dry_run": false,
+    "end_ts": 1765724970.9070015
+  },
+  {
+    "id": "172b863d",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765725152.4310746
+  },
+  {
+    "id": "cb0f94ae",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765725183.0941412
+  },
+  {
+    "id": "18548e2d",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 2.79,
+    "dry_run": true,
+    "end_ts": 1765725977.338814
+  },
+  {
+    "id": "683b72f8",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 1.67,
+    "dry_run": true,
+    "end_ts": 1765727168.4858325
+  },
+  {
+    "id": "48b02f0e",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 1.67,
+    "dry_run": true,
+    "end_ts": 1765727208.6082995
+  },
+  {
+    "id": "0958c9a8",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 1.67,
+    "dry_run": true,
+    "end_ts": 1765727458.212592
+  },
+  {
+    "id": "c16583d8",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 1.67,
+    "dry_run": true,
+    "end_ts": 1765727502.2399995
+  },
+  {
+    "id": "f984db0b",
+    "symbol": "BTC-USDT",
+    "mode": "sell",
+    "total_cycles_completed": 1,
+    "cycles_history": [],
+    "total_profit": 1.67,
+    "dry_run": true,
+    "end_ts": 1765727915.1330714
+  },
+  {
+    "id": "bot_ccf96b5e",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766054502.3670542,
+    "end_ts": 1766056065.3406868,
+    "executed_trades": [
+      {
+        "timestamp": 1766054502.3701096,
+        "datetime": "2025-12-18T07:41:42.370111",
+        "kind": "target_buy_2.0%",
+        "price": 87881.24,
+        "portion": 0.3,
+        "profit_usdt": 0.04,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766054502.3712068,
+        "datetime": "2025-12-18T07:41:42.371207",
+        "kind": "target_buy_5.0%",
+        "price": 87881.24,
+        "portion": 0.4,
+        "profit_usdt": 0.05,
+        "simulated": true
+      }
+    ],
+    "total_profit": 0.09,
+    "dry_run": true
+  },
+  {
+    "id": "bot_e13094d3",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766056107.0127351,
+    "end_ts": 1766056318.823699,
+    "executed_trades": [
+      {
+        "timestamp": 1766056107.0136456,
+        "datetime": "2025-12-18T08:08:27.013646",
+        "kind": "target_buy_2.0%",
+        "price": 87989.59,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766056107.013938,
+        "datetime": "2025-12-18T08:08:27.013938",
+        "kind": "target_buy_5.0%",
+        "price": 87989.59,
+        "portion": 0.4,
+        "profit_usdt": 0.0,
+        "simulated": true
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_51843907",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766056334.8351135,
+    "end_ts": 1766056644.1066015,
+    "executed_trades": [
+      {
+        "timestamp": 1766056334.8379693,
+        "datetime": "2025-12-18T08:12:14.837972",
+        "kind": "target_buy_2.0%",
+        "price": 88152.45,
+        "portion": 0.3,
+        "profit_usdt": -0.05,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766056334.839787,
+        "datetime": "2025-12-18T08:12:14.839789",
+        "kind": "target_buy_5.0%",
+        "price": 88152.45,
+        "portion": 0.4,
+        "profit_usdt": -0.06,
+        "simulated": true
+      }
+    ],
+    "total_profit": -0.11,
+    "dry_run": true
+  },
+  {
+    "id": "bot_6bc9424e",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766056770.5178218,
+    "end_ts": 1766056844.9049945,
+    "executed_trades": [
+      {
+        "timestamp": 1766056770.5232382,
+        "datetime": "2025-12-18T08:19:30.523243",
+        "kind": "target_buy_2.0%",
+        "price": 87909.49,
+        "portion": 0.3,
+        "profit_usdt": 0.03,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766056770.525059,
+        "datetime": "2025-12-18T08:19:30.525060",
+        "kind": "target_buy_5.0%",
+        "price": 87909.49,
+        "portion": 0.4,
+        "profit_usdt": 0.04,
+        "simulated": true
+      }
+    ],
+    "total_profit": 0.07,
+    "dry_run": true
+  },
+  {
+    "id": "bot_4a369357",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766056851.175294,
+    "end_ts": 1766056880.859155,
+    "executed_trades": [
+      {
+        "timestamp": 1766056851.175858,
+        "datetime": "2025-12-18T08:20:51.175858",
+        "kind": "target_buy_2.0%",
+        "price": 88055.68,
+        "portion": 0.3,
+        "profit_usdt": -0.02,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766056851.176121,
+        "datetime": "2025-12-18T08:20:51.176121",
+        "kind": "target_buy_5.0%",
+        "price": 88055.68,
+        "portion": 0.4,
+        "profit_usdt": -0.02,
+        "simulated": true
+      }
+    ],
+    "total_profit": -0.04,
+    "dry_run": true
+  },
+  {
+    "id": "bot_4b0ea5e3",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766056922.9008992,
+    "end_ts": 1766057376.5189908,
+    "executed_trades": [
+      {
+        "timestamp": 1766056922.9016266,
+        "datetime": "2025-12-18T08:22:02.901627",
+        "kind": "target_buy_2.0%",
+        "price": 87851.31,
+        "portion": 0.3,
+        "profit_usdt": 0.04,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766056922.90188,
+        "datetime": "2025-12-18T08:22:02.901880",
+        "kind": "target_buy_5.0%",
+        "price": 87851.31,
+        "portion": 0.4,
+        "profit_usdt": 0.06,
+        "simulated": true
+      }
+    ],
+    "total_profit": 0.1,
+    "dry_run": true
+  },
+  {
+    "id": "bot_2447f9d4",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766058421.965111,
+    "end_ts": 1766058646.8044097,
+    "executed_trades": [
+      {
+        "timestamp": 1766058421.965644,
+        "datetime": "2025-12-18T08:47:01.965644",
+        "kind": "target_buy_2.0%",
+        "price": 88024.77,
+        "portion": 0.3,
+        "profit_usdt": -0.01,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766058421.9659626,
+        "datetime": "2025-12-18T08:47:01.965963",
+        "kind": "target_buy_5.0%",
+        "price": 88024.77,
+        "portion": 0.4,
+        "profit_usdt": -0.01,
+        "simulated": true
+      }
+    ],
+    "total_profit": -0.02,
+    "dry_run": true
+  },
+  {
+    "id": "bot_3ef14945",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766106807.3239734,
+    "end_ts": 1766106928.7576995,
+    "executed_trades": [
+      {
+        "timestamp": 1766106807.3512323,
+        "datetime": "2025-12-18T22:13:27.351234",
+        "kind": "target_buy_2.0%",
+        "price": 88117.0,
+        "portion": 0.3,
+        "profit_usdt": -0.04,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766106807.3698099,
+        "datetime": "2025-12-18T22:13:27.369812",
+        "kind": "target_buy_5.0%",
+        "price": 88117.0,
+        "portion": 0.4,
+        "profit_usdt": -0.05,
+        "simulated": true
+      }
+    ],
+    "total_profit": -0.09,
+    "dry_run": true
+  },
+  {
+    "id": "bot_5ab9299f",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766106938.7835474,
+    "end_ts": 1766107002.49158,
+    "executed_trades": [
+      {
+        "timestamp": 1766106938.8244405,
+        "datetime": "2025-12-18T22:15:38.824442",
+        "kind": "target_buy_2.0%",
+        "price": 88145.54,
+        "portion": 0.3,
+        "profit_usdt": -0.04,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766106938.8486276,
+        "datetime": "2025-12-18T22:15:38.848629",
+        "kind": "target_buy_5.0%",
+        "price": 88145.54,
+        "portion": 0.4,
+        "profit_usdt": -0.06,
+        "simulated": true
+      }
+    ],
+    "total_profit": -0.1,
+    "dry_run": true
+  },
+  {
+    "id": "bot_ada17698",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766107029.587065,
+    "end_ts": 1766107273.45398,
+    "executed_trades": [
+      {
+        "timestamp": 1766107029.6108403,
+        "datetime": "2025-12-18T22:17:09.610842",
+        "kind": "target_buy_2.0%",
+        "price": 87834.33,
+        "portion": 0.3,
+        "profit_usdt": 0.05,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766107029.6271627,
+        "datetime": "2025-12-18T22:17:09.627164",
+        "kind": "target_buy_5.0%",
+        "price": 87834.33,
+        "portion": 0.4,
+        "profit_usdt": 0.07,
+        "simulated": true
+      }
+    ],
+    "total_profit": 0.12000000000000001,
+    "dry_run": true
+  },
+  {
+    "id": "bot_28ca8a67",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766110118.0994434,
+    "end_ts": 1766110170.4887338,
+    "executed_trades": [
+      {
+        "timestamp": 1766110118.1237547,
+        "datetime": "2025-12-18T23:08:38.123757",
+        "kind": "target_buy_2.0%",
+        "price": 88010.36,
+        "portion": 0.3,
+        "profit_usdt": -0.0,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766110118.1392982,
+        "datetime": "2025-12-18T23:08:38.139300",
+        "kind": "target_buy_5.0%",
+        "price": 88010.36,
+        "portion": 0.4,
+        "profit_usdt": -0.0,
+        "simulated": true
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_6cc9aa2f",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766110196.5185237,
+    "end_ts": 1766111081.9519105,
+    "executed_trades": [
+      {
+        "timestamp": 1766110196.5419688,
+        "datetime": "2025-12-18T23:09:56.541970",
+        "kind": "target_buy_2.0%",
+        "price": 87866.63,
+        "portion": 0.3,
+        "profit_usdt": 0.04,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766110196.5527506,
+        "datetime": "2025-12-18T23:09:56.552752",
+        "kind": "target_buy_5.0%",
+        "price": 87866.63,
+        "portion": 0.4,
+        "profit_usdt": 0.05,
+        "simulated": true
+      }
+    ],
+    "total_profit": 0.09,
+    "dry_run": true
+  },
+  {
+    "id": "bot_f4e2efd2",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "mixed",
+    "start_ts": 1766112057.0735402,
+    "end_ts": 1766112422.158946,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_47b9a8c7",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766112432.6056724,
+    "end_ts": 1766112633.0977635,
+    "executed_trades": [
+      {
+        "timestamp": 1766112432.6426308,
+        "datetime": "2025-12-18T23:47:12.642632",
+        "kind": "target_buy_2.0%",
+        "price": 88148.53,
+        "portion": 0.3,
+        "profit_usdt": -0.04,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766112432.670399,
+        "datetime": "2025-12-18T23:47:12.670404",
+        "kind": "target_buy_5.0%",
+        "price": 88148.53,
+        "portion": 0.4,
+        "profit_usdt": -0.06,
+        "simulated": true
+      }
+    ],
+    "total_profit": -0.1,
+    "dry_run": true
+  },
+  {
+    "id": "bot_f1e31af7",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766112896.8189254,
+    "end_ts": 1766113245.1676617,
+    "executed_trades": [
+      {
+        "timestamp": 1766112896.8552632,
+        "datetime": "2025-12-18T23:54:56.855265",
+        "kind": "target_buy_2.0%",
+        "price": 88168.2,
+        "portion": 0.3,
+        "profit_usdt": -0.05,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766112896.8754833,
+        "datetime": "2025-12-18T23:54:56.875485",
+        "kind": "target_buy_5.0%",
+        "price": 88168.2,
+        "portion": 0.4,
+        "profit_usdt": -0.07,
+        "simulated": true
+      }
+    ],
+    "total_profit": -0.12000000000000001,
+    "dry_run": true
+  },
+  {
+    "id": "bot_50d9a641",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766112848.940741,
+    "end_ts": 1766113245.1810896,
+    "executed_trades": [
+      {
+        "timestamp": 1766112848.9665139,
+        "datetime": "2025-12-18T23:54:08.966515",
+        "kind": "target_buy_2.0%",
+        "price": 88175.64,
+        "portion": 0.3,
+        "profit_usdt": -0.05,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766112848.980795,
+        "datetime": "2025-12-18T23:54:08.980797",
+        "kind": "target_buy_5.0%",
+        "price": 88175.64,
+        "portion": 0.4,
+        "profit_usdt": -0.07,
+        "simulated": true
+      }
+    ],
+    "total_profit": -0.12000000000000001,
+    "dry_run": true
+  },
+  {
+    "id": "bot_a9ec216c",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "mixed",
+    "start_ts": 1766113365.61429,
+    "end_ts": 1766113856.6226668,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_1959475f",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "buy",
+    "start_ts": 1766114628.0320864,
+    "end_ts": 1766114652.747995,
+    "executed_trades": [
+      {
+        "timestamp": 1766114628.063605,
+        "datetime": "2025-12-19T00:23:48.063607",
+        "kind": "target_buy_2.0%",
+        "price": 88075.0,
+        "portion": 0.3,
+        "profit_usdt": -0.02,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766114628.081683,
+        "datetime": "2025-12-19T00:23:48.081685",
+        "kind": "target_buy_5.0%",
+        "price": 88075.0,
+        "portion": 0.4,
+        "profit_usdt": -0.03,
+        "simulated": true
+      }
+    ],
+    "total_profit": -0.05,
+    "dry_run": true
+  },
+  {
+    "id": "bot_f3160c18",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "mixed",
+    "start_ts": 1766114052.206499,
+    "end_ts": 1766114652.7677617,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_3114503d",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "mixed",
+    "start_ts": 1766115061.8365345,
+    "end_ts": 1766115518.6687818,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_8ea344ea",
+    "symbol": "BTC-USDT",
+    "entry_price": 86913.3,
+    "mode": "sell",
+    "start_ts": 1766115535.3527982,
+    "end_ts": 1766115831.6515496,
+    "executed_trades": [
+      {
+        "timestamp": 1766115590.607927,
+        "datetime": "2025-12-19T00:39:50.607929",
+        "kind": "target_sell_1.0%",
+        "price": 87832.89,
+        "portion": 0.3,
+        "profit_usdt": 0.17,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766115716.1498022,
+        "datetime": "2025-12-19T00:41:56.149804",
+        "kind": "target_sell_3.0%",
+        "price": 89687.17,
+        "portion": 0.5,
+        "profit_usdt": 0.83,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766115831.625852,
+        "datetime": "2025-12-19T00:43:51.625855",
+        "kind": "target_sell_5.0%",
+        "price": 91313.07,
+        "portion": 0.2,
+        "profit_usdt": 0.53,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.53,
+    "dry_run": true
+  },
+  {
+    "id": "bot_fcec9f78",
+    "symbol": "BTC-USDT",
+    "entry_price": 87243.4,
+    "mode": "sell",
+    "start_ts": 1766116069.889869,
+    "end_ts": 1766116092.2594345,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_8ce74a4b",
+    "symbol": "BTC-USDT",
+    "entry_price": 87235.7,
+    "mode": "sell",
+    "start_ts": 1766116106.653293,
+    "end_ts": 1766116402.7824917,
+    "executed_trades": [
+      {
+        "timestamp": 1766116171.9251666,
+        "datetime": "2025-12-19T00:49:31.925168",
+        "kind": "target_sell_1.0%",
+        "price": 88306.36,
+        "portion": 0.3,
+        "profit_usdt": 0.19,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766116287.3293467,
+        "datetime": "2025-12-19T00:51:27.329348",
+        "kind": "target_sell_3.0%",
+        "price": 89965.56,
+        "portion": 0.5,
+        "profit_usdt": 0.82,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766116402.7543416,
+        "datetime": "2025-12-19T00:53:22.754343",
+        "kind": "target_sell_5.0%",
+        "price": 91710.79,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.55,
+    "dry_run": true
+  },
+  {
+    "id": "bot_148c49a9",
+    "symbol": "BTC-USDT",
+    "entry_price": 87235.7,
+    "mode": "mixed",
+    "start_ts": 1766116151.6841214,
+    "end_ts": 1766117464.7389538,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_9f670637",
+    "symbol": "BTC-USDT",
+    "entry_price": 87219.9,
+    "mode": "sell",
+    "start_ts": 1766117480.756255,
+    "end_ts": 1766117798.7729936,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_924d9f36",
+    "symbol": "BTC-USDT",
+    "entry_price": 88063.2,
+    "mode": "mixed",
+    "start_ts": 1766138641.502304,
+    "end_ts": 1766139489.8036726,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_23069d9b",
+    "symbol": "BTC-USDT",
+    "entry_price": 87347.2,
+    "mode": "mixed",
+    "start_ts": 1766117849.469358,
+    "end_ts": 1766139489.8304164,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_a4ee77fd",
+    "symbol": "BTC-USDT",
+    "entry_price": 88170.0,
+    "mode": "sell",
+    "start_ts": 1766139578.9150012,
+    "end_ts": 1766139705.7712243,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_0485f83d",
+    "symbol": "BTC-USDT",
+    "entry_price": 88083.0,
+    "mode": "sell",
+    "start_ts": 1766139727.0411727,
+    "end_ts": 1766139901.2356977,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_38f651d6",
+    "symbol": "BTC-USDT",
+    "entry_price": 88005.8,
+    "mode": "sell",
+    "start_ts": 1766139923.8560681,
+    "end_ts": 1766140195.1886318,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_0ec96b8e",
+    "symbol": "BTC-USDT",
+    "entry_price": 88090.6,
+    "mode": "sell",
+    "start_ts": 1766146760.9256532,
+    "end_ts": 1766147072.0903366,
+    "executed_trades": [
+      {
+        "timestamp": 1766146821.137648,
+        "datetime": "2025-12-19T09:20:21.137650",
+        "kind": "target_sell_1.0%",
+        "price": 89058.54,
+        "portion": 0.3,
+        "profit_usdt": 0.17,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766146931.5513825,
+        "datetime": "2025-12-19T09:22:11.551385",
+        "kind": "target_sell_3.0%",
+        "price": 90737.53,
+        "portion": 0.5,
+        "profit_usdt": 0.79,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766147072.0664115,
+        "datetime": "2025-12-19T09:24:32.066413",
+        "kind": "target_sell_5.0%",
+        "price": 92670.35,
+        "portion": 0.2,
+        "profit_usdt": 0.55,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.51,
+    "dry_run": true
+  },
+  {
+    "id": "bot_d8c96f82",
+    "symbol": "BTC-USDT",
+    "entry_price": 88090.6,
+    "mode": "sell",
+    "start_ts": 1766146782.7067032,
+    "end_ts": 1766147093.9472933,
+    "executed_trades": [
+      {
+        "timestamp": 1766146842.9108312,
+        "datetime": "2025-12-19T09:20:42.910833",
+        "kind": "target_sell_1.0%",
+        "price": 89114.72,
+        "portion": 0.3,
+        "profit_usdt": 0.18,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766146978.4995482,
+        "datetime": "2025-12-19T09:22:58.499550",
+        "kind": "target_sell_3.0%",
+        "price": 90859.87,
+        "portion": 0.5,
+        "profit_usdt": 0.83,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766147093.9171503,
+        "datetime": "2025-12-19T09:24:53.917152",
+        "kind": "target_sell_5.0%",
+        "price": 92616.07,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.55,
+    "dry_run": true
+  },
+  {
+    "id": "bot_e28bbc11",
+    "symbol": "BTC-USDT",
+    "entry_price": 88090.6,
+    "mode": "sell",
+    "start_ts": 1766146807.2636123,
+    "end_ts": 1766147123.4965632,
+    "executed_trades": [
+      {
+        "timestamp": 1766146872.4543033,
+        "datetime": "2025-12-19T09:21:12.454305",
+        "kind": "target_sell_1.0%",
+        "price": 89081.85,
+        "portion": 0.3,
+        "profit_usdt": 0.18,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766146987.867041,
+        "datetime": "2025-12-19T09:23:07.867044",
+        "kind": "target_sell_3.0%",
+        "price": 90858.86,
+        "portion": 0.5,
+        "profit_usdt": 0.83,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766147123.439852,
+        "datetime": "2025-12-19T09:25:23.439855",
+        "kind": "target_sell_5.0%",
+        "price": 92569.66,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.55,
+    "dry_run": true
+  },
+  {
+    "id": "bot_9cedb9e4",
+    "symbol": "BTC-USDT",
+    "entry_price": 88090.6,
+    "mode": "sell",
+    "start_ts": 1766146872.2971394,
+    "end_ts": 1766147178.5476813,
+    "executed_trades": [
+      {
+        "timestamp": 1766146947.6248665,
+        "datetime": "2025-12-19T09:22:27.624868",
+        "kind": "target_sell_1.0%",
+        "price": 89096.95,
+        "portion": 0.3,
+        "profit_usdt": 0.18,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766147058.1446116,
+        "datetime": "2025-12-19T09:24:18.144617",
+        "kind": "target_sell_3.0%",
+        "price": 90995.21,
+        "portion": 0.5,
+        "profit_usdt": 0.87,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766147178.5339406,
+        "datetime": "2025-12-19T09:26:18.533942",
+        "kind": "target_sell_5.0%",
+        "price": 92642.33,
+        "portion": 0.2,
+        "profit_usdt": 0.55,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.6,
+    "dry_run": true
+  },
+  {
+    "id": "bot_ddf7b219",
+    "symbol": "BTC-USDT",
+    "entry_price": 88090.6,
+    "mode": "sell",
+    "start_ts": 1766146901.054735,
+    "end_ts": 1766147202.1644518,
+    "executed_trades": [
+      {
+        "timestamp": 1766146961.2525764,
+        "datetime": "2025-12-19T09:22:41.252578",
+        "kind": "target_sell_1.0%",
+        "price": 88993.74,
+        "portion": 0.3,
+        "profit_usdt": 0.16,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766147081.6276338,
+        "datetime": "2025-12-19T09:24:41.627636",
+        "kind": "target_sell_3.0%",
+        "price": 90886.48,
+        "portion": 0.5,
+        "profit_usdt": 0.84,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766147202.1266403,
+        "datetime": "2025-12-19T09:26:42.126643",
+        "kind": "target_sell_5.0%",
+        "price": 92551.71,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.54,
+    "dry_run": true
+  },
+  {
+    "id": "bot_97058338",
+    "symbol": "BTC-USDT",
+    "entry_price": 88028.6,
+    "mode": "sell",
+    "start_ts": 1766147967.5925543,
+    "end_ts": 1766148263.7725084,
+    "executed_trades": [
+      {
+        "timestamp": 1766148022.808476,
+        "datetime": "2025-12-19T09:40:22.808477",
+        "kind": "target_sell_1.0%",
+        "price": 88963.43,
+        "portion": 0.3,
+        "profit_usdt": 0.17,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766148143.2858226,
+        "datetime": "2025-12-19T09:42:23.285824",
+        "kind": "target_sell_3.0%",
+        "price": 90716.98,
+        "portion": 0.5,
+        "profit_usdt": 0.81,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766148263.7570672,
+        "datetime": "2025-12-19T09:44:23.757069",
+        "kind": "target_sell_5.0%",
+        "price": 92541.55,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.52,
+    "dry_run": true
+  },
+  {
+    "id": "bot_bbadb1e1",
+    "symbol": "BTC-USDT",
+    "entry_price": 88046.4,
+    "mode": "sell",
+    "start_ts": 1766147993.6220763,
+    "end_ts": 1766148289.6246564,
+    "executed_trades": [
+      {
+        "timestamp": 1766148048.8031895,
+        "datetime": "2025-12-19T09:40:48.803194",
+        "kind": "target_sell_1.0%",
+        "price": 88972.31,
+        "portion": 0.3,
+        "profit_usdt": 0.17,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766148164.1763573,
+        "datetime": "2025-12-19T09:42:44.176360",
+        "kind": "target_sell_3.0%",
+        "price": 90716.96,
+        "portion": 0.5,
+        "profit_usdt": 0.8,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766148289.613441,
+        "datetime": "2025-12-19T09:44:49.613443",
+        "kind": "target_sell_5.0%",
+        "price": 92480.83,
+        "portion": 0.2,
+        "profit_usdt": 0.53,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.5,
+    "dry_run": true
+  },
+  {
+    "id": "bot_a9acdb32",
+    "symbol": "BTC-USDT",
+    "entry_price": 88090.6,
+    "mode": "mixed",
+    "start_ts": 1766147032.2098742,
+    "end_ts": 1766148608.34444,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_40926b2d",
+    "symbol": "BTC-USDT",
+    "entry_price": 87951.6,
+    "mode": "sell",
+    "start_ts": 1766149067.988715,
+    "end_ts": 1766149374.1237307,
+    "executed_trades": [
+      {
+        "timestamp": 1766149128.2083528,
+        "datetime": "2025-12-19T09:58:48.208354",
+        "kind": "target_sell_1.0%",
+        "price": 88960.69,
+        "portion": 0.3,
+        "profit_usdt": 0.18,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766149248.637255,
+        "datetime": "2025-12-19T10:00:48.637258",
+        "kind": "target_sell_3.0%",
+        "price": 90657.35,
+        "portion": 0.5,
+        "profit_usdt": 0.81,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766149374.1050503,
+        "datetime": "2025-12-19T10:02:54.105052",
+        "kind": "target_sell_5.0%",
+        "price": 92416.67,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.53,
+    "dry_run": true
+  },
+  {
+    "id": "bot_5bfa54ea",
+    "symbol": "BTC-USDT",
+    "entry_price": 88277.6,
+    "mode": "sell",
+    "start_ts": 1766158685.7226582,
+    "end_ts": 1766158991.957527,
+    "executed_trades": [
+      {
+        "timestamp": 1766158750.981262,
+        "datetime": "2025-12-19T12:39:10.981269",
+        "kind": "target_sell_1.0%",
+        "price": 89247.28,
+        "portion": 0.3,
+        "profit_usdt": 0.17,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766158856.381984,
+        "datetime": "2025-12-19T12:40:56.381986",
+        "kind": "target_sell_3.0%",
+        "price": 90926.46,
+        "portion": 0.5,
+        "profit_usdt": 0.79,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766158991.939306,
+        "datetime": "2025-12-19T12:43:11.939308",
+        "kind": "target_sell_5.0%",
+        "price": 92819.22,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.5,
+    "dry_run": true
+  },
+  {
+    "id": "bot_f6b3efa3",
+    "symbol": "BTC-USDT",
+    "entry_price": 87977.9,
+    "mode": "sell",
+    "start_ts": 1766149304.8362014,
+    "end_ts": 1766160365.1630862,
+    "executed_trades": [
+      {
+        "timestamp": 1766157344.2222729,
+        "datetime": "2025-12-19T12:15:44.222276",
+        "kind": "target_sell_1.0%",
+        "price": 88899.9,
+        "portion": 0.3,
+        "profit_usdt": 0.17,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.17,
+    "dry_run": false
+  },
+  {
+    "id": "bot_e7c6e796",
+    "symbol": "BTC-USDT",
+    "entry_price": 88100.5,
+    "mode": "mixed",
+    "start_ts": 1766159546.5857215,
+    "end_ts": 1766160365.1744938,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_b4b97919",
+    "symbol": "BTC-USDT",
+    "entry_price": 87977.9,
+    "mode": "sell",
+    "start_ts": 1766149581.9014685,
+    "end_ts": 1766160365.2008574,
+    "executed_trades": [
+      {
+        "timestamp": 1766157345.4582224,
+        "datetime": "2025-12-19T12:15:45.458225",
+        "kind": "target_sell_1.0%",
+        "price": 88900.0,
+        "portion": 0.3,
+        "profit_usdt": 0.17,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.17,
+    "dry_run": false
+  },
+  {
+    "id": "bot_d4d4580e",
+    "symbol": "BTC-USDT",
+    "entry_price": 87915.5,
+    "mode": "sell",
+    "start_ts": 1766159906.617,
+    "end_ts": 1766160365.2271628,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_e91e1643",
+    "symbol": "BTC-USDT",
+    "entry_price": 88420.0,
+    "mode": "sell",
+    "start_ts": 1766160514.771337,
+    "end_ts": 1766160806.3516257,
+    "executed_trades": [
+      {
+        "timestamp": 1766160580.0814545,
+        "datetime": "2025-12-19T13:09:40.081456",
+        "kind": "target_sell_1.0%",
+        "price": 89417.14,
+        "portion": 0.3,
+        "profit_usdt": 0.18,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766160695.6342607,
+        "datetime": "2025-12-19T13:11:35.634266",
+        "kind": "target_sell_3.0%",
+        "price": 91177.0,
+        "portion": 0.5,
+        "profit_usdt": 0.83,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766160806.272425,
+        "datetime": "2025-12-19T13:13:26.272429",
+        "kind": "target_sell_5.0%",
+        "price": 92877.25,
+        "portion": 0.2,
+        "profit_usdt": 0.53,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.54,
+    "dry_run": true
+  },
+  {
+    "id": "bot_395b1539",
+    "symbol": "BTC-USDT",
+    "entry_price": 88039.9,
+    "mode": "sell",
+    "start_ts": 1766160388.3891459,
+    "end_ts": 1766161101.5889452,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_8701814a",
+    "symbol": "BTC-USDT",
+    "entry_price": 88318.1,
+    "mode": "sell",
+    "start_ts": 1766161153.4639475,
+    "end_ts": 1766161460.0601687,
+    "executed_trades": [
+      {
+        "timestamp": 1766161208.7204814,
+        "datetime": "2025-12-19T13:20:08.720484",
+        "kind": "target_sell_1.0%",
+        "price": 89303.88,
+        "portion": 0.3,
+        "profit_usdt": 0.18,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766161334.326005,
+        "datetime": "2025-12-19T13:22:14.326009",
+        "kind": "target_sell_3.0%",
+        "price": 91130.14,
+        "portion": 0.5,
+        "profit_usdt": 0.84,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766161460.0437164,
+        "datetime": "2025-12-19T13:24:20.043718",
+        "kind": "target_sell_5.0%",
+        "price": 92805.2,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.56,
+    "dry_run": true
+  },
+  {
+    "id": "bot_dd882c95",
+    "symbol": "BTC-USDT",
+    "entry_price": 88364.5,
+    "mode": "mixed",
+    "start_ts": 1766161521.4214277,
+    "end_ts": 1766161975.0996299,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_7a78ddb4",
+    "symbol": "BTC-USDT",
+    "entry_price": 88497.2,
+    "mode": "mixed",
+    "start_ts": 1766162095.1278307,
+    "end_ts": 1766162770.0735726,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_60618d33",
+    "symbol": "BTC-USDT",
+    "entry_price": 88483.7,
+    "mode": "sell",
+    "start_ts": 1766162746.1877458,
+    "end_ts": 1766162770.080457,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_495a596d",
+    "symbol": "BTC-USDT",
+    "entry_price": 88458.9,
+    "mode": "sell",
+    "start_ts": 1766162783.2890775,
+    "end_ts": 1766163079.5613854,
+    "executed_trades": [
+      {
+        "timestamp": 1766162833.4903278,
+        "datetime": "2025-12-19T13:47:13.490330",
+        "kind": "target_sell_1.0%",
+        "price": 89358.35,
+        "portion": 0.3,
+        "profit_usdt": 0.16,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766162959.0176325,
+        "datetime": "2025-12-19T13:49:19.017635",
+        "kind": "target_sell_3.0%",
+        "price": 91121.23,
+        "portion": 0.5,
+        "profit_usdt": 0.8,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766163079.5394,
+        "datetime": "2025-12-19T13:51:19.539405",
+        "kind": "target_sell_5.0%",
+        "price": 92970.45,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.5,
+    "dry_run": true
+  },
+  {
+    "id": "bot_30007742",
+    "symbol": "BTC-USDT",
+    "entry_price": 88172.3,
+    "mode": "sell",
+    "start_ts": 1766164436.0664513,
+    "end_ts": 1766164742.4276803,
+    "executed_trades": [
+      {
+        "timestamp": 1766164501.3915818,
+        "datetime": "2025-12-19T14:15:01.391584",
+        "kind": "target_sell_1.0%",
+        "price": 89061.13,
+        "portion": 0.3,
+        "profit_usdt": 0.16,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766164611.852344,
+        "datetime": "2025-12-19T14:16:51.852349",
+        "kind": "target_sell_3.0%",
+        "price": 90927.98,
+        "portion": 0.5,
+        "profit_usdt": 0.83,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766164742.4017353,
+        "datetime": "2025-12-19T14:19:02.401737",
+        "kind": "target_sell_5.0%",
+        "price": 92754.93,
+        "portion": 0.2,
+        "profit_usdt": 0.55,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.54,
+    "dry_run": true
+  },
+  {
+    "id": "bot_5d45b071",
+    "symbol": "BTC-USDT",
+    "entry_price": 88206.4,
+    "mode": "mixed",
+    "start_ts": 1766164848.131319,
+    "end_ts": 1766164904.6012876,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_e9118429",
+    "symbol": "BTC-USDT",
+    "entry_price": 88034.2,
+    "mode": "sell",
+    "start_ts": 1766163509.9862046,
+    "end_ts": 1766164904.6177068,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_7cf257c8",
+    "symbol": "BTC-USDT",
+    "entry_price": 88164.1,
+    "mode": "sell",
+    "start_ts": 1766164928.0331578,
+    "end_ts": 1766165224.416648,
+    "executed_trades": [
+      {
+        "timestamp": 1766164993.3426929,
+        "datetime": "2025-12-19T14:23:13.342696",
+        "kind": "target_sell_1.0%",
+        "price": 89205.71,
+        "portion": 0.3,
+        "profit_usdt": 0.19,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766165108.844803,
+        "datetime": "2025-12-19T14:25:08.844805",
+        "kind": "target_sell_3.0%",
+        "price": 90872.61,
+        "portion": 0.5,
+        "profit_usdt": 0.81,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766165224.3846574,
+        "datetime": "2025-12-19T14:27:04.384659",
+        "kind": "target_sell_5.0%",
+        "price": 92633.31,
+        "portion": 0.2,
+        "profit_usdt": 0.54,
+        "simulated": true
+      }
+    ],
+    "total_profit": 1.54,
+    "dry_run": true
+  },
+  {
+    "id": "bot_574439bf",
+    "symbol": "BTC-USDT",
+    "entry_price": 88164.1,
+    "mode": "sell",
+    "start_ts": 1766165152.8687947,
+    "end_ts": 1766165235.6428666,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
+  }
+]

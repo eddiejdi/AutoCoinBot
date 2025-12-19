@@ -1,0 +1,14 @@
+{
+  "bot_3ec3da20": {
+    "pid": 439563,
+    "config": {
+      "symbol": "BTC-USDT",
+      "entry": 88000.0,
+      "mode": "mixed",
+      "targets": "2:0.3,5:0.4",
+      "dry_run": true
+    },
+    "started_at": 1765970017.095602,
+    "status": "running"
+  }
+}

@@ -1,0 +1,74 @@
+# enhanced_trade_bot.py
+import time
+import json
+
+
+class EnhancedTradeBot:
+    def __init__(
+        self,
+        symbol,
+        entry_price,
+        mode,
+        targets,
+        interval,
+        size,
+        funds,
+        dry_run,
+        bot_id=None,
+        logger=None,
+    ):
+        self.symbol = symbol
+        self.entry_price = entry_price
+        self.mode = mode
+        self.targets = targets
+        self.interval = interval
+        self.size = size
+        self.funds = funds
+        self.dry_run = dry_run
+        self.bot_id = bot_id
+        self.logger = logger
+
+        self.running = True
+
+    # --------------------------------------------------
+    # LOG PADRÃO (USADO PELA UI)
+    # --------------------------------------------------
+    def log(self, event: dict):
+        if not self.logger:
+            return
+
+        event["timestamp"] = time.time()
+        event["bot_id"] = self.bot_id
+        self.logger.info(json.dumps(event, ensure_ascii=False))
+
+    # --------------------------------------------------
+    # LOOP PRINCIPAL
+    # --------------------------------------------------
+    def run(self):
+        self.log({
+            "event": "run_started",
+            "symbol": self.symbol,
+            "mode": self.mode,
+            "dry_run": self.dry_run
+        })
+
+        while self.running:
+            # HEARTBEAT — prova de vida
+            self.log({
+                "event": "heartbeat",
+                "status": "running"
+            })
+
+            # ⬇️ sua lógica de trade entra aqui ⬇️
+            # exemplo:
+            # price = self.get_price()
+            # self.log({"event": "price_tick", "price": price})
+
+            time.sleep(self.interval)
+
+    def stop(self):
+        self.running = False
+        self.log({
+            "event": "bot_stopped"
+        })
+
