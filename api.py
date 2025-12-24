@@ -47,13 +47,36 @@ try:
 except ImportError:
     logger.warning("⚠️ python-dotenv not installed, using system env vars only")
 
+def _get_secret(key, default=""):
+    try:
+        import streamlit as st
+        # Assuming secrets are in sections, but for simplicity, try flat first
+        if key in st.secrets:
+            return st.secrets[key]
+        # Or from sections
+        for section in st.secrets:
+            if isinstance(st.secrets[section], dict) and key in st.secrets[section]:
+                return st.secrets[section][key]
+        return default
+    except (ImportError, AttributeError):
+        return os.getenv(key, default)
+
 # ====================== API CREDENTIALS ======================
 # Suporta tanto V1 quanto V2
-API_KEY = os.getenv("API_KEYv1", "") or os.getenv("API_KEY", "")
-API_SECRET = os.getenv("API_SECRETv1", "") or os.getenv("API_SECRET", "")
-API_PASSPHRASE = os.getenv("API_PASSPHRASEv1", "") or os.getenv("API_PASSPHRASE", "")
-API_KEY_VERSION = os.getenv("API_KEY_VERSION", "1")  # Default V1
-KUCOIN_BASE = os.getenv("KUCOIN_BASE", "https://api.kucoin.com").rstrip("/")
+API_KEY = _get_secret("API_KEYv1", "") or _get_secret("API_KEY", "")
+API_SECRET = _get_secret("API_SECRETv1", "") or _get_secret("API_SECRET", "")
+API_PASSPHRASE = _get_secret("API_PASSPHRASEv1", "") or _get_secret("API_PASSPHRASE", "")
+API_KEY_VERSION = _get_secret("API_KEY_VERSION", "1")  # Default V1
+KUCOIN_BASE = _get_secret("KUCOIN_BASE", "https://api.kucoin.com").rstrip("/")
+
+# Other configs
+TELEGRAM_BOT_TOKEN = _get_secret("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = _get_secret("TELEGRAM_CHAT_ID", "")
+WEBHOOK_HOST = _get_secret("WEBHOOK_HOST", "0.0.0.0")
+WEBHOOK_PORT = int(_get_secret("WEBHOOK_PORT", "5000"))
+WEBHOOK_SANDBOX = int(_get_secret("WEBHOOK_SANDBOX", "0"))
+WEBHOOK_DRYRUN = int(_get_secret("WEBHOOK_DRYRUN", "0"))
+TRADES_DB = _get_secret("TRADES_DB", "trades.db")
 
 # ====================== RATE LIMITING ======================
 _last_request_time = 0
