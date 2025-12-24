@@ -1,6 +1,10 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+<<<<<<< HEAD
+*.py[cod]
+=======
 *.py[codz]
+>>>>>>> main
 *$py.class
 
 # C extensions
@@ -20,7 +24,10 @@ parts/
 sdist/
 var/
 wheels/
+<<<<<<< HEAD
+=======
 share/python-wheels/
+>>>>>>> main
 *.egg-info/
 .installed.cfg
 *.egg
@@ -46,10 +53,15 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *.cover
+<<<<<<< HEAD
+.hypothesis/
+.pytest_cache/
+=======
 *.py.cover
 .hypothesis/
 .pytest_cache/
 cover/
+>>>>>>> main
 
 # Translations
 *.mo
@@ -59,7 +71,10 @@ cover/
 *.log
 local_settings.py
 db.sqlite3
+<<<<<<< HEAD
+=======
 db.sqlite3-journal
+>>>>>>> main
 
 # Flask stuff:
 instance/
@@ -72,7 +87,10 @@ instance/
 docs/_build/
 
 # PyBuilder
+<<<<<<< HEAD
+=======
 .pybuilder/
+>>>>>>> main
 target/
 
 # Jupyter Notebook
@@ -83,6 +101,12 @@ profile_default/
 ipython_config.py
 
 # pyenv
+<<<<<<< HEAD
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+=======
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to run in multiple environments; otherwise, check them in:
 # .python-version
@@ -130,13 +154,17 @@ __pypackages__/
 # Celery stuff
 celerybeat-schedule
 celerybeat.pid
+>>>>>>> main
 
 # SageMath parsed files
 *.sage.py
 
 # Environments
 .env
+<<<<<<< HEAD
+=======
 .envrc
+>>>>>>> main
 .venv
 env/
 venv/
@@ -162,6 +190,39 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+<<<<<<< HEAD
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+logs/
+__pycache__/
+*.log
+data/
+archive/
+pids/
+*.db
+*.sqlite
+*.sqlite3
+bot_history.json
+equity_history.json
+current_config.json
+bot_registry.json
+bot_session.json
+=======
 # pytype static type analyzer
 .pytype/
 
@@ -205,3 +266,4 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+>>>>>>> main

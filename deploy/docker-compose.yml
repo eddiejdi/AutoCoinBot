@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  streamlit:
+    build:
+      context: ..
+      dockerfile: container/Dockerfile
+    ports:
+      - "8501:8501"
+      - "8765:8765"
+    volumes:
+      - ..:/app:rw
+      - ../data:/app/data:rw
+    environment:
+      - STREAMLIT_SERVER_HEADLESS=true
+    restart: unless-stopped
