@@ -10,7 +10,6 @@ import queue as _queue
 import atexit
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

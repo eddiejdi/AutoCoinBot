@@ -1,10 +1,7 @@
 # bot_core.py
 import sys
-import json
 import time
-import logging
 import os
-from pathlib import Path
 
 # ======================================================
 # IMPORT DO BOT — NÃO INVENTA MÓDULO

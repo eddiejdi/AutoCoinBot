@@ -29,7 +29,7 @@ def main():
     # Verificar se usuário está logado
     if "logado" not in st.session_state or not st.session_state["logado"]:
         fazer_login()
-        return
+        st.stop()
 
     # Usuário logado - renderizar aplicação principal
     ui_mod = None

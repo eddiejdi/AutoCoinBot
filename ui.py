@@ -1,6 +1,5 @@
 # ui.py
 import time
-import logging
 import hashlib
 import os
 import signal
@@ -15,7 +14,6 @@ import json
 from pathlib import Path
 
 from .bot_controller import BotController, get_global_controller
-from .bot_session import BotSession
 from .database import DatabaseManager
 from .sidebar_controller import SidebarController
 
@@ -5408,6 +5406,10 @@ def _render_full_ui(controller=None):
     # =====================================================
     if start_real or start_dry:
         try:
+            if not st.session_state.get("controller"):
+                st.error("Controller não disponível. Tente recarregar a página.")
+                return
+            
             # Obter parâmetros do session_state
             symbol = st.session_state.get("symbol", "BTC-USDT")
             entry = st.session_state.get("entry", 0.0)

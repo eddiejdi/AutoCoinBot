@@ -13,9 +13,9 @@ import json
 import requests
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Callable, Tuple
+from typing import List, Dict, Any, Optional, Callable
 from functools import wraps
-from datetime import datetime, timedelta
+from datetime import datetime
 from urllib.parse import urlencode
 
 # ====================== CONFIGURAÇÃO DE LOGGING ======================
