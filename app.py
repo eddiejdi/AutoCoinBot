@@ -2,8 +2,20 @@ import os
 import sys
 import traceback
 import streamlit as st
+import hashlib
 
-from auth_config import verificar_credenciais
+# Add current directory to sys.path to ensure imports work
+sys.path.insert(0, os.path.dirname(__file__))
+
+# auth_config.py - Configurações de autenticação (inlined to avoid import issues)
+USUARIO_PADRAO = os.getenv("KUCOIN_USER", "admin")
+SENHA_HASH_PADRAO = hashlib.sha256(os.getenv("KUCOIN_PASS", "senha123").encode()).hexdigest()
+
+def verificar_credenciais(usuario, senha):
+    senha_hash = hashlib.sha256(senha.encode()).hexdigest()
+    return usuario == USUARIO_PADRAO and senha_hash == SENHA_HASH_PADRAO
+
+# from auth_config import verificar_credenciais
 
 
 st.set_page_config(page_title="KuCoin PRO", layout="wide")
@@ -33,8 +45,9 @@ def main():
 
     # Usuário logado - renderizar aplicação principal
     ui_mod = None
+    here = os.path.dirname(__file__)
     try:
-        from kucoin_app import ui as ui_mod
+        import ui as ui_mod
     except Exception:
         # If importing the package fails, create a small package shim named
         # `kucoin_app` that points to the current directory so `from .xxx`
@@ -69,4 +82,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

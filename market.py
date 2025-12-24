@@ -7,7 +7,6 @@ except Exception:
     import api  # type: ignore
 import pandas as pd
 import time
-import math
 
 
 def _rsi(series: pd.Series, period: int = 14) -> pd.Series:
