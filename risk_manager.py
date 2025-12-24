@@ -116,8 +116,11 @@ class RiskManager:
         try:
             today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             start_ts = today_start.timestamp()
-            trades = db.get_trades(start_ts=start_ts, limit=1000)
-            return len(trades)
+
+            # Conta movimentações reais (preferir fills, mas se não houver order_id,
+            # ainda conta como trade).
+            rows = db.get_trade_history(limit=5000, only_real=True, start_ts=start_ts)
+            return len(rows)
         except Exception as e:
             logger.error(f"Error getting daily trade count: {e}")
             return 0
@@ -127,9 +130,26 @@ class RiskManager:
         try:
             today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             start_ts = today_start.timestamp()
-            trades = db.get_trades(start_ts=start_ts, limit=1000)
-            
-            total_pnl = sum(t.get('profit', 0) for t in trades)
+
+            # PnL realizado: somente SELL com profit preenchido.
+            rows = db.get_trade_history(limit=5000, only_real=True, start_ts=start_ts)
+            realized_profit = 0.0
+            total_commission = 0.0
+            for r in rows:
+                try:
+                    c = r.get('commission')
+                    if c is not None:
+                        total_commission += float(c)
+                except Exception:
+                    pass
+
+                try:
+                    if str(r.get('side') or '').lower() == 'sell' and r.get('profit') is not None:
+                        realized_profit += float(r.get('profit'))
+                except Exception:
+                    pass
+
+            total_pnl = realized_profit - total_commission
             current_balance = api.get_balance()
             
             if current_balance <= 0:

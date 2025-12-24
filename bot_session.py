@@ -18,15 +18,24 @@ class BotSession:
         Retorna o bot_id ativo a partir da query string (?bot=...)
         """
         params = st.query_params
-        bot_id = params.get("bot")
+        bot_id = params.get("bot") or params.get("bot_id")
 
         if not bot_id:
             return None
 
-        if not bot_id.startswith("bot_"):
+        try:
+            if isinstance(bot_id, (list, tuple)):
+                bot_id = bot_id[0] if bot_id else None
+        except Exception:
+            pass
+
+        if not bot_id:
+            return None
+
+        if not str(bot_id).startswith("bot_"):
             bot_id = f"bot_{bot_id}"
 
-        return bot_id
+        return str(bot_id)
 
     @staticmethod
     def get_bot_log_file(bot_id: str) -> Path:

@@ -1,0 +1,26 @@
+; streamlit.service.template
+; Copy this file to /etc/systemd/system/streamlit.service and replace
+; {PROJECT_DIR} with the absolute path to the project and {USER} with the
+; user that should run the service.
+[Unit]
+Description=Streamlit app for kucoin_app
+After=network.target
+
+[Service]
+Type=simple
+User={USER}
+WorkingDirectory={PROJECT_DIR}
+# Use the start_streamlit.sh in foreground mode so systemd manages the process
+ExecStart=/bin/bash {PROJECT_DIR}/start_streamlit.sh --foreground 8501
+Restart=on-failure
+RestartSec=5s
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+
+; Instructions:
+; 1. Copy and edit: sudo cp deploy/streamlit.service.template /etc/systemd/system/streamlit.service
+; 2. Replace {PROJECT_DIR} and {USER} with proper values.
+; 3. Run: sudo systemctl daemon-reload
+; 4. Enable and start: sudo systemctl enable --now streamlit.service

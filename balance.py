@@ -3,7 +3,7 @@ import math
 
 def get_account_balances_detail():
     try:
-        raw = api.get_accounts()
+        raw = api.get_accounts_raw()
     except Exception as e:
         return None, [], {'error': str(e)}
 

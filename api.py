@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable, Tuple
 from functools import wraps
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 
 # ====================== CONFIGURAÇÃO DE LOGGING ======================
 LOG_DIR = Path(__file__).resolve().parent / "logs"
@@ -119,11 +120,15 @@ def _server_time() -> int:
         logger.warning(f"⚠️ Failed to get server time, using local: {e}")
     return int(time.time() * 1000)
 
-def _build_headers(method: str, endpoint: str, body_str: str = "") -> Dict[str, str]:
-    """Constrói headers para endpoints privados (suporta V1 e V2)"""
+def _build_headers(method: str, endpoint: str, body_str: str = "", use_server_time: bool = True) -> Dict[str, str]:
+    """Constrói headers para endpoints privados (suporta V1 e V2).
+
+    `use_server_time=False` evita chamada ao endpoint de timestamp e usa o relógio local.
+    Útil para telas/UI onde preferimos falhar rápido ao invés de bloquear o render.
+    """
     validate_credentials()
-    
-    ts = str(_server_time())
+
+    ts = str(_server_time() if use_server_time else int(time.time() * 1000))
     method_up = method.upper()
     to_sign = ts + method_up + endpoint + (body_str or "")
     
@@ -173,8 +178,13 @@ def get_orderbook_price(symbol: str) -> Optional[Dict[str, Any]]:
         return None
 
     data = j.get("data")
+    # KuCoin sometimes returns {code:200000, data:null} for unsupported symbols.
+    # This is not an app error; treat it as "no market data".
+    if data is None:
+        logger.debug(f"No orderbook data for {symbol} (data=null)")
+        return None
     if not isinstance(data, dict):
-        logger.error(f"❌ Invalid data payload for {symbol}: {j}")
+        logger.debug(f"Invalid orderbook payload type for {symbol}: {type(data)}")
         return None
 
     
@@ -228,9 +238,84 @@ def get_orderbook_price(symbol: str) -> Optional[Dict[str, Any]]:
                 f"ask={out.get('best_ask')}, bid={out.get('best_bid')}")
     return out
 
+
+def get_orderbook_price_fast(symbol: str, timeout: float = 1.5) -> Optional[Dict[str, Any]]:
+    """Versão *sem retry* e com timeout baixo (ideal para UI)."""
+    url = f"{KUCOIN_BASE}/api/v1/market/orderbook/level1?symbol={symbol}"
+
+    try:
+        rate_limit()
+        r = requests.get(url, timeout=float(timeout))
+        r.raise_for_status()
+        j = r.json()
+    except Exception as e:
+        logger.warning(f"⚠️ Error fetching orderbook (fast) for {symbol}: {e}")
+        return None
+
+    if not isinstance(j, dict) or j.get("code") != "200000":
+        logger.error(f"❌ KuCoin API error ({symbol}) [fast]: {j}")
+        return None
+
+    data = j.get("data")
+    # KuCoin sometimes returns {code:200000, data:null} for unsupported symbols.
+    if data is None:
+        # Keep UI quiet: this is expected for some currencies/pairs.
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    out: Dict[str, Any] = {}
+
+    for k in ("price", "last", "lastPrice", "close"):
+        if k in data and data[k] is not None:
+            try:
+                out["mid_price"] = float(data[k])
+                break
+            except Exception:
+                pass
+
+    for ka in ("bestAsk", "best_ask", "ask"):
+        if ka in data and data[ka] is not None:
+            try:
+                out["best_ask"] = float(data[ka])
+                break
+            except Exception:
+                pass
+
+    for kb in ("bestBid", "best_bid", "bid"):
+        if kb in data and data[kb] is not None:
+            try:
+                out["best_bid"] = float(data[kb])
+                break
+            except Exception:
+                pass
+
+    if "mid_price" not in out and "best_ask" in out and "best_bid" in out:
+        out["mid_price"] = (out["best_ask"] + out["best_bid"]) / 2.0
+
+    for kt in ("timestamp", "time", "ts"):
+        if kt in data and data[kt] is not None:
+            try:
+                out["timestamp"] = int(data[kt])
+                break
+            except Exception:
+                pass
+
+    if not out:
+        return None
+    return out
+
 def get_price(symbol: str) -> Optional[float]:
     """Atalho para obter apenas o preço médio"""
     ob = get_orderbook_price(symbol)
+    if ob and isinstance(ob, dict):
+        return ob.get("mid_price")
+    return None
+
+
+def get_price_fast(symbol: str, timeout: float = 1.5) -> Optional[float]:
+    """Atalho rápido para UI (sem retry, timeout curto)."""
+    ob = get_orderbook_price_fast(symbol, timeout=timeout)
     if ob and isinstance(ob, dict):
         return ob.get("mid_price")
     return None
@@ -305,6 +390,37 @@ def get_candles_safe(symbol: str, ktype: str = "1hour", startAt: int = None,
         logger.error(f"❌ Error in get_candles_safe: {e}")
         return []
 
+
+def get_candles_fast(
+    symbol: str,
+    ktype: str = "1hour",
+    startAt: int | None = None,
+    endAt: int | None = None,
+    timeout: float = 2.5,
+) -> List[Any]:
+    """Fast, no-retry candles fetch.
+
+    Intended for UI rendering paths where blocking is worse than missing data.
+    Returns an empty list on any error.
+    """
+    url = f"{KUCOIN_BASE}/api/v1/market/candles?type={ktype}&symbol={symbol}"
+    if startAt:
+        url += f"&startAt={int(startAt)}"
+    if endAt:
+        url += f"&endAt={int(endAt)}"
+
+    try:
+        rate_limit()
+        r = requests.get(url, timeout=float(timeout))
+        r.raise_for_status()
+        j = r.json()
+        if not isinstance(j, dict) or j.get("code") != "200000":
+            return []
+        data = j.get("data")
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
 @retry_on_failure(max_retries=2)
 def get_all_symbols() -> List[Dict[str, Any]]:
     """
@@ -346,6 +462,150 @@ def get_trading_pairs(quote_currency: str = "USDT") -> List[str]:
 
 # ====================== PRIVATE ENDPOINTS ======================
 
+@retry_on_failure(max_retries=2)
+def get_fills(
+    symbol: str | None = None,
+    start_at: int | None = None,
+    end_at: int | None = None,
+    page_size: int = 100,
+    current_page: int = 1,
+) -> Dict[str, Any]:
+    """Busca execuções (fills) da conta.
+
+    Observação: start_at/end_at são timestamps em MILISSEGUNDOS.
+    """
+    validate_credentials()
+
+    endpoint = "/api/v1/fills"
+
+    def _normalize_ms_ts(v: int | None) -> int | None:
+        if v is None:
+            return None
+        try:
+            vv = int(v)
+        except Exception:
+            return None
+        # If it's in seconds (10 digits-ish), convert to milliseconds.
+        # Current epoch ms ~ 1.7e12, seconds ~ 1.7e9.
+        if vv > 0 and vv < 10**11:
+            vv *= 1000
+        return vv
+
+    try:
+        page_size_i = int(page_size)
+    except Exception:
+        page_size_i = 100
+    if page_size_i <= 0:
+        page_size_i = 100
+    # KuCoin constraint: pageSize must be >= 10
+    if page_size_i < 10:
+        page_size_i = 10
+
+    try:
+        current_page_i = int(current_page)
+    except Exception:
+        current_page_i = 1
+    if current_page_i <= 0:
+        current_page_i = 1
+
+    params: Dict[str, Any] = {
+        "pageSize": page_size_i,
+        "currentPage": current_page_i,
+    }
+    if symbol:
+        params["symbol"] = symbol
+    start_ms = _normalize_ms_ts(start_at)
+    end_ms = _normalize_ms_ts(end_at)
+
+    # KuCoin may reject invalid/too-large ranges. Clamp and sanitize.
+    try:
+        if start_ms is not None and end_ms is not None:
+            if start_ms > end_ms:
+                start_ms, end_ms = end_ms, start_ms
+            # Common KuCoin constraint: time range must be within last 7 days.
+            max_range_ms = 7 * 24 * 60 * 60 * 1000
+            now_ms = int(time.time() * 1000)
+
+            # endAt cannot be in the future
+            if end_ms > now_ms:
+                end_ms = now_ms
+
+            # If endAt is too old (outside the permitted window), move it to now.
+            if end_ms < now_ms - max_range_ms:
+                end_ms = now_ms
+
+            # Clamp startAt to the permitted window.
+            if start_ms < now_ms - max_range_ms:
+                start_ms = now_ms - max_range_ms
+
+            # Ensure the range itself is within max_range_ms.
+            if end_ms - start_ms > max_range_ms:
+                start_ms = end_ms - max_range_ms
+    except Exception:
+        pass
+
+    if start_ms is not None:
+        params["startAt"] = int(start_ms)
+    if end_ms is not None:
+        params["endAt"] = int(end_ms)
+
+    qs = urlencode(params)
+    signed_endpoint = f"{endpoint}?{qs}" if qs else endpoint
+    url = f"{KUCOIN_BASE}{signed_endpoint}"
+
+    headers = _build_headers("GET", signed_endpoint)
+    rate_limit()
+    r = requests.get(url, headers=headers, timeout=12)
+    if r.status_code != 200:
+        raise RuntimeError(f"❌ API fills error: {r.status_code} - {r.text}")
+    j = r.json()
+    if not isinstance(j, dict) or j.get("code") != "200000":
+        raise RuntimeError(f"❌ KuCoin API error (fills): {j}")
+    return j
+
+
+def get_all_fills(
+    symbol: str | None = None,
+    start_at: int | None = None,
+    end_at: int | None = None,
+    page_size: int = 200,
+    max_pages: int = 10,
+) -> List[Dict[str, Any]]:
+    """Paginação simples para coletar múltiplas páginas de fills."""
+    items: List[Dict[str, Any]] = []
+
+    try:
+        max_pages_i = int(max_pages)
+    except Exception:
+        max_pages_i = 10
+    if max_pages_i <= 0:
+        max_pages_i = 10
+
+    for p in range(1, max_pages_i + 1):
+        j = get_fills(
+            symbol=symbol,
+            start_at=start_at,
+            end_at=end_at,
+            page_size=page_size,
+            current_page=p,
+        )
+        data = (j or {}).get("data")
+        page_items = []
+        if isinstance(data, dict):
+            page_items = data.get("items") or []
+        if not isinstance(page_items, list):
+            page_items = []
+
+        for it in page_items:
+            if isinstance(it, dict):
+                items.append(it)
+
+        # condição de parada: página menor que page_size
+        if len(page_items) < int(page_size):
+            break
+
+    return items
+
 @retry_on_failure(max_retries=3)
 def get_accounts_raw() -> List[Dict[str, Any]]:
     """
@@ -361,6 +621,17 @@ def get_accounts_raw() -> List[Dict[str, Any]]:
     if r.status_code != 200:
         raise RuntimeError(f"❌ API accounts error: {r.status_code} - {r.text}")
     logger.info("✅ Successfully fetched accounts")
+    return r.json().get("data", [])
+
+
+def get_accounts_raw_fast(timeout: float = 4.0) -> List[Dict[str, Any]]:
+    """Versão *sem retry* e com timeout curto (ideal para Streamlit/UI)."""
+    endpoint = "/api/v1/accounts"
+    headers = _build_headers("GET", endpoint, "", use_server_time=False)
+    rate_limit()
+    r = requests.get(KUCOIN_BASE + endpoint, headers=headers, timeout=float(timeout))
+    if r.status_code != 200:
+        raise RuntimeError(f"❌ API accounts error [fast]: {r.status_code} - {r.text}")
     return r.json().get("data", [])
 
 def get_balances(account_type: str = "trade", min_balance: float = 0.0) -> List[Dict[str, Any]]:
@@ -401,6 +672,33 @@ def get_balances(account_type: str = "trade", min_balance: float = 0.0) -> List[
     except Exception as e:
         logger.error(f"❌ Error getting balances: {e}")
         raise
+
+
+def get_balances_fast(account_type: str = "trade", min_balance: float = 0.0, timeout: float = 4.0) -> List[Dict[str, Any]]:
+    """Saldos com fail-fast (sem retry), pensado para não travar UI."""
+    accounts = get_accounts_raw_fast(timeout=timeout)
+    balances: List[Dict[str, Any]] = []
+    for acc in accounts:
+        if acc.get("type") != account_type:
+            continue
+        try:
+            balance = float(acc.get("balance", 0) or 0)
+        except Exception:
+            balance = 0.0
+        if balance < float(min_balance or 0.0):
+            continue
+        balances.append(
+            {
+                "currency": acc.get("currency"),
+                "balance": balance,
+                "available": float(acc.get("available", 0) or 0),
+                "holds": float(acc.get("holds", 0) or 0),
+                "account_type": acc.get("type"),
+                "id": acc.get("id"),
+            }
+        )
+    logger.info(f"✅ Found {len(balances)} non-zero {account_type} balances [fast]")
+    return balances
 
 def get_balance(details: bool = False) -> Any:
     """

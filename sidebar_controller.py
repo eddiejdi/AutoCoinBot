@@ -147,6 +147,9 @@ class SidebarController:
         total_usdt = 0.0
         assets_value = []
         
+        # Cache BRL conversion inside this call to avoid repeated HTTP.
+        brl_usdt_rate = None
+
         for b in balances:
             cur = b["currency"]
             avail = b.get("available", 0.0)
@@ -164,8 +167,42 @@ class SidebarController:
             else:
                 # Para outras moedas, tenta pegar preço atual
                 try:
+                    # Special-case fiat BRL: KuCoin often doesn't expose BRL-USDT.
+                    if str(cur).upper() == "BRL":
+                        if avail and float(avail) > 0:
+                            if brl_usdt_rate is None:
+                                try:
+                                    r = requests.get(
+                                        "https://economia.awesomeapi.com.br/json/last/USD-BRL",
+                                        timeout=3,
+                                    )
+                                    if r.status_code == 200:
+                                        data = r.json() or {}
+                                        usdbrl = float((data.get("USDBRL") or {}).get("bid") or 0.0)
+                                        if usdbrl > 0:
+                                            brl_usdt_rate = 1.0 / usdbrl
+                                except Exception:
+                                    brl_usdt_rate = None
+
+                            if brl_usdt_rate and brl_usdt_rate > 0:
+                                avail_float = float(avail)
+                                value_usdt = avail_float * float(brl_usdt_rate)
+                                if value_usdt > 0:
+                                    assets_value.append(
+                                        {
+                                            "currency": cur,
+                                            "amount": avail_float,
+                                            "price": float(brl_usdt_rate),
+                                            "value_usdt": value_usdt,
+                                            "is_usdt": False,
+                                            "note": "BRL via USD/BRL",
+                                        }
+                                    )
+                                    total_usdt += value_usdt
+                        continue
+
                     symbol = f"{cur}-USDT"
-                    price = api.get_price(symbol)
+                    price = api.get_price_fast(symbol)
                     if price and avail and avail > 0:
                         avail_float = float(avail)
                         price_float = float(price)
@@ -213,7 +250,7 @@ class SidebarController:
         st.sidebar.subheader("💰 Portfolio")
 
         try:
-            balances = api.get_balances()
+            balances = api.get_balances_fast()
             if not balances or len(balances) == 0:
                 st.sidebar.info("📭 Nenhum saldo disponível")
                 return
@@ -378,7 +415,7 @@ class SidebarController:
         
         # Busca o preço atual do símbolo como valor padrão para Entry
         try:
-            current_price = api.get_price(symbol)
+            current_price = api.get_price_fast(symbol)
             default_entry = float(current_price) if current_price else 0.0
         except:
             default_entry = 0.0
@@ -387,8 +424,20 @@ class SidebarController:
 
         st.selectbox(
             "Mode",
-            ["sell", "buy", "mixed"],
+            ["sell", "buy", "mixed", "flow"],
             key="mode",
+            help=(
+                "sell: vende por targets acima do entry.\n"
+                "buy: compra por targets abaixo do entry.\n"
+                "mixed: alterna compra/venda (bracket) e pode usar a Inteligência 5m.\n\n"
+                "flow (SPOT): NÃO copia trades de uma pessoa.\n"
+                "Ele usa dados públicos e anônimos do mercado (orderbook + trades recentes) "
+                "para gerar sinal BUY/SELL/WAIT e executa porções (chunks) com segurança:\n"
+                "- exige confiança mínima e spread máximo\n"
+                "- aplica cooldown para evitar overtrading\n"
+                "- executa no máximo 1 ordem por avaliação\n"
+                "Targets aqui viram porções (ex.: 1:0.25,1:0.25,1:0.25,1:0.25)."
+            ),
         )
 
         st.text_input(
@@ -454,6 +503,10 @@ class SidebarController:
             funds = float(st.session_state.get("funds", 0))
             size = float(st.session_state.get("size", 0))
             mode = st.session_state.get("mode", "sell")
+
+            if mode == "flow":
+                st.caption("ℹ️ Flow: executa porções por sinais (orderbook/trades), não por targets de preço.")
+                return
             
             if entry <= 0:
                 st.caption("⚠️ Defina o Entry Price")
@@ -482,17 +535,23 @@ class SidebarController:
             
             # Exibir cada target
             for i, (pct, portion) in enumerate(targets, 1):
-                if mode == "sell":
-                    target_price = entry * (1 + pct / 100)
-                else:  # buy
-                    target_price = entry * (1 - pct / 100)
+                # Preview semantics:
+                # - sell: upper target
+                # - buy:  lower target
+                # - mixed: show upper (sell-style) target to avoid misleading lower-only preview
+                if mode == "buy":
+                    target_price = entry * (1 - float(pct) / 100)
+                else:  # sell or mixed
+                    target_price = entry * (1 + float(pct) / 100)
                 
                 # Lucro para esta porção
                 portion_size = position_size * portion
                 if mode == "sell":
                     profit_usdt = portion_size * (target_price - entry)
-                else:
+                elif mode == "buy":
                     profit_usdt = portion_size * (entry - target_price)
+                else:  # mixed
+                    profit_usdt = portion_size * (target_price - entry)
                 
                 profit_brl = profit_usdt * usd_brl
                 total_profit += profit_usdt
@@ -552,16 +611,11 @@ class SidebarController:
         st.sidebar.divider()
         st.sidebar.subheader("🚀 Bot Control")
 
-        col1, col2 = st.sidebar.columns(2)
-        
-        with col1:
-            start_real = st.button("▶️ START (REAL)", type="primary", key="start_real")
-        
-        with col2:
-            kill_bot = st.button("🛑 KILL BOT", type="secondary", key="kill_bot")
+        start_real = st.button("▶️ START (REAL)", type="primary", key="start_real")
+        start_dry = st.button("🧪 START (DRY-RUN)", key="start_dry")
 
-        start_dry = st.sidebar.button("🧪 START (DRY-RUN)", key="start_dry")
-
+        # Kill button moved to the active bots list (main panel)
+        kill_bot = False
         return start_real, start_dry, kill_bot
 
     # --------------------------------------------------
@@ -587,24 +641,397 @@ class SidebarController:
     # SIDEBAR COMPLETO
     # --------------------------------------------------
     def render(self):
-        with st.sidebar:
-            # Obter status do bot
-            status = self.get_bot_status()
-            
-            # Mostrar título com status e alvo
-            if status["is_running"]:
-                st.sidebar.markdown(
-                    f"### 🤖 **BOT RODANDO** | 🎯 Alvo: +{status['target']:.1f}%"
-                )
+        return self.render_in(st.sidebar)
+
+
+    # --------------------------------------------------
+    # RENDER EM QUALQUER CONTAINER (MAIN UI)
+    # --------------------------------------------------
+    def render_in(self, ui):
+        """Renderiza o painel de controles/saldos dentro de qualquer container."""
+        # IMPORTANT: do not rely on `with ui:`.
+        # Some call sites pass the `streamlit` module (`st`), which is NOT a
+        # context manager. Rendering via the provided object methods is enough
+        # and keeps this compatible with columns/containers/sidebar.
+        status = self.get_bot_status()
+        if status["is_running"]:
+            ui.markdown(f"### 🤖 **BOT RODANDO** | 🎯 Alvo: +{status['target']:.1f}%")
+        else:
+            ui.markdown(f"### 🤖 **BOT PARADO** | 🎯 Alvo: +{status['target']:.1f}%")
+
+        ui.markdown("<hr style='margin: 0.3rem 0'>", unsafe_allow_html=True)
+
+        # Render balances/inputs/actions using the same UI container
+        self._render_balances_in(ui)
+        ui.divider()
+        self._render_inputs_in(ui)
+        return self._render_actions_in(ui)
+
+
+    def _render_balances_in(self, ui):
+        # Copia de render_balances(), trocando st.sidebar por ui
+        ui.subheader("💰 Portfolio")
+
+        try:
+            balances = api.get_balances_fast()
+            if not balances or len(balances) == 0:
+                ui.info("📭 Nenhum saldo disponível")
+                return
+
+            portfolio = self.calculate_portfolio_value(balances)
+            total_usdt = portfolio["total_usdt"]
+            assets = portfolio["assets"]
+
+            if total_usdt == 0:
+                ui.warning("⚠️ Saldo total é zero")
+                return
+
+            ui.markdown(f"### 📊 **${total_usdt:,.2f}**")
+            ui.markdown("<hr style='margin: 0.5rem 0'>", unsafe_allow_html=True)
+
+            if len(assets) == 0:
+                ui.info("Sem ativos com valor")
+                return
+
+            usdt_assets = [a for a in assets if a["currency"] == "USDT"]
+            crypto_assets = [a for a in assets if a["currency"] != "USDT"]
+
+            if usdt_assets:
+                for asset in usdt_assets:
+                    value = asset["value_usdt"]
+                    pct = (value / total_usdt) * 100 if total_usdt > 0 else 0
+                    col1, col2, col3 = ui.columns([2, 2, 2])
+                    with col1:
+                        ui.write("💵 **USDT**")
+                    with col2:
+                        ui.write(f"`${value:,.0f}`")
+                    with col3:
+                        ui.markdown(f"<span style='color:#c9d1d9'>{pct:.1f}%</span>", unsafe_allow_html=True)
+
+            if crypto_assets:
+                ui.markdown("<hr style='margin: 0.5rem 0'>", unsafe_allow_html=True)
+
+                for asset in crypto_assets:
+                    try:
+                        cur = asset["currency"]
+                        amount = asset["amount"]
+                        price_current = asset["price"]
+                        value_current = asset["value_usdt"]
+                        pct_port = (value_current / total_usdt) * 100 if total_usdt > 0 else 0
+
+                        cost_info = self.get_average_cost_by_currency(cur)
+                        cost_avg = cost_info["avg_cost"]
+
+                        if cost_avg > 0 and amount > 0:
+                            value_invested = cost_avg * amount
+                            pl_pct = ((price_current - cost_avg) / cost_avg) * 100
+                            if pl_pct > 0:
+                                color_pl = "#22c55e"
+                                emoji_pl = "📈"
+                            elif pl_pct < 0:
+                                color_pl = "#ef4444"
+                                emoji_pl = "📉"
+                            else:
+                                color_pl = "#c9d1d9"
+                                emoji_pl = "➡️"
+                        else:
+                            pl_pct = 0
+                            color_pl = "#c9d1d9"
+                            emoji_pl = "➡️"
+
+                        target_profit_pct = st.session_state.get("target_profit_pct", 2.0)
+                        target_price = cost_avg * (1 + target_profit_pct / 100) if cost_avg > 0 else 0
+                        distance_to_target = ((target_price - price_current) / price_current * 100) if price_current > 0 else 0
+                        if distance_to_target <= 0:
+                            color_target = "#22c55e"
+                            emoji_target = "✅"
+                        elif distance_to_target <= 2:
+                            color_target = "#fbbf24"
+                            emoji_target = "⚡"
+                        else:
+                            color_target = "#60a5fa"
+                            emoji_target = "📍"
+
+                        col1, col2 = ui.columns([3, 3])
+                        with col1:
+                            ui.write(f"💎 **{cur}**")
+                            ui.caption(f"{amount:.6f}")
+                        with col2:
+                            ui.write(f"`${price_current:,.2f}`")
+                            ui.markdown(
+                                f"<span style='color:{color_pl};font-weight:bold;font-size:0.9em'>"
+                                f"{emoji_pl} {pl_pct:+.2f}%</span>",
+                                unsafe_allow_html=True,
+                            )
+
+                        col1, col2, col3 = ui.columns([2, 2, 2])
+                        with col1:
+                            ui.caption(f"Valor: ${value_current:,.2f}")
+                        with col2:
+                            ui.caption(f"Custo: ${cost_avg:,.2f}" if cost_avg > 0 else "Custo: -")
+                        with col3:
+                            ui.caption(f"{pct_port:.1f}% carteira")
+
+                        col1, col2, col3 = ui.columns([2, 2, 2])
+                        with col1:
+                            ui.caption(f"🎯 Alvo: ${target_price:,.2f}" if target_price > 0 else "🎯 Alvo: -")
+                        with col2:
+                            ui.markdown(
+                                f"<span style='color:{color_target};font-weight:bold;font-size:0.85em'>"
+                                f"{emoji_target} {distance_to_target:+.2f}%</span>",
+                                unsafe_allow_html=True,
+                            )
+                        with col3:
+                            ui.caption(f"Meta: +{target_profit_pct:.1f}%")
+
+                        ui.markdown("<hr style='margin: 0.3rem 0'>", unsafe_allow_html=True)
+                    except Exception:
+                        ui.warning(f"⚠️ Erro: {asset.get('currency','?')}")
+                        continue
+        except Exception:
+            ui.error("❌ Erro ao carregar saldos")
+            ui.info("💡 Verifique API")
+
+
+    def _render_inputs_in(self, ui):
+        ui.header("Controls")
+
+        symbol = ui.text_input("Symbol", "BTC-USDT", key="symbol")
+        try:
+            current_price = api.get_price_fast(symbol)
+            default_entry = float(current_price) if current_price else 0.0
+        except Exception:
+            default_entry = 0.0
+
+        ui.number_input("Entry", value=default_entry, key="entry")
+        ui.selectbox(
+            "Mode",
+            ["sell", "buy", "mixed", "flow"],
+            key="mode",
+            help=(
+                "flow (SPOT): usa sinais de fluxo (orderbook/trades públicos) para BUY/SELL. "
+                "Não é copy-trade de pessoa. Executa porções com filtros de spread/confiança e cooldown."
+            ),
+        )
+        ui.text_input("Targets", "1:0.3,3:0.5,5:0.2", key="targets")
+        ui.number_input("Interval", value=5.0, key="interval")
+        ui.number_input("Size", value=0.0006, format="%.6f", key="size")
+        ui.number_input("Funds", value=20.0, key="funds")
+
+        ui.divider()
+        ui.markdown("**💰 Gestão de Fundos**")
+        ui.number_input(
+            "Reserve % do Saldo",
+            min_value=1.0,
+            max_value=100.0,
+            value=50.0,
+            step=5.0,
+            help="% do saldo USDT disponível a reservar para o bot",
+            key="reserve_pct",
+        )
+        ui.number_input(
+            "Lucro Alvo (%)",
+            min_value=0.1,
+            max_value=100.0,
+            value=2.0,
+            step=0.5,
+            help="% de lucro esperado antes de vender",
+            key="target_profit_pct",
+        )
+
+        self._render_target_preview_in(ui)
+
+        ui.divider()
+        ui.markdown("**🔄 Eternal Running**")
+        ui.checkbox(
+            "Ativar Eternal Mode",
+            value=False,
+            help="Quando ativado, o bot reinicia automaticamente após atingir todos os targets",
+            key="eternal_mode",
+        )
+        if st.session_state.get("eternal_mode", False):
+            ui.caption("🔁 Bot reiniciará automaticamente após cada ciclo completo")
+
+
+    def _render_target_preview_in(self, ui):
+        ui.divider()
+        ui.markdown("**🎯 Preview de Targets**")
+        try:
+            entry = float(st.session_state.get("entry", 0))
+            targets_str = st.session_state.get("targets", "")
+            funds = float(st.session_state.get("funds", 0))
+            size = float(st.session_state.get("size", 0))
+            mode = st.session_state.get("mode", "sell")
+
+            if entry <= 0:
+                ui.caption("⚠️ Defina o Entry Price")
+                return
+            targets = self.parse_targets(targets_str)
+            if not targets:
+                ui.caption("⚠️ Configure os targets (ex: 2:0.3,5:0.5)")
+                return
+            if size > 0:
+                position_size = size
+                position_value = size * entry
+            elif funds > 0:
+                position_size = funds / entry
+                position_value = funds
             else:
-                st.sidebar.markdown(
-                    f"### 🤖 **BOT PARADO** | 🎯 Alvo: +{status['target']:.1f}%"
+                ui.caption("⚠️ Defina Size ou Funds")
+                return
+
+            usd_brl = self.get_usd_brl_rate()
+            total_profit = 0.0
+            for i, (pct, portion) in enumerate(targets, 1):
+                if mode == "sell":
+                    target_price = entry * (1 + pct / 100)
+                else:
+                    target_price = entry * (1 - pct / 100)
+                portion_size = position_size * portion
+                if mode == "sell":
+                    profit_usdt = portion_size * (target_price - entry)
+                else:
+                    profit_usdt = portion_size * (entry - target_price)
+                profit_brl = profit_usdt * usd_brl
+                total_profit += profit_usdt
+                color = "#4ade80" if profit_usdt > 0 else "#ff6b6b"
+                ui.markdown(
+                    f"""
+                    <div style="background: #0a0a0a; border: 1px solid #333; border-radius: 4px;
+                                padding: 8px; margin: 4px 0; font-family: monospace; font-size: 12px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #888;">T{i} ({pct:+.1f}%)</span>
+                            <span style="color: #fbbf24; font-weight: bold;">${target_price:,.2f}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                            <span style="color: #888;">Porção: {portion*100:.0f}%</span>
+                            <span style="color: {color}; font-weight: bold;">
+                                ${profit_usdt:+.2f} <span style="color: #22d3ee;">R${profit_brl:+.2f}</span>
+                            </span>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
                 )
-            
-            st.sidebar.markdown("<hr style='margin: 0.3rem 0'>", unsafe_allow_html=True)
-            
-            self.render_balances()
-            st.divider()
-            self.render_inputs()
-            return self.render_actions()
+
+            total_profit_brl = total_profit * usd_brl
+            total_color = "#4ade80" if total_profit > 0 else "#ff6b6b"
+            total_pct = (total_profit / position_value * 100) if position_value > 0 else 0
+            ui.markdown(
+                f"""
+                <div style="background: #111; border: 2px solid {total_color}; border-radius: 6px;
+                            padding: 10px; margin-top: 8px; font-family: monospace;">
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">💵 LUCRO TOTAL PREVISTO (RETIRADA)</div>
+                        <div style="color: {total_color}; font-size: 20px; font-weight: bold;">${total_profit:+.2f}</div>
+                        <div style="color: #22d3ee; font-size: 18px; font-weight: bold;">🇧🇷 R${total_profit_brl:+.2f}</div>
+                        <div style="color: #888; font-size: 11px; margin-top: 4px;">({total_pct:+.2f}% do investimento)</div>
+                        <div style="color: #666; font-size: 10px; margin-top: 6px; border-top: 1px solid #333; padding-top: 6px;">
+                            Cotação: $1 = R${usd_brl:.2f}
+                        </div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        except Exception as e:
+            ui.caption(f"⚠️ Erro ao calcular: {e}")
+
+
+    def _render_actions_in(self, ui):
+        ui.divider()
+        ui.subheader("🚀 Bot Control")
+        start_real = ui.button("▶️ START (REAL)", type="primary", key="start_real", width='stretch')
+        start_dry = ui.button("🧪 START (DRY-RUN)", key="start_dry", width='stretch')
+        kill_bot = False
+        # --- Batch start: start N bots using current template
+        try:
+            ui.markdown("**Start N bots (mesmo template)**")
+            count = int(ui.number_input("Quantidade (N)", min_value=1, max_value=50, value=1, step=1, key="start_n_count"))
+            dry_flag = ui.checkbox("Dry-run? (não envia ordens)", value=False, key="start_n_dry")
+            try:
+                clicked_start_n = ui.button(f"▶️ START {count} bots", key="start_n_button", width='stretch')
+            except TypeError:
+                clicked_start_n = ui.button(f"▶️ START {count} bots", key="start_n_button")
+
+            if clicked_start_n:
+                ctrl = None
+                try:
+                    ctrl = st.session_state.get("controller")
+                except Exception:
+                    ctrl = None
+                if ctrl is None:
+                    try:
+                        from .bot_controller import get_global_controller
+
+                        ctrl = get_global_controller()
+                    except Exception:
+                        ctrl = None
+
+                if ctrl is None:
+                    ui.error("Controller não disponível para iniciar bots.")
+                else:
+                    started = []
+                    errors = []
+                    # Template values from session state
+                    symbol = st.session_state.get("symbol", "BTC-USDT")
+                    try:
+                        entry = float(st.session_state.get("entry", 0))
+                    except Exception:
+                        entry = 0.0
+                    mode = st.session_state.get("mode", "sell")
+                    targets = st.session_state.get("targets", "")
+                    try:
+                        interval = float(st.session_state.get("interval", 5))
+                    except Exception:
+                        interval = 5.0
+                    size = st.session_state.get("size", None)
+                    funds = st.session_state.get("funds", None)
+                    reserve_pct = float(st.session_state.get("reserve_pct", 50.0))
+                    target_profit_pct = float(st.session_state.get("target_profit_pct", 2.0))
+                    eternal_mode = bool(st.session_state.get("eternal_mode", False))
+
+                    for i in range(max(1, int(count))):
+                        try:
+                            bot_id = ctrl.start_bot(
+                                symbol,
+                                entry,
+                                mode,
+                                targets,
+                                interval,
+                                size,
+                                funds,
+                                bool(dry_flag),
+                                reserve_pct=reserve_pct,
+                                target_profit_pct=target_profit_pct,
+                                eternal_mode=eternal_mode,
+                            )
+                            if bot_id:
+                                try:
+                                    if bot_id not in st.session_state.get("active_bots", []):
+                                        st.session_state["active_bots"] = list(st.session_state.get("active_bots", [])) + [bot_id]
+                                except Exception:
+                                    pass
+                                started.append(bot_id)
+                        except Exception as e:
+                            errors.append(str(e))
+                        try:
+                            time.sleep(0.15)
+                        except Exception:
+                            pass
+
+                    if started:
+                        ui.success(f"Iniciados {len(started)} bot(s). Primeiro: {str(started[0])[:12]}")
+                        try:
+                            st.experimental_rerun()
+                        except Exception:
+                            pass
+                    elif errors:
+                        ui.error(f"Erro iniciando bots: {errors[0]}")
+
+        except Exception:
+            # Non-critical: continue rendering
+            pass
+
+        return start_real, start_dry, kill_bot
 

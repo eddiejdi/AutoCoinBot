@@ -1,0 +1,5 @@
+nohup: ignorando entrada
+2025-12-22 20:38:49,046 | INFO | api | ✅ Loaded .env from /home/edenilson/Downloads/kucoin_app/.env
+2025-12-22 20:38:49,058 | INFO | database | Database initialized successfully
+2025-12-22 20:38:49,059 | INFO | database | Database initialized successfully
+2025-12-22 20:38:49,073 | INFO | database | Database initialized successfully

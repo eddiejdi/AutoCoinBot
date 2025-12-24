@@ -1,0 +1,20 @@
+sheet=themes/smw/characters/enemies_sheet.png
+size=2192x1936
+tile=16 frames=4 colorkey=None tol=8 min_energy=10.0
+
+#1: x=864 y=32 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#2: x=2064 y=32 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#3: x=2080 y=112 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#4: x=880 y=144 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#5: x=960 y=272 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#6: x=1952 y=272 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#7: x=864 y=352 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#8: x=864 y=384 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#9: x=976 y=464 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#10: x=1968 y=464 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#11: x=848 y=560 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#12: x=1984 y=608 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#13: x=2032 y=608 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#14: x=2080 y=624 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#15: x=976 y=640 mean=256.0 var=0.0 counts=[256, 256, 256, 256]
+#16: x=1984 y=704 mean=256.0 var=0.0 counts=[256, 256, 256, 256]

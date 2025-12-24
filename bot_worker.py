@@ -18,6 +18,14 @@ try:
 except:
     import api  # fallback se rodado fora do pacote
 
+try:
+    from .market import analyze_market_regime_5m
+except Exception:
+    try:
+        from market import analyze_market_regime_5m  # type: ignore
+    except Exception:
+        analyze_market_regime_5m = None
+
 # Caminhos de histórico e logs
 ROOT = Path(__file__).resolve().parent
 HISTORY_JSON = ROOT / "bot_history.json"
@@ -153,7 +161,10 @@ class EnhancedTradeBot:
 
         self.symbol = symbol
         self.entry_price = float(entry_price)
-        self.mode = mode.lower()
+        self.mode = str(mode or "sell").lower().strip()
+        # Compat: UI uses "mixed"; older code used "both".
+        if self.mode == "both":
+            self.mode = "mixed"
         self.targets = sorted(targets or [], key=lambda x: x[0])
         self.trailing_stop_pct = trailing_stop_pct
         self.stop_loss_pct = stop_loss_pct
@@ -176,6 +187,75 @@ class EnhancedTradeBot:
         self._logger = setup_bot_logger(self._id, log_dir, level)
 
         self._stopped = threading.Event()
+
+        # Auto strategy switching (online)
+        self.auto_strategy_enabled = (self.mode == "mixed")
+        self._auto_last_eval_ts: float = 0.0
+        self._auto_last_change_ts: float = 0.0
+        self._auto_effective_mode: str = self.mode
+        self._auto_last_snapshot: dict | None = None
+
+    def _decide_effective_mode_from_snapshot(self, snap: dict) -> str | None:
+        if not snap or not isinstance(snap, dict):
+            return None
+        bias = str(snap.get("bias") or "").upper().strip()
+        try:
+            conf = float(snap.get("confidence") or 0.0)
+        except Exception:
+            conf = 0.0
+        if conf < 0.15:
+            return None
+        if bias == "BUY":
+            return "sell"
+        if bias == "SELL":
+            return "buy"
+        if bias == "WAIT":
+            return "mixed"
+        return None
+
+    def _maybe_update_strategy_online(self, now_ts: float, price: float):
+        if not self.auto_strategy_enabled:
+            return
+        if analyze_market_regime_5m is None:
+            return
+        if (now_ts - float(self._auto_last_eval_ts or 0.0)) < 30.0:
+            return
+        self._auto_last_eval_ts = now_ts
+
+        try:
+            snap = analyze_market_regime_5m(self.symbol)
+        except Exception as e:
+            self._log("warning", "auto_strategy_error", error=str(e))
+            return
+
+        self._auto_last_snapshot = snap
+        desired = self._decide_effective_mode_from_snapshot(snap)
+        if not desired:
+            return
+
+        if desired != self._auto_effective_mode and (now_ts - float(self._auto_last_change_ts or 0.0)) < 60.0:
+            return
+
+        if desired != self._auto_effective_mode:
+            prev = self._auto_effective_mode
+            self._auto_effective_mode = desired
+            self.mode = desired
+
+            # Reset peak/valley consistency
+            if self.mode in ("sell", "mixed"):
+                if self._peak_price is None:
+                    self._peak_price = float(price)
+            else:
+                self._peak_price = None
+
+            if self.mode in ("buy", "mixed"):
+                if self._valley_price is None:
+                    self._valley_price = float(price)
+            else:
+                self._valley_price = None
+
+            self._auto_last_change_ts = now_ts
+            self._log("info", "auto_strategy_mode_changed", prev_mode=prev, new_mode=self.mode, snapshot=snap)
 
     # ------------------- logging helper --------------------
     def _log(self, level: str, event: str, **payload):
@@ -264,23 +344,49 @@ class EnhancedTradeBot:
         
         try:
             db = DatabaseManager()
+
+            # Extrair order_id de forma compatível (KuCoin: data.orderId)
+            order_id = None
+            try:
+                if isinstance(res, dict):
+                    if isinstance(res.get("data"), dict) and res["data"].get("orderId"):
+                        order_id = res["data"].get("orderId")
+                    elif res.get("orderId"):
+                        order_id = res.get("orderId")
+            except Exception:
+                order_id = None
+
+            # portion aqui costuma ser fraction; converte para qty/funds aproximados.
+            size_db = None
+            funds_db = None
+            try:
+                if portion is not None:
+                    frac = float(portion)
+                    if self.size is not None:
+                        size_db = float(self.size) * frac
+                    elif self.funds is not None:
+                        funds_db = float(self.funds) * frac
+            except Exception:
+                size_db = None
+                funds_db = None
+
             trade_data = {
                 "id": entry["id"],
                 "timestamp": entry["timestamp"],
                 "symbol": self.symbol,
                 "side": side,
                 "price": price,
-                "size": portion if portion else 0.0,
-                "funds": None,
+                "size": size_db,
+                "funds": funds_db,
                 "profit": None,
                 "commission": None,
-                "order_id": res.get("orderId") if isinstance(res, dict) else None,
+                "order_id": None if self.dry_run else (str(order_id) if order_id else None),
                 "bot_id": self._id,
                 "strategy": kind,
                 "dry_run": self.dry_run,
                 "metadata": {"result": res}
             }
-            db.insert_trade(trade_data)
+            db.insert_trade_ignore(trade_data)
             
             # Criar sinalizador para o frontend fazer refresh imediato
             try:
@@ -316,6 +422,9 @@ class EnhancedTradeBot:
                 self._last_price = price
                 self._log("debug", "price_read", price=price)
 
+                # Online strategy switching (regime 5m)
+                self._maybe_update_strategy_online(time.time(), price)
+
                 # Inicializa valley e peak
                 if self._peak_price is None:
                     self._peak_price = price
@@ -336,12 +445,12 @@ class EnhancedTradeBot:
                     sl_price = self.entry_price * (1 + self.stop_loss_pct / 100)
                     self._log("debug", "stoploss_check", threshold=sl_price, price=price)
 
-                    if (self.mode in ("sell", "both")) and price <= sl_price:
+                    if (self.mode in ("sell", "mixed")) and price <= sl_price:
                         res = self._execute_sell_fraction(self._remaining_fraction)
                         self._record_trade("stoploss_sell", price, res)
                         break
 
-                    if (self.mode in ("buy", "both")) and price >= sl_price:
+                    if (self.mode in ("buy", "mixed")) and price >= sl_price:
                         res = self._execute_buy_fraction(self._remaining_fraction)
                         self._record_trade("stoploss_buy", price, res)
                         break
@@ -350,7 +459,7 @@ class EnhancedTradeBot:
                 if self.trailing_stop_pct is not None:
 
                     # SELL trailing
-                    if self.mode in ("sell", "both"):
+                    if self.mode in ("sell", "mixed"):
                         threshold = self._peak_price * (1 - self.trailing_stop_pct / 100)
                         self._log("debug", "trailing_sell_check", threshold=threshold, price=price)
 
@@ -360,7 +469,7 @@ class EnhancedTradeBot:
                             break
 
                     # BUY trailing
-                    if self.mode in ("buy", "both"):
+                    if self.mode in ("buy", "mixed"):
                         threshold = self._valley_price * (1 + self.trailing_stop_pct / 100)
                         self._log("debug", "trailing_buy_check", threshold=threshold, price=price)
 
@@ -374,21 +483,35 @@ class EnhancedTradeBot:
                     if pct in self._executed_parts:
                         continue
 
-                    target_price = self.entry_price * (1 + pct / 100)
+                    try:
+                        pct_f = float(pct)
+                    except Exception:
+                        pct_f = 0.0
+                    pct_abs = abs(pct_f)
+                    upper = self.entry_price * (1 + pct_abs / 100)
+                    lower = self.entry_price * (1 - pct_abs / 100)
+                    # Backward compat: if user passes negative pct in buy mode, keep old meaning.
+                    if self.mode == "buy" and pct_f < 0:
+                        lower = self.entry_price * (1 + pct_f / 100)
+
+                    # For logging, keep a single representative target price.
+                    target_price = upper if self.mode != "buy" else lower
                     self._log("debug", "target_check", pct=pct, portion=portion,
                               target_price=target_price, price=price)
 
-                    if (self.mode in ("sell", "both")) and price >= target_price:
+                    if (self.mode in ("sell", "mixed")) and price >= upper:
                         res = self._execute_sell_fraction(portion)
                         self._executed_parts.append(pct)
                         self._remaining_fraction -= portion
                         self._record_trade(f"target_sell_{pct}", price, res, portion)
+                        break
 
-                    if (self.mode in ("buy", "both")) and price <= target_price:
+                    elif (self.mode in ("buy", "mixed")) and price <= lower:
                         res = self._execute_buy_fraction(portion)
                         self._executed_parts.append(pct)
                         self._remaining_fraction -= portion
                         self._record_trade(f"target_buy_{pct}", price, res, portion)
+                        break
 
                 # Finalizado?
                 if self._remaining_fraction <= 0:

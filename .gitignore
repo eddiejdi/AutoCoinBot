@@ -11,6 +11,9 @@ __pycache__/
 # Logs
 *.log
 
+# Archived artifacts
+archive/
+
 # IDE
 .vscode/
 .idea/

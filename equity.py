@@ -35,3 +35,41 @@ def load_equity_history():
     except:
         return []
 
+
+def snapshot_equity():
+    """Snapshots current account balances as equity."""
+    try:
+        from .balance import get_account_balances_detail
+        from .database import DatabaseManager
+        
+        result = get_account_balances_detail()
+        if len(result) == 3:
+            print(f"Erro ao obter saldos: {result[2]}")
+            return False
+        
+        total_usdt, balances_rows = result
+        if total_usdt is None:
+            print("Total USDT é None")
+            return False
+        
+        print(f"Total USDT: {total_usdt}, Balances: {len(balances_rows)}")
+        
+        # Prepare balances dict: currency -> usdt_value
+        balances = {}
+        for row in balances_rows:
+            currency = row.get('currency')
+            converted = row.get('converted_usdt')
+            if currency and converted is not None and converted > 0:
+                balances[currency] = converted
+        
+        print(f"Balances dict: {balances}")
+        
+        db = DatabaseManager()
+        success = db.add_equity_snapshot(total_usdt, balances=balances)
+        print(f"Snapshot added: {success}")
+        return success
+    except Exception as e:
+        print(f"Erro ao snapshot equity: {e}")
+        import traceback
+        traceback.print_exc()
+        return False

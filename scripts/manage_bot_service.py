@@ -27,6 +27,7 @@ import stat
 
 HOME = Path.home()
 PROJECT = HOME / "Downloads" / "kucoin_app"
+PROJECT_PARENT = PROJECT.parent
 VENV = PROJECT / "venv"
 PY_BIN = VENV / "bin" / "python"
 PIP_BIN = VENV / "bin" / "pip"
@@ -45,6 +46,7 @@ Type=simple
 User={user}
 WorkingDirectory={workdir}
 Environment=PATH={venv_bin}:{system_path}
+Environment=PYTHONPATH={pythonpath}
 ExecStart={pyexe} -m kucoin_app.bot_worker --symbol %i --entry {entry} --mode {mode} --targets "{targets}" --trailing {trailing} --stoploss {stoploss} --stoploss_type {stoploss_type} --size {size} --interval {interval} {dryflag}
 Restart=always
 RestartSec=10
@@ -95,9 +97,12 @@ def write_systemd_unit(params):
 
     content = UNIT_BODY.format(
         user=user,
-        workdir=str(PROJECT),
+        # Running `python -m kucoin_app.*` requires the package parent on sys.path.
+        # Using the parent directory as WorkingDirectory makes that reliable.
+        workdir=str(PROJECT_PARENT),
         venv_bin=str(VENV / "bin"),
         system_path=system_path,
+        pythonpath=str(PROJECT_PARENT),
         pyexe=pyexe,
         entry=str(params.get("entry", "88000")),
         mode=str(params.get("mode", "both")),
@@ -183,7 +188,16 @@ def start_nohup(symbol, params):
     log_err = LOGS_DIR / f"kucoin-bot-{symbol}.err"
     # start process in background, group created
     with open(log_out, "a") as o, open(log_err, "a") as e:
-        p = subprocess.Popen(cmd, stdout=o, stderr=e, preexec_fn=os.setsid)
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(PROJECT_PARENT) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+        p = subprocess.Popen(
+            cmd,
+            cwd=str(PROJECT_PARENT),
+            env=env,
+            stdout=o,
+            stderr=e,
+            preexec_fn=os.setsid,
+        )
     pidfile = PID_DIR / f"{symbol}.pid"
     pidfile.write_text(str(p.pid))
     print(f"Started nohup process pid={p.pid}")
