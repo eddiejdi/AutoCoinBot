@@ -1,0 +1,21 @@
+{
+  "symbol": "BTC-USDT",
+  "entry_price": 88000.0,
+  "mode": "mixed",
+  "funds": 20.0,
+  "targets": [
+    [
+      1,
+      0.3
+    ],
+    [
+      3,
+      0.5
+    ],
+    [
+      5,
+      0.2
+    ]
+  ],
+  "dry_run": false
+}

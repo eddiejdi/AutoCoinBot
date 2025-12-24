@@ -1,0 +1,168 @@
+{
+  "name": "SMW",
+  "version": 1,
+  "backgrounds": {
+    "default": "bonus_game_preview",
+    "items": {
+      "bonus_game_preview": "backgrounds/bonus_game_preview.png",
+      "bowser_boss_background": "backgrounds/bowser_boss_background.png",
+      "ending_screen": "backgrounds/ending_screen.png",
+      "forest_secret_preview": "backgrounds/forest_secret_preview.png",
+      "ghost_house_background": "backgrounds/ghost_house_background.png",
+      "preview_awesome": "backgrounds/preview_awesome.png",
+      "preview_funky": "backgrounds/preview_funky.png",
+      "preview_gnarly": "backgrounds/preview_gnarly.png",
+      "preview_groovy": "backgrounds/preview_groovy.png",
+      "preview_outrageous": "backgrounds/preview_outrageous.png",
+      "preview_tubular": "backgrounds/preview_tubular.png",
+      "top_secret_preview": "backgrounds/top_secret_preview.png"
+    }
+  },
+  "ui": {},
+  "characters": {
+    "mascot": {
+      "image": "characters/mascot.png",
+      "sheet": "characters/enemies_sheet.png",
+      "tileSize": 8,
+      "scale": 2,
+      "random": true,
+      "variants": {
+        "goomba": {
+          "frame": { "x": 136, "y": 88, "w": 16, "h": 24 }
+        },
+        "para_goomba": {
+          "frame": { "x": 224, "y": 88, "w": 32, "h": 40 }
+        },
+        "lakitu": {
+          "frame": { "x": 192, "y": 40, "w": 48, "h": 88 }
+        },
+        "spiny": {
+          "frame": { "x": 248, "y": 56, "w": 24, "h": 24 }
+        },
+        "bob_omb": {
+          "frame": { "x": 120, "y": 120, "w": 48, "h": 24 }
+        },
+        "hammer_brother": {
+          "frame": { "x": 456, "y": 48, "w": 48, "h": 40 }
+        },
+        "boomerang_brother": {
+          "frame": { "x": 504, "y": 48, "w": 48, "h": 40 }
+        },
+        "fire_brother": {
+          "frame": { "x": 552, "y": 48, "w": 48, "h": 40 }
+        },
+        "dry_bones": {
+          "frame": { "x": 456, "y": 128, "w": 64, "h": 40 }
+        },
+        "bony_beetle": {
+          "frame": { "x": 520, "y": 128, "w": 32, "h": 24 }
+        },
+        "sumo_brother": {
+          "frame": { "x": 896, "y": 48, "w": 48, "h": 48 }
+        },
+        "monty_mole": {
+          "frame": { "x": 896, "y": 112, "w": 32, "h": 24 }
+        },
+        "pokey": {
+          "frame": { "x": 992, "y": 80, "w": 32, "h": 80 }
+        },
+        "volcano_lotus": {
+          "frame": { "x": 936, "y": 48, "w": 32, "h": 48 }
+        },
+        "rex": {
+          "frame": { "x": 1336, "y": 64, "w": 48, "h": 48 }
+        },
+        "mega_mole": {
+          "frame": { "x": 1336, "y": 128, "w": 48, "h": 48 }
+        },
+        "bullet_bill": {
+          "frame": { "x": 1336, "y": 192, "w": 48, "h": 24 }
+        },
+        "banzai_bill": {
+          "frame": { "x": 1776, "y": 48, "w": 96, "h": 96 }
+        },
+        "dino_rhino": {
+          "frame": { "x": 1840, "y": 64, "w": 72, "h": 64 }
+        },
+        "dino_torch": {
+          "frame": { "x": 1896, "y": 64, "w": 48, "h": 48 }
+        },
+        "koopa_troopa_verde": {
+          "frame": { "x": 896, "y": 400, "w": 32, "h": 48 }
+        },
+        "koopa_troopa_vermelho": {
+          "frame": { "x": 960, "y": 400, "w": 32, "h": 48 }
+        },
+        "koopa_troopa_azul": {
+          "frame": { "x": 1024, "y": 400, "w": 32, "h": 48 }
+        },
+        "koopa_troopa_amarelo": {
+          "frame": { "x": 1088, "y": 400, "w": 32, "h": 48 }
+        },
+        "para_koopa": {
+          "frame": { "x": 896, "y": 464, "w": 48, "h": 48 }
+        },
+        "beach_koopa": {
+          "frame": { "x": 896, "y": 528, "w": 32, "h": 32 }
+        },
+        "big_boo": {
+          "frame": { "x": 16, "y": 752, "w": 48, "h": 48 }
+        },
+        "boo": {
+          "frame": { "x": 64, "y": 752, "w": 32, "h": 32 }
+        },
+        "eerie": {
+          "frame": { "x": 96, "y": 752, "w": 32, "h": 32 }
+        },
+        "podoboo": {
+          "frame": { "x": 192, "y": 784, "w": 32, "h": 48 }
+        },
+        "thwomp": {
+          "frame": { "x": 896, "y": 752, "w": 48, "h": 64 }
+        },
+        "thwimp": {
+          "frame": { "x": 896, "y": 832, "w": 24, "h": 24 }
+        },
+        "grinder": {
+          "frame": { "x": 1776, "y": 752, "w": 32, "h": 32 }
+        },
+        "ball_n_chain": {
+          "frame": { "x": 1808, "y": 752, "w": 48, "h": 48 }
+        },
+        "reznor": {
+          "frame": { "x": 1336, "y": 1456, "w": 72, "h": 72 }
+        },
+        "blargg": {
+          "frame": { "x": 1400, "y": 1456, "w": 48, "h": 48 }
+        },
+        "mechakoopa": {
+          "frame": { "x": 48, "y": 1456, "w": 32, "h": 32 }
+        },
+        "chargin_chuck": {
+          "frame": { "x": 896, "y": 1104, "w": 96, "h": 64 }
+        },
+        "wiggler": {
+          "frame": { "x": 1336, "y": 1104, "w": 96, "h": 32 }
+        },
+        "piranha_plant": {
+          "frame": { "x": 936, "y": 400, "w": 32, "h": 48 }
+        },
+        "coin": {
+          "frame": { "x": 1776, "y": 1456, "w": 16, "h": 16 }
+        },
+        "peach_ending": {
+          "frame": { "x": 16, "y": 1792, "w": 48, "h": 64 }
+        },
+        "mario_ending": {
+          "frame": { "x": 64, "y": 1792, "w": 32, "h": 48 }
+        },
+        "luigi_ending": {
+          "frame": { "x": 112, "y": 1792, "w": 32, "h": 48 }
+        }
+      }
+    }
+  },
+  "tiles": {},
+  "palettes": {},
+  "notes": "Only backgrounds.default is required for the monitor. Keep file paths relative to this pack folder."
+}

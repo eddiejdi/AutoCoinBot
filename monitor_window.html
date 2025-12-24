@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bot Monitor</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0a0a;
+      --bg2: #0d1117;
+      --panel: var(--bg2);
+      --panel2: color-mix(in srgb, var(--bg2) 70%, var(--bg) 30%);
+      --hdr_bg: var(--panel2);
+      --border: #33ff33;
+      --accent: #00ffff;
+      --text: #c9d1d9;
+      --text2: #aaffaa;
+      --muted: #8b949e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --success: #22c55e;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      font-family: "Courier New", monospace;
+      color: var(--text);
+      background-image: var(--bg_img, none);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .card { border: 2px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); }
+    .hdr { padding: 12px 14px; background: var(--hdr_bg); border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent); display: flex; justify-content: space-between; align-items: center; }
+    .title { color: var(--accent); font-weight: 700; }
+    .meta { color: var(--text2); font-size: 12px; }
+    .row { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid color-mix(in srgb, var(--border) 20%, transparent); background: var(--panel2); }
+    .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 12px 14px; border-bottom: 1px solid color-mix(in srgb, var(--border) 20%, transparent); background: var(--panel2); }
+    .kv { background: rgba(255,255,255,0.03); border: 1px solid color-mix(in srgb, var(--border) 18%, transparent); border-radius: 8px; padding: 10px; }
+    .k { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+    .v { font-size: 13px; color: var(--text2); font-weight: 700; word-break: break-word; }
+    .v.mono { font-family: "Courier New", monospace; font-weight: 700; }
+    .btn { background: var(--accent); color: #fff; border: 0; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; }
+    .btn:active { transform: translateY(1px); }
+    .chk { display: inline-flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text2); }
+    .status { margin-left: auto; font-size: 12px; color: var(--muted); }
+    .logs { padding: 12px 14px; max-height: 720px; overflow: auto; background: var(--panel); }
+    .line { padding: 4px 8px; margin: 4px 0; border-radius: 6px; background: rgba(255,255,255,0.03); border-left: 3px solid #444; white-space: pre-wrap; word-break: break-word; }
+    .lvl { font-weight: 700; margin-right: 8px; }
+    .profit { border-left-color: var(--success); color: color-mix(in srgb, var(--success) 35%, white); }
+    .loss { border-left-color: var(--error); color: color-mix(in srgb, var(--error) 35%, white); }
+    .info { border-left-color: var(--accent); }
+    .warn { border-left-color: var(--warning); }
+    .err  { border-left-color: var(--error); font-weight: 700; }
+    .muted { color: var(--muted); }
+    .errorBox { padding: 14px; border: 2px solid var(--error); border-radius: 10px; background: color-mix(in srgb, var(--error) 12%, transparent); }
+    .small { font-size: 12px; }
+
+    /* ===== COBOL terminal gauge (info panel) ===== */
+    .gaugeWrap {
+      padding: 12px 14px;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 20%, transparent);
+      background: var(--panel2);
+    }
+    .gaugeCard {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 0 20px color-mix(in srgb, var(--border) 18%, transparent), inset 0 0 30px rgba(0,0,0,0.6);
+      overflow: hidden;
+      width: 100%;
+      max-width: 100%;
+    }
+    .gaugeHdr {
+      background: var(--hdr_bg);
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .gaugeBody { padding: 12px; background: var(--bg2); }
+    .gaugePre { margin: 0; font-family: "Courier New", monospace; font-size: 13px; line-height: 1.3; color: var(--text2); white-space: pre; }
+    .gBorder { color: var(--accent); }
+    .gVal { color: #ffffff; }
+    .gHi { color: var(--accent); font-weight: 700; }
+    .gWarn { color: var(--warning); font-weight: 700; }
+    .gOk { color: var(--success); font-weight: 700; }
+    .gErr { color: var(--error); font-weight: 700; }
+    .gFoot { margin-top: 8px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--border) 35%, transparent); color: var(--muted); font-size: 10px; text-align: center; }
+
+    /* ===== Mario-like (original) progress bar ===== */
+    .progressWrap { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; border-bottom: 1px solid color-mix(in srgb, var(--border) 20%, transparent); background: var(--panel2); }
+    .progressTop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .progressLabel { font-weight: 700; color: var(--text); }
+    .progressMeta { font-size: 12px; color: var(--muted); }
+    .qbar { display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; }
+    .qblk {
+      height: 22px;
+      border-radius: 5px;
+      border: 2px solid color-mix(in srgb, var(--border) 40%, transparent);
+      background:
+        linear-gradient(180deg,
+          color-mix(in srgb, var(--accent) 12%, transparent) 0%,
+          color-mix(in srgb, var(--bg) 70%, black) 100%);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35) inset;
+      position: relative;
+      overflow: hidden;
+    }
+    .qblk::before {
+      content: "?";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 14px;
+      color: color-mix(in srgb, var(--text) 75%, white);
+      text-shadow: 0 1px 0 rgba(0,0,0,0.55);
+      opacity: 0.75;
+    }
+    .qblk.filled {
+      border-color: color-mix(in srgb, var(--success) 80%, var(--border) 20%);
+      background:
+        linear-gradient(180deg,
+          color-mix(in srgb, var(--success) 55%, white) 0%,
+          color-mix(in srgb, var(--success) 60%, black) 100%);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--success) 35%, transparent);
+    }
+    .qblk.filled::before { opacity: 0.9; }
+    .qblk.anim { animation: qShine 1.35s ease-in-out infinite; }
+    @keyframes qShine {
+      0% { filter: brightness(1) saturate(1); }
+      45% { filter: brightness(1.25) saturate(1.1); }
+      100% { filter: brightness(1) saturate(1); }
+    }
+
+    .hdrLeft { display: flex; align-items: center; gap: 10px; }
+
+    /* Top navigation */
+    .topnav {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px 16px;
+      margin: 0 0 12px 0;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+    }
+    .topnav .btn {
+      text-decoration: none;
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* Texto justificado (principalmente para logs longos) */
+    .logs { text-align: justify; text-justify: inter-word; }
+    .line { text-align: justify; text-justify: inter-word; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topnav" role="navigation" aria-label="Navegação">
+      <a class="btn" id="navHome" href="#">🏠 Home</a>
+      <a class="btn" id="navMonitor" href="#">🪟 Monitor</a>
+      <a class="btn" id="navReport" href="#">📑 Relatório</a>
+      <span class="status" id="navHint" style="margin-left:auto;">—</span>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="card" id="app">
+      <div class="hdr">
+        <div class="hdrLeft">
+          <div>
+            <div class="title" id="hdrTitle">🪟 Bot Monitor</div>
+            <div class="meta" id="hdrMeta">Janela dedicada (sem Streamlit)</div>
+          </div>
+        </div>
+        <div class="meta" id="clock">--:--:--</div>
+      </div>
+
+      <div class="row">
+        <button class="btn" id="btnRefresh">🔃 Refresh</button>
+        <label class="chk"><input type="checkbox" id="chkAuto" checked /> 🔄 Auto (2s)</label>
+        <span class="status" id="status">iniciando…</span>
+      </div>
+
+      <div class="gaugeWrap" id="gaugeWrap" style="display:none;">
+        <div class="gaugeCard">
+          <div class="gaugeHdr" id="gaugeHdr"></div>
+          <div class="gaugeBody">
+            <pre class="gaugePre" id="gaugePre">Carregando…</pre>
+            <div class="gFoot" id="gaugeFoot">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="progressWrap" id="progressWrap" style="display:none;">
+        <div class="progressTop">
+          <div class="progressLabel">📦 Progresso</div>
+          <div class="progressMeta" id="progressMeta">—</div>
+        </div>
+        <div class="qbar" id="qbar" aria-label="Progresso por blocos"></div>
+      </div>
+
+      <div class="summary" id="summary">
+        <div class="kv"><div class="k">Símbolo</div><div class="v" id="sumSymbol">…</div></div>
+        <div class="kv"><div class="k">Modo</div><div class="v" id="sumMode">…</div></div>
+        <div class="kv"><div class="k">Entrada</div><div class="v mono" id="sumEntry">…</div></div>
+        <div class="kv"><div class="k">Targets</div><div class="v mono" id="sumTargets">…</div></div>
+        <div class="kv"><div class="k">Dry Run</div><div class="v" id="sumDry">…</div></div>
+        <div class="kv"><div class="k">PID / Início</div><div class="v mono" id="sumPidStart">…</div></div>
+      </div>
+
+      <div class="logs" id="logs"><div class="muted small">Carregando…</div></div>
+    </div>
+  </div>
+
+  <script>
+    // Evita “voltar” para alguma tela anterior nesta janela
+    try {
+      history.replaceState(null, document.title, location.href);
+      window.addEventListener('popstate', () => history.pushState(null, document.title, location.href));
+      history.pushState(null, document.title, location.href);
+    } catch (_) {}
+
+    function qs(name) {
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name);
+    }
+
+    // Top-nav links (same tab)
+    (function initTopNav(){
+      try {
+        const u = new URL(window.location.href);
+        const q = u.search || '';
+        const bot = u.searchParams.get('bot');
+
+        // Home should go back to the Streamlit app, not this monitor server.
+        const homeRaw = u.searchParams.get('home') || '/?view=dashboard';
+        let home = homeRaw;
+        try {
+          if (!/^https?:\/\//i.test(String(homeRaw || ''))) {
+            if (String(homeRaw).startsWith('/')) {
+              home = `${u.protocol}//${u.hostname}:8501${homeRaw}`;
+            } else if (String(homeRaw).startsWith('?')) {
+              home = `${u.protocol}//${u.hostname}:8501/${homeRaw}`;
+            }
+          }
+        } catch (_) {}
+
+        const elHome = document.getElementById('navHome');
+        const elMon = document.getElementById('navMonitor');
+        const elRep = document.getElementById('navReport');
+        const elHint = document.getElementById('navHint');
+
+        if (elHome) {
+          try { elHome.href = home; } catch (_) {}
+          elHome.addEventListener('click', (ev) => {
+            try { ev.preventDefault(); } catch (_) {}
+            try {
+              window.top.location.href = home;
+            } catch (_) {
+              window.location.href = home;
+            }
+          });
+        }
+
+        if (elMon) elMon.href = '/monitor' + q;
+        if (elRep) {
+          elRep.href = '/report' + q;
+          elRep.target = '_blank';
+        }
+
+        if (elHint) {
+          elHint.textContent = bot ? ('bot ' + String(bot).slice(0, 12) + '…') : '—';
+        }
+      } catch (_) {}
+    })();
+
+    // Shared sanitizers (must be in global scope; used by multiple features)
+    function safePack(v) {
+      if (!v) return null;
+      const s = String(v).trim();
+      if (!/^[A-Za-z0-9_\-]+$/.test(s)) return null;
+      return s;
+    }
+
+    function safeBgName(v) {
+      if (!v) return null;
+      const s = String(v).trim();
+      if (!/^[A-Za-z0-9_\-]+$/.test(s)) return null;
+      return s;
+    }
+
+    function safeRelPath(v) {
+      if (!v) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      if (s.startsWith('/') || s.includes('..') || s.includes('\\') || s.includes('\0')) return null;
+      if (!/^[A-Za-z0-9_\-./]+$/.test(s)) return null;
+      return s;
+    }
+
+    // Apply theme passed from main UI (query params)
+    // Only accept safe color formats to avoid CSS injection.
+    function applyThemeFromQuery() {
+      const safeColor = (v) => {
+        if (!v) return null;
+        const s = String(v).trim();
+        if (/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(s)) return s;
+        if (/^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/.test(s)) return s;
+        if (/^rgba\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*(0|0?\.\d+|1(\.0+)?)\s*\)$/.test(s)) return s;
+        return null;
+      };
+
+      // Allow a very restricted linear-gradient for header background (coming from our own app).
+      const safeGradient = (v) => {
+        if (!v) return null;
+        const s = String(v).trim();
+        if (!s.startsWith('linear-gradient(') || !s.endsWith(')')) return null;
+        if (!/^[a-zA-Z0-9#(),.%\s-]+$/.test(s)) return null;
+        return s;
+      };
+
+      const set = (cssVar, qsKey) => {
+        const v = safeColor(qs(qsKey));
+        if (v) document.documentElement.style.setProperty(cssVar, v);
+      };
+
+      const setGradient = (cssVar, qsKey) => {
+        const v = safeGradient(qs(qsKey));
+        if (v) document.documentElement.style.setProperty(cssVar, v);
+      };
+
+      const safeThemePath = (p) => {
+        if (!p) return null;
+        const s = String(p).trim();
+        // Only allow local theme assets served by our API server.
+        if (!s.startsWith('/themes/')) return null;
+        if (s.includes('..') || s.includes('\\') || s.includes('\0')) return null;
+        if (!/^[A-Za-z0-9_\-./]+$/.test(s)) return null;
+        return s;
+      };
+
+      // safePack/safeBgName/safeRelPath are defined globally (used by mascot loader too)
+
+      async function pickRandomBackgroundPath(pack) {
+        try {
+          const r = await fetch(`/themes/${pack}/manifest.json`, { cache: 'no-store' });
+          if (!r.ok) return null;
+          const mf = await r.json();
+          const items = mf?.backgrounds?.items;
+          let names = [];
+          if (items && typeof items === 'object') {
+            names = Object.keys(items).map(safeBgName).filter(Boolean);
+          }
+          if (!names.length) {
+            const d = safeBgName(mf?.backgrounds?.default);
+            if (d) names = [d];
+          }
+          if (!names.length) return null;
+          const chosen = names[Math.floor(Math.random() * names.length)];
+          const rel = safeRelPath(items?.[chosen]) || `backgrounds/${chosen}.png`;
+          return `/themes/${pack}/${rel}`;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      set('--bg', 't_bg');
+      set('--bg2', 't_bg2');
+      set('--border', 't_border');
+      set('--accent', 't_accent');
+      set('--text', 't_text');
+      set('--text2', 't_text2');
+      set('--muted', 't_muted');
+      set('--warning', 't_warning');
+      set('--error', 't_error');
+      set('--success', 't_success');
+
+      // Optional: header gradient background
+      setGradient('--hdr_bg', 't_header_bg');
+
+      // Optional: background image
+      // Either pass bg_img=/themes/<pack>/backgrounds/<file>.png
+      // or bg_pack=<pack>&bg=<name> (assumes .png inside backgrounds/)
+      const explicitBg = safeThemePath(qs('bg_img'));
+      let bgPath = explicitBg;
+      if (!bgPath) {
+        const pack = safePack(qs('bg_pack'));
+        const nameRaw = (qs('bg') || '').trim();
+        const name = safeBgName(nameRaw);
+        const wantsRandom = nameRaw === '' || nameRaw.toLowerCase() === 'random';
+        if (pack && !wantsRandom && name) {
+          bgPath = `/themes/${pack}/backgrounds/${name}.png`;
+        }
+        if (pack && wantsRandom) {
+          // Randomize on every reload by selecting a random background from the pack manifest.
+          pickRandomBackgroundPath(pack).then((p) => {
+            if (p) document.documentElement.style.setProperty('--bg_img', `url("${p}")`);
+          });
+        }
+      }
+      if (bgPath) {
+        // Store as a full CSS url(...) token.
+        document.documentElement.style.setProperty('--bg_img', `url("${bgPath}")`);
+      }
+
+      const isLight = (qs('t_is_light') || '').trim() === '1';
+      if (isLight) {
+        document.documentElement.style.colorScheme = 'light';
+        // For light themes, keep surfaces light to preserve contrast with text2 (often dark).
+        // Prefer bg2 if provided, else fall back to bg.
+        const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+        const bg2 = getComputedStyle(document.documentElement).getPropertyValue('--bg2').trim() || bg;
+        document.documentElement.style.setProperty('--panel', bg2 || bg);
+        document.documentElement.style.setProperty('--panel2', bg2 || bg);
+        // If no header background was provided, use bg2.
+        const hdr = getComputedStyle(document.documentElement).getPropertyValue('--hdr_bg').trim();
+        if (!hdr) document.documentElement.style.setProperty('--hdr_bg', bg2 || bg);
+      }
+    }
+
+    applyThemeFromQuery();
+
+    // Build question-block progress bar UI
+    function initQbar() {
+      const qbar = document.getElementById('qbar');
+      if (!qbar) return;
+      qbar.innerHTML = '';
+      for (let i = 0; i < 20; i++) {
+        const d = document.createElement('div');
+        d.className = 'qblk';
+        qbar.appendChild(d);
+      }
+    }
+
+    function renderQbar(progress01) {
+      const wrap = document.getElementById('progressWrap');
+      const qbar = document.getElementById('qbar');
+      if (!wrap || !qbar) return;
+
+      const blocks = Array.from(document.querySelectorAll('#qbar .qblk'));
+      if (!blocks.length) initQbar();
+
+      const p = Math.max(0, Math.min(1, Number(progress01 || 0)));
+      let filledCount = Math.floor(p * 20);
+      if (p > 0 && filledCount === 0) filledCount = 1;
+      const all = Array.from(document.querySelectorAll('#qbar .qblk'));
+      all.forEach((b, idx) => {
+        const filled = idx < filledCount;
+        b.classList.toggle('filled', filled);
+        b.classList.toggle('anim', filled && idx === Math.min(filledCount - 1, 19) && filledCount > 0);
+      });
+      wrap.style.display = 'block';
+    }
+
+    // Tiny CSS-only pixel mascot (original). Color adapts to theme.
+    function initMascot() {
+      const root = document.getElementById('mascotPixels');
+      if (!root) return;
+
+      // 6px pixels. Simple runner silhouette (original design).
+      const skin = 'color-mix(in srgb, var(--text) 70%, white)';
+      const cap = 'color-mix(in srgb, var(--border) 70%, black)';
+      const shirt = 'color-mix(in srgb, var(--accent) 55%, black)';
+      const pants = 'color-mix(in srgb, var(--bg) 55%, black)';
+      const boot = 'color-mix(in srgb, var(--panel) 65%, black)';
+
+      const px = [
+        // cap
+        {x:2,y:0,c:cap},{x:3,y:0,c:cap},{x:4,y:0,c:cap},
+        {x:1,y:1,c:cap},{x:2,y:1,c:cap},{x:3,y:1,c:cap},{x:4,y:1,c:cap},
+        // face
+        {x:1,y:2,c:skin},{x:2,y:2,c:skin},{x:3,y:2,c:skin},
+        {x:1,y:3,c:skin},{x:2,y:3,c:skin},
+        // body
+        {x:2,y:4,c:shirt},{x:3,y:4,c:shirt},
+        {x:1,y:5,c:shirt},{x:2,y:5,c:shirt},{x:3,y:5,c:shirt},
+        // pants
+        {x:2,y:6,c:pants},{x:3,y:6,c:pants},
+        // legs/boots
+        {x:1,y:7,c:boot},{x:2,y:7,c:boot},{x:3,y:7,c:boot},
+        {x:0,y:8,c:boot},{x:1,y:8,c:boot},{x:3,y:8,c:boot},{x:4,y:8,c:boot},
+      ];
+
+      root.innerHTML = '';
+      px.forEach(({x,y,c}) => {
+        const p = document.createElement('div');
+        p.className = 'p';
+        p.style.left = `${x*6}px`;
+        p.style.top = `${y*6}px`;
+        p.style.background = c;
+        root.appendChild(p);
+      });
+    }
+
+    // Optional: mascot obtained from theme-pack sprites.
+    // Supports either:
+    // - /themes/<pack>/characters/mascot.gif|png|webp
+    // - /themes/<pack>/manifest.json with:
+    //     { "characters": { "mascot": { "frames": ["characters/m0.png", ...], "fps": 8 } } }
+    //     { "characters": { "mascot": { "image": "characters/mascot.png" } } }
+    //     { "characters": { "mascot": { "path": "characters/mascot.png" } } }   (template compatibility)
+    // - SNES-style spritesheet (tile/part composition):
+    //     {
+    //       "characters": {
+    //         "mascot": {
+    //           "sheet": "characters/enemies_sheet.png",
+    //           "tileSize": 8,
+    //           "scale": 2,
+    //           "colorKey": "#5C94FC",  // optional: treat this color as transparent
+    //           "fps": 8,
+    //           "frames": [
+    //             { "parts": [ { "tx": 1, "ty": 2, "tw": 2, "th": 2, "dx": 0, "dy": 0 } ] },
+    //             { "parts": [ { "x": 16, "y": 32, "w": 16, "h": 16, "dx": 0, "dy": 0 } ] }
+    //           ]
+    //         }
+    //       }
+    //     }
+    let _mascotTimer = null;
+    let _mascotRaf = null;
+
+    function stopMascotSprite() {
+      try { if (_mascotTimer) clearInterval(_mascotTimer); } catch(_) {}
+      try { if (_mascotRaf) cancelAnimationFrame(_mascotRaf); } catch(_) {}
+      _mascotTimer = null;
+      _mascotRaf = null;
+    }
+
+    function parseHexColor(v) {
+      if (!v) return null;
+      const s = String(v).trim();
+      const m = /^#([0-9a-fA-F]{6})$/.exec(s);
+      if (!m) return null;
+      const n = parseInt(m[1], 16);
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    }
+
+    function clampInt(v, min, max) {
+      const n = Math.floor(Number(v));
+      if (!Number.isFinite(n)) return null;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function normalizeTileSize(v) {
+      // allow 8 or [8,8]
+      if (typeof v === 'number') {
+        const n = clampInt(v, 1, 64);
+        return n ?? 8;
+      }
+      if (Array.isArray(v) && v.length >= 1) {
+        const n = clampInt(v[0], 1, 64);
+        return n ?? 8;
+      }
+      return 8;
+    }
+
+    async function buildColorKeySource(img, colorKey) {
+      // Return a Canvas source with the color key made transparent.
+      const ck = parseHexColor(colorKey);
+      if (!ck) return img;
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth || img.width;
+      c.height = img.naturalHeight || img.height;
+      const ctx = c.getContext('2d');
+      if (!ctx) return img;
+      ctx.drawImage(img, 0, 0);
+      const id = ctx.getImageData(0, 0, c.width, c.height);
+      const d = id.data;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] === ck.r && d[i + 1] === ck.g && d[i + 2] === ck.b) {
+          d[i + 3] = 0;
+        }
+      }
+      ctx.putImageData(id, 0, 0);
+      return c;
+    }
+
+    function normalizePart(part, tileSize) {
+      if (!part || typeof part !== 'object') return null;
+      // Pixel rect
+      const x = clampInt(part.x, 0, 100000);
+      const y = clampInt(part.y, 0, 100000);
+      const w = clampInt(part.w, 1, 100000);
+      const h = clampInt(part.h, 1, 100000);
+
+      // Tile rect (SNES-style 8x8 tiles)
+      const tx = clampInt(part.tx, 0, 100000);
+      const ty = clampInt(part.ty, 0, 100000);
+      const tw = clampInt(part.tw, 1, 100000);
+      const th = clampInt(part.th, 1, 100000);
+
+      const dx = clampInt(part.dx ?? 0, -100000, 100000) ?? 0;
+      const dy = clampInt(part.dy ?? 0, -100000, 100000) ?? 0;
+      const flipX = !!part.flipX;
+      const flipY = !!part.flipY;
+
+      let sx, sy, sw, sh;
+      if (x !== null && y !== null && w !== null && h !== null) {
+        sx = x; sy = y; sw = w; sh = h;
+      } else if (tx !== null && ty !== null && tw !== null && th !== null) {
+        sx = tx * tileSize;
+        sy = ty * tileSize;
+        sw = tw * tileSize;
+        sh = th * tileSize;
+      } else {
+        return null;
+      }
+
+      return { sx, sy, sw, sh, dx, dy, flipX, flipY };
+    }
+
+    function normalizeFrameDef(frame, tileSize) {
+      if (!frame) return null;
+      // If frame is a part-like object, treat as a single part frame
+      if (typeof frame === 'object' && !Array.isArray(frame)) {
+        const partsRaw = Array.isArray(frame.parts) ? frame.parts : null;
+        if (partsRaw) {
+          const parts = partsRaw.map(p => normalizePart(p, tileSize)).filter(Boolean);
+          if (!parts.length) return null;
+          return { parts };
+        }
+        const single = normalizePart(frame, tileSize);
+        if (single) return { parts: [single] };
+      }
+      return null;
+    }
+
+    function computeFrameBounds(parts) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of parts) {
+        minX = Math.min(minX, p.dx);
+        minY = Math.min(minY, p.dy);
+        maxX = Math.max(maxX, p.dx + p.sw);
+        maxY = Math.max(maxY, p.dy + p.sh);
+      }
+      if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+        return { minX: 0, minY: 0, w: 1, h: 1 };
+      }
+      const w = Math.max(1, Math.ceil(maxX - minX));
+      const h = Math.max(1, Math.ceil(maxY - minY));
+      return { minX, minY, w, h };
+    }
+
+    function startSheetMascot(spriteHost, pixelHost, mascotHost, sheetSource, frames, fps, scale) {
+      stopMascotSprite();
+      spriteHost.innerHTML = '';
+
+      const canvas = document.createElement('canvas');
+      canvas.setAttribute('aria-hidden', 'true');
+      canvas.style.display = 'block';
+      canvas.style.imageRendering = 'pixelated';
+      canvas.style.imageRendering = 'crisp-edges';
+
+      // Determine a stable output size using the first frame.
+      const bounds0 = computeFrameBounds(frames[0].parts);
+      canvas.width = bounds0.w;
+      canvas.height = bounds0.h;
+
+      const displayScale = (typeof scale === 'number' && scale > 0 && scale <= 8) ? scale : 2;
+      canvas.style.width = `${Math.round(canvas.width * displayScale)}px`;
+      canvas.style.height = `${Math.round(canvas.height * displayScale)}px`;
+
+      // Resize mascot container to match the drawn sprite (keeps aspect correct)
+      if (mascotHost) {
+        mascotHost.style.width = canvas.style.width;
+        mascotHost.style.height = canvas.style.height;
+      }
+      spriteHost.style.width = canvas.style.width;
+      spriteHost.style.height = canvas.style.height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return false;
+      ctx.imageSmoothingEnabled = false;
+
+      spriteHost.appendChild(canvas);
+      spriteHost.style.display = 'block';
+      if (pixelHost) pixelHost.style.display = 'none';
+
+      let idx = 0;
+      const stepMs = Math.max(40, Math.floor(1000 / (fps > 0 ? fps : 8)));
+
+      const draw = () => {
+        const fr = frames[idx];
+        const b = computeFrameBounds(fr.parts);
+        // Resize canvas if needed (some sprites use varying bounds)
+        if (canvas.width !== b.w || canvas.height !== b.h) {
+          canvas.width = b.w;
+          canvas.height = b.h;
+          canvas.style.width = `${Math.round(canvas.width * displayScale)}px`;
+          canvas.style.height = `${Math.round(canvas.height * displayScale)}px`;
+          if (mascotHost) {
+            mascotHost.style.width = canvas.style.width;
+            mascotHost.style.height = canvas.style.height;
+          }
+          spriteHost.style.width = canvas.style.width;
+          spriteHost.style.height = canvas.style.height;
+          ctx.imageSmoothingEnabled = false;
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const p of fr.parts) {
+          const dx = p.dx - b.minX;
+          const dy = p.dy - b.minY;
+          if (p.flipX || p.flipY) {
+            ctx.save();
+            ctx.translate(dx + (p.flipX ? p.sw : 0), dy + (p.flipY ? p.sh : 0));
+            ctx.scale(p.flipX ? -1 : 1, p.flipY ? -1 : 1);
+            ctx.drawImage(sheetSource, p.sx, p.sy, p.sw, p.sh, 0, 0, p.sw, p.sh);
+            ctx.restore();
+          } else {
+            ctx.drawImage(sheetSource, p.sx, p.sy, p.sw, p.sh, dx, dy, p.sw, p.sh);
+          }
+        }
+      };
+
+      draw();
+      _mascotTimer = setInterval(() => {
+        idx = (idx + 1) % frames.length;
+        draw();
+      }, stepMs);
+
+      return true;
+    }
+
+    function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('image_load_failed'));
+        // bust cache to make development refresh reliable
+        const bust = url.includes('?') ? `&v=${Date.now()}` : `?v=${Date.now()}`;
+        img.src = url + bust;
+      });
+    }
+
+    async function tryInitMascotFromPack() {
+      const spriteHost = document.getElementById('mascotSprite');
+      const pixelHost = document.getElementById('mascotPixels');
+      const mascotHost = spriteHost ? spriteHost.parentElement : null;
+      if (!spriteHost) return false;
+
+      // Try explicit pack first
+      let pack = safePack(qs('bg_pack')) || safePack(qs('pack'));
+
+      // Fallback: infer SMW when older URLs don't include bg_pack.
+      // We match the exact theme signature used by the Streamlit SMW theme.
+      if (!pack) {
+        const bg = (qs('t_bg') || '').trim().toLowerCase();
+        const border = (qs('t_border') || '').trim().toLowerCase();
+        const accent = (qs('t_accent') || '').trim().toLowerCase();
+        if (bg === '#5c94fc' && border === '#e52521' && accent === '#43b047') {
+          pack = 'smw';
+        }
+      }
+
+      if (!pack) return false;
+
+      const showSprite = () => {
+        spriteHost.style.display = 'block';
+        if (pixelHost) pixelHost.style.display = 'none';
+      };
+      const hideSprite = () => {
+        spriteHost.style.display = 'none';
+        if (pixelHost) pixelHost.style.display = '';
+      };
+
+      stopMascotSprite();
+      spriteHost.innerHTML = '';
+
+      // 1) Try manifest config first (best, explicit)
+      try {
+        const r = await fetch(`/themes/${pack}/manifest.json`, { cache: 'no-store' });
+        if (r.ok) {
+          const mf = await r.json();
+          const baseMascot = mf?.characters?.mascot;
+          if (!baseMascot) throw new Error('no_mascot_manifest');
+
+          // Optional: choose a random variant (enemy) on each page load.
+          // Supported manifest shape:
+          // {
+          //   "characters": {
+          //     "mascot": {
+          //       "random": true,
+          //       "variants": {
+          //          "goomba": { ... mascot config override ... },
+          //          "koopa":  { ... }
+          //       }
+          //     }
+          //   }
+          // }
+          // Also supports forcing selection via:
+          // - URL: ?enemy=goomba
+          // - manifest: "pick": "goomba"
+          let mascot = baseMascot;
+          try {
+            const variants = (baseMascot && typeof baseMascot === 'object') ? baseMascot.variants : null;
+            const variantMap = (variants && typeof variants === 'object' && !Array.isArray(variants)) ? variants : null;
+            if (variantMap) {
+              const keys = Object.keys(variantMap).map(safeBgName).filter(Boolean);
+              const forced = safeBgName(qs('enemy')) || safeBgName(baseMascot.pick);
+              const wantsRandom = String(baseMascot.random || '').toLowerCase() === 'true' || baseMascot.random === 1 || baseMascot.random === true;
+              let chosen = null;
+              if (forced && keys.includes(forced)) chosen = forced;
+              else if (wantsRandom && keys.length) chosen = keys[Math.floor(Math.random() * keys.length)];
+
+              if (chosen && variantMap[chosen] && typeof variantMap[chosen] === 'object') {
+                // Merge: variant overrides base fields.
+                mascot = { ...baseMascot, ...variantMap[chosen] };
+              }
+            }
+          } catch (_) {
+            mascot = baseMascot;
+          }
+
+          const fpsRaw = mascot?.fps;
+          const fps = (typeof fpsRaw === 'number' && fpsRaw > 0 && fpsRaw <= 30) ? fpsRaw : 8;
+
+          const sheetPathBase = safeRelPath(baseMascot?.sheet) || safeRelPath(baseMascot?.spritesheet);
+          const baseHasVariants = !!(baseMascot && typeof baseMascot === 'object' && baseMascot.variants && typeof baseMascot.variants === 'object');
+          const baseWantsRandom = String(baseMascot?.random || '').toLowerCase() === 'true' || baseMascot?.random === 1 || baseMascot?.random === true;
+
+          // If the pack is configured for random enemies via spritesheet, avoid falling back to a static image.
+          const allowStaticImageFallback = !(sheetPathBase && baseHasVariants && baseWantsRandom);
+
+          const imagePath = allowStaticImageFallback
+            ? (safeRelPath(mascot?.image) || safeRelPath(mascot?.path))
+            : null;
+
+          // SNES-style: sprite sheet + frames defined as rects/parts
+          const sheetPath = safeRelPath(mascot?.sheet) || safeRelPath(mascot?.spritesheet);
+          const tileSize = normalizeTileSize(mascot?.tileSize);
+          const scale = (typeof mascot?.scale === 'number' && mascot.scale > 0 && mascot.scale <= 8) ? mascot.scale : 2;
+          const colorKey = mascot?.colorKey || mascot?.colorkey || mascot?.transparent;
+
+          const framesRaw = Array.isArray(mascot?.frames) ? mascot.frames : [];
+          const hasObjectFrames = framesRaw.some((f) => f && typeof f === 'object' && !Array.isArray(f));
+          const rectFrames = hasObjectFrames
+            ? framesRaw.map((f) => normalizeFrameDef(f, tileSize)).filter(Boolean)
+            : [];
+
+          const singleFrame = normalizeFrameDef(mascot?.frame, tileSize);
+          const framesForSheet = rectFrames.length
+            ? rectFrames
+            : (singleFrame ? [singleFrame] : []);
+
+          if (sheetPath && framesForSheet.length) {
+            const absSheet = `/themes/${pack}/${sheetPath}`;
+            const img = await loadImage(absSheet);
+            const sheetSource = await buildColorKeySource(img, colorKey);
+            const ok = startSheetMascot(spriteHost, pixelHost, mascotHost, sheetSource, framesForSheet, fps, scale);
+            if (ok) return true;
+          }
+
+          // Legacy: list of image paths (each frame is an image file)
+          const frames = Array.isArray(mascot?.frames) ? mascot.frames.map(safeRelPath).filter(Boolean) : [];
+
+          if (frames.length) {
+            const absFrames = frames.map(p => `/themes/${pack}/${p}`);
+            // Preload first frame to validate
+            await loadImage(absFrames[0]);
+            const img = document.createElement('img');
+            img.alt = '';
+            img.setAttribute('aria-hidden', 'true');
+            img.src = absFrames[0];
+            spriteHost.appendChild(img);
+            showSprite();
+
+            let idx = 0;
+            _mascotTimer = setInterval(() => {
+              idx = (idx + 1) % absFrames.length;
+              img.src = absFrames[idx] + (absFrames[idx].includes('?') ? `&t=${Date.now()}` : `?t=${Date.now()}`);
+            }, Math.max(40, Math.floor(1000 / fps)));
+            return true;
+          }
+
+          if (imagePath) {
+            const abs = `/themes/${pack}/${imagePath}`;
+            await loadImage(abs);
+            const img = document.createElement('img');
+            img.alt = '';
+            img.setAttribute('aria-hidden', 'true');
+            img.src = abs;
+            spriteHost.appendChild(img);
+            showSprite();
+
+            // reset mascot container size to default (in case a sheet mascot resized it)
+            if (mascotHost) {
+              mascotHost.style.width = '';
+              mascotHost.style.height = '';
+            }
+            return true;
+          }
+        }
+      } catch (_) {}
+
+      // 2) Conventional filenames fallback
+      const candidates = [
+        `/themes/${pack}/characters/mascot.gif`,
+        `/themes/${pack}/characters/mascot.png`,
+        `/themes/${pack}/characters/mascot.webp`,
+      ];
+      for (const url of candidates) {
+        try {
+          await loadImage(url);
+          const img = document.createElement('img');
+          img.alt = '';
+          img.setAttribute('aria-hidden', 'true');
+          img.src = url;
+          spriteHost.appendChild(img);
+          showSprite();
+
+          // reset mascot container size to default (in case a sheet mascot resized it)
+          if (mascotHost) {
+            mascotHost.style.width = '';
+            mascotHost.style.height = '';
+          }
+          return true;
+        } catch (_) {}
+      }
+
+      hideSprite();
+      return false;
+    }
+
+    initQbar();
+
+    const bot = qs('bot');
+    const logsEl = document.getElementById('logs');
+    const statusEl = document.getElementById('status');
+    const hdrTitle = document.getElementById('hdrTitle');
+
+    function setClock() {
+      const d = new Date();
+      const pad = (n) => String(n).padStart(2,'0');
+      document.getElementById('clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+    setClock();
+    setInterval(setClock, 500);
+
+    if (!bot) {
+      document.getElementById('app').innerHTML = `
+        <div class="errorBox">
+          <div style="font-weight:700; color:#ff3333;">❌ Nenhum bot especificado na URL</div>
+          <div class="small muted" style="margin-top:8px;">Use: <span style="color:#aaffaa;">/monitor?bot=bot_xxxxxxxx</span></div>
+        </div>`;
+      throw new Error('Missing bot');
+    }
+
+    hdrTitle.textContent = `🪟 Bot Monitor — ${bot}`;
+    document.title = `Bot Monitor — ${bot}`;
+
+    function classify(line) {
+      const up = line.toUpperCase();
+      if (/(\bERROR\b|\bERRO\b|❌|EXCEPTION|TRACEBACK)/.test(up)) return 'err';
+      if (/(\bWARNING\b|\bAVISO\b|⚠)/.test(up)) return 'warn';
+      if (/(LUCRO|PROFIT|✅|TARGET|GANHO)/.test(up)) return 'profit';
+      if (/(LOSS|PREJU|-\d+(?:\.\d+)?%)/.test(up)) return 'loss';
+      if (/(TRADE|ORDER|BUY|SELL|COMPRA|VENDA|BOT|INICIADO|CONECTADO|INFO)/.test(up)) return 'info';
+      return '';
+    }
+
+    let timer = null;
+    let lastDigest = null;
+
+    function fmtTs(ts) {
+      if (!ts) return '—';
+      try {
+        const d = new Date(Number(ts) * 1000);
+        if (Number.isNaN(d.getTime())) return String(ts);
+        const pad = (n) => String(n).padStart(2,'0');
+        return `${pad(d.getDate())}/${pad(d.getMonth()+1)} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      } catch (_) {
+        return String(ts);
+      }
+    }
+
+    function fmtTargets(t) {
+      if (t == null) return '—';
+      if (Array.isArray(t)) {
+        // could be list of tuples or list of strings
+        return t.map(x => Array.isArray(x) ? `${x[0]}:${x[1]}` : String(x)).join(', ');
+      }
+      if (typeof t === 'string') return t;
+      return String(t);
+    }
+
+    async function fetchSummary() {
+      const url = `/api/bot?bot=${encodeURIComponent(bot)}`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.json();
+    }
+
+    function renderSummary(s) {
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
+      set('sumSymbol', s.symbol || '—');
+      set('sumMode', (s.mode || '—').toString().toUpperCase());
+      set('sumEntry', (s.entry_price != null) ? String(s.entry_price) : '—');
+      set('sumTargets', fmtTargets(s.targets));
+      set('sumDry', (s.dry_run === 1 || s.dry_run === true) ? 'SIM' : ((s.dry_run === 0 || s.dry_run === false) ? 'NÃO' : '—'));
+      const pid = (s.pid != null) ? String(s.pid) : '—';
+      const start = fmtTs(s.start_ts);
+      set('sumPidStart', `${pid} / ${start}`);
+    }
+
+    function tryParseNumber(x) {
+      if (x === null || x === undefined) return null;
+      const n = Number(x);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function normalizeTargets(t) {
+      if (!t) return [];
+      if (Array.isArray(t)) return t.map(tryParseNumber).filter((v) => v !== null);
+      if (typeof t === 'string') {
+        // Try JSON list
+        try {
+          const j = JSON.parse(t);
+          if (Array.isArray(j)) return j.map(tryParseNumber).filter((v) => v !== null);
+        } catch {}
+        // Try comma-separated
+        return t.split(',').map((s) => tryParseNumber(s.trim())).filter((v) => v !== null);
+      }
+      return [];
+    }
+
+    function extractLatestPrice(logItems) {
+      for (let i = 0; i < logItems.length; i++) {
+        const item = logItems[i];
+        const msg = item?.message;
+        if (!msg) continue;
+        if (typeof msg === 'object' && msg.price != null) {
+          const p = tryParseNumber(msg.price);
+          if (p !== null) return p;
+        }
+        if (typeof msg === 'string') {
+          try {
+            const j = JSON.parse(msg);
+            const p = tryParseNumber(j?.price);
+            if (p !== null) return p;
+          } catch {}
+
+          // Fallback: extract "price" from non-JSON strings (e.g., python dict repr).
+          // Examples: "... \"price\": 88088.4 ..." or "price': 88088.4".
+          try {
+            const m = /(\"price\"\s*:\s*|\bprice\b\s*[:=]\s*)(-?\d+(?:\.\d+)?)/i.exec(msg);
+            if (m) {
+              const p = tryParseNumber(m[2]);
+              if (p !== null) return p;
+            }
+          } catch {}
+        }
+      }
+      return null;
+    }
+
+    function extractLatestState(logItems) {
+      // Pull out extra fields from the newest JSON-ish log entry that has them.
+      const out = { price: null, entry_price: null, symbol: null, mode: null, cycle: null, executed: null, event: null };
+      for (let i = 0; i < logItems.length; i++) {
+        const item = logItems[i];
+        const msg = item?.message;
+        if (!msg) continue;
+
+        let j = null;
+        if (typeof msg === 'object') j = msg;
+        if (typeof msg === 'string') {
+          try { j = JSON.parse(msg); } catch { j = null; }
+        }
+        if (!j || typeof j !== 'object') continue;
+
+        // fill in what we find (keep first seen, since we're iterating newest->oldest)
+        const setIf = (k, v) => { if (out[k] == null && v != null) out[k] = v; };
+        setIf('price', tryParseNumber(j.price));
+        setIf('entry_price', tryParseNumber(j.entry_price));
+        setIf('symbol', (typeof j.symbol === 'string') ? j.symbol : null);
+        setIf('mode', (typeof j.mode === 'string') ? j.mode : null);
+        setIf('cycle', tryParseNumber(j.cycle));
+        setIf('executed', (typeof j.executed === 'string' || typeof j.executed === 'number') ? String(j.executed) : null);
+        setIf('event', (typeof j.event === 'string') ? j.event : null);
+
+        // if we already have the key fields, we can stop early
+        if (out.price != null && out.entry_price != null && out.symbol && out.mode && out.executed && out.event) break;
+      }
+      return out;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function formatMoney(n) {
+      const x = tryParseNumber(n);
+      if (x === null) return '—';
+      try { return x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+      catch { return String(x); }
+    }
+
+    function makeBar(progressPct, width) {
+      const p = Math.min(100, Math.max(0, tryParseNumber(progressPct) ?? 0));
+      const filled = Math.floor(width * p / 100);
+      return '█'.repeat(filled) + '░'.repeat(width - filled);
+    }
+
+    function renderGauge(summary, logs) {
+      const wrap = document.getElementById('gaugeWrap');
+      const hdr = document.getElementById('gaugeHdr');
+      const pre = document.getElementById('gaugePre');
+      const foot = document.getElementById('gaugeFoot');
+      if (!wrap || !hdr || !pre || !foot) return;
+
+      if (!summary) {
+        wrap.style.display = 'none';
+        return;
+      }
+
+      const st = extractLatestState(logs || []);
+      const latestPrice = st.price ?? extractLatestPrice(logs || []);
+
+      const symbol = st.symbol || summary.symbol || '—';
+      const modeRaw = (st.mode || summary.mode || '—').toString().toUpperCase();
+      const entry = (st.entry_price != null) ? st.entry_price : tryParseNumber(summary.entry_price);
+      const targetPct = parseTargetPct(summary.targets) ?? 0;
+
+      const entryOk = (entry != null && entry > 0);
+      const priceOk = (latestPrice != null && latestPrice > 0);
+      const modeLower = (summary.mode || st.mode || '').toString().toLowerCase();
+
+      let profitPct = 0;
+      if (entryOk && priceOk) {
+        profitPct = modeLower === 'sell'
+          ? ((entry - latestPrice) / entry) * 100
+          : ((latestPrice - entry) / entry) * 100;
+      }
+
+      const progress = (targetPct > 0) ? (profitPct / targetPct) * 100 : 0;
+      const bar = makeBar(progress, 40);
+
+      let status = 'NEUTRO';
+      let cls = 'gWarn';
+      if (targetPct > 0 && profitPct >= targetPct) { status = 'TARGET ATINGIDO'; cls = 'gOk'; }
+      else if (profitPct > 0) { status = 'EM LUCRO'; cls = 'gHi'; }
+      else if (profitPct < -1) { status = 'PREJUIZO'; cls = 'gErr'; }
+
+      const cycle = (st.cycle != null) ? String(Math.trunc(st.cycle)) : '—';
+      const executed = st.executed || '—';
+      const event = (st.event || '—').toString().toUpperCase().replaceAll('_',' ').slice(0, 20);
+
+      const botShort = (bot || '').slice(0, 16).padEnd(16, ' ');
+
+      hdr.innerHTML = `<span style="color:#fff; font-weight:700;">◉ KUCOIN TRADING TERMINAL v2.0 ◉</span>`;
+
+      const entryStr = entryOk ? `$${formatMoney(entry).padStart(12,' ')}` : '—'.padStart(13,' ');
+      const priceStr = priceOk ? `$${formatMoney(latestPrice).padStart(12,' ')}` : '—'.padStart(13,' ');
+
+      // Render as HTML inside <pre> so we can color spans.
+      // Intentionally avoid box-drawing characters when the panel is full-width.
+      pre.innerHTML = `
+    BOT: <span class="gVal">${escapeHtml(botShort.trim())}</span>\n
+    SYM: <span class="gHi">${escapeHtml(String(symbol))}</span>    MODE: <span class="gWarn">${escapeHtml(modeRaw)}</span>\n
+    ENTRY.....: <span class="gVal">${escapeHtml(entryStr)}</span>\n
+    CURRENT...: <span class="gHi">${escapeHtml(priceStr)}</span>\n
+    P&L STATUS: <span class="${cls}">${escapeHtml(status)}</span>\n
+    PROFIT....: <span class="${cls}">${escapeHtml((profitPct>=0?'+':'') + profitPct.toFixed(4) + '%')}</span>\n
+    TARGET....: <span class="gWarn">${escapeHtml((targetPct||0).toFixed(2) + '%')}</span>\n
+    PROGRESS..: <span class="${cls}">${escapeHtml(bar)}</span>\n
+    COMPLETE..: <span class="gVal">${escapeHtml((Math.min(100, Math.max(0, progress))).toFixed(1) + '%')}</span>\n
+    CYCLE.....: <span class="gHi">${escapeHtml(cycle)}</span>    EXEC: <span class="gVal">${escapeHtml(String(executed))}</span>\n
+    EVENT.....: <span class="gWarn">${escapeHtml(event)}</span>
+      `.trim();
+
+      foot.innerHTML = `<span style="color:var(--text)">●</span> ONLINE | <span style="color:var(--muted)">${escapeHtml(new Date().toLocaleString('pt-BR'))}</span> | <span style="color:var(--text)">◄</span> AUTO-REFRESH 2s`;
+
+      wrap.style.display = '';
+    }
+
+    function parseTargetPct(targetsRaw) {
+      // Supports common formats:
+      // - "1:0.3,3:0.5,5:0.2"  -> percent is before ':'
+      // - ["1", "3", "5"] or [1,3,5]
+      // - [{pct:1}, {pct:3}] or [{percent:1}]
+      if (targetsRaw == null) return null;
+
+      const pcts = [];
+
+      if (typeof targetsRaw === 'string') {
+        const parts = targetsRaw.split(',').map(s => s.trim()).filter(Boolean);
+        for (const part of parts) {
+          const m = /^(-?\d+(?:\.\d+)?)\s*[:]/.exec(part);
+          if (m) {
+            const v = tryParseNumber(m[1]);
+            if (v !== null) pcts.push(v);
+          }
+        }
+      } else if (Array.isArray(targetsRaw)) {
+        for (const t of targetsRaw) {
+          if (typeof t === 'number' || typeof t === 'string') {
+            const v = tryParseNumber(t);
+            if (v !== null) pcts.push(v);
+          } else if (t && typeof t === 'object') {
+            const v = tryParseNumber(t.pct ?? t.percent ?? t.target_pct);
+            if (v !== null) pcts.push(v);
+          }
+        }
+      } else if (typeof targetsRaw === 'object') {
+        // If it's a dict/object, try common keys.
+        const v = tryParseNumber(targetsRaw.pct ?? targetsRaw.percent ?? targetsRaw.target_pct);
+        if (v !== null) pcts.push(v);
+      }
+
+      if (!pcts.length) return null;
+      const maxPct = Math.max(...pcts.filter(x => Number.isFinite(x)));
+      return Number.isFinite(maxPct) ? maxPct : null;
+    }
+
+    function updateProgressBar(summary, latestPrice) {
+      const wrap = document.getElementById('progressWrap');
+      const meta = document.getElementById('progressMeta');
+      if (!wrap || !meta) return;
+      if (!summary) {
+        wrap.style.display = 'none';
+        return;
+      }
+
+      const entry = tryParseNumber(summary.entry_price);
+      const targetPct = parseTargetPct(summary.targets);
+      const mode = String(summary.mode || '').toLowerCase();
+
+      if (entry === null || targetPct === null || latestPrice === null) {
+        renderQbar(0);
+        meta.textContent = 'sem dados suficientes (entrada/targets/preço)';
+        return;
+      }
+
+      // BUY: profit when price rises. SELL: profit when price falls.
+      const rawProfitPct = mode === 'sell'
+        ? ((entry - latestPrice) / entry) * 100
+        : ((latestPrice - entry) / entry) * 100;
+
+      const profitPct = rawProfitPct;
+      const progress01 = targetPct > 0 ? (profitPct / targetPct) : 0;
+
+      renderQbar(progress01);
+      meta.textContent = `${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(2)}% / alvo ${targetPct.toFixed(2)}% (preço ${latestPrice})`;
+    }
+
+    async function fetchLogs() {
+      const url = `/api/logs?bot=${encodeURIComponent(bot)}&limit=30`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const logs = await r.json();
+      if (!Array.isArray(logs)) return [];
+      return logs;
+    }
+
+    async function fetchActiveBot() {
+      const url = `/api/active_bot`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.json();
+    }
+
+    function render(logs) {
+      const lines = logs.map(l => `[${l.level || 'INFO'}] ${l.message || ''}`);
+      const digest = lines.join('\n');
+      if (digest === lastDigest) {
+        statusEl.textContent = 'sem mudanças';
+        return;
+      }
+      lastDigest = digest;
+
+      logsEl.innerHTML = '';
+      if (lines.length === 0) {
+        logsEl.innerHTML = '<div class="muted small">Aguardando logs…</div>';
+        return;
+      }
+      for (const line of lines.reverse()) {
+        const div = document.createElement('div');
+        const cls = classify(line);
+        div.className = `line ${cls}`;
+        // tenta destacar [LEVEL]
+        const m = /^\[(.+?)\]\s*(.*)$/.exec(line);
+        if (m) {
+          const lvl = document.createElement('span');
+          lvl.className = 'lvl';
+          lvl.textContent = `[${m[1]}]`;
+          div.appendChild(lvl);
+          div.appendChild(document.createTextNode(' ' + m[2]));
+        } else {
+          div.textContent = line;
+        }
+        logsEl.appendChild(div);
+      }
+      logsEl.scrollTop = logsEl.scrollHeight;
+      statusEl.textContent = `ok — ${lines.length} linhas`;
+    }
+
+    async function tick() {
+      statusEl.textContent = 'atualizando…';
+      try {
+        // update summary opportunistically (kept lightweight)
+        let summary = null;
+        try {
+          summary = await fetchSummary();
+          renderSummary(summary);
+        } catch (_) {}
+        const logs = await fetchLogs();
+        render(logs);
+
+        // Check if bot is stopped and eternal mode, redirect to new bot
+        if (summary && summary.status === 'stopped') {
+          try {
+            const active = await fetchActiveBot();
+            if (active && active.bot_id && active.bot_id !== bot) {
+              const newUrl = new URL(window.location.href);
+              newUrl.searchParams.set('bot', active.bot_id);
+              window.location.href = newUrl.href;
+              return; // stop further processing
+            }
+          } catch (_) {}
+        }
+
+        // Update progress bar based on entry/targets + latest price in logs
+        const latestPrice = extractLatestPrice(logs);
+        updateProgressBar(summary, latestPrice);
+
+        // Render the COBOL gauge panel the user wants (ENTRY/CURRENT/P&L/etc.)
+        try { renderGauge(summary, logs); } catch (_) {}
+      } catch (e) {
+        statusEl.textContent = `erro: ${String(e.message || e)}`;
+      }
+    }
+
+    function startAuto() {
+      stopAuto();
+      timer = setInterval(tick, 2000);
+    }
+    function stopAuto() {
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnRefresh').addEventListener('click', () => tick());
+    document.getElementById('chkAuto').addEventListener('change', (e) => {
+      if (e.target.checked) startAuto();
+      else stopAuto();
+    });
+
+    // primeira carga
+    tick();
+    startAuto();
+  </script>
+</body>
+</html>

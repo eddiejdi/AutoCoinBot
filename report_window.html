@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trades</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0a0a;
+      --bg2: #0d1117;
+      --panel: var(--bg2);
+      --panel2: color-mix(in srgb, var(--bg2) 70%, var(--bg) 30%);
+      --hdr_bg: var(--panel2);
+      --border: #33ff33;
+      --accent: #00ffff;
+      --text: #c9d1d9;
+      --text2: #aaffaa;
+      --muted: #8b949e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --success: #22c55e;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      font-family: "Courier New", monospace;
+      color: var(--text);
+    }
+
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 16px; }
+    .card { border: 2px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); }
+    .hdr { padding: 12px 14px; background: var(--hdr_bg); border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent); display: flex; justify-content: space-between; align-items: center; }
+    .title { color: var(--accent); font-weight: 700; }
+    .meta { color: var(--text2); font-size: 12px; }
+
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid color-mix(in srgb, var(--border) 20%, transparent); background: var(--panel2); }
+    .btn { background: var(--accent); color: #fff; border: 0; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; }
+    .btn:active { transform: translateY(1px); }
+
+    .tabs { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid color-mix(in srgb, var(--border) 20%, transparent); background: var(--panel2); }
+    .tabBtn { background: transparent; border: 1px solid color-mix(in srgb, var(--border) 35%, transparent); color: var(--text2); padding: 8px 12px; border-radius: 999px; cursor: pointer; font-weight: 700; }
+    .tabBtn.active { background: var(--accent); color: #fff; border-color: transparent; }
+
+    .panel { display: block; }
+    .panel.hidden { display: none; }
+
+    select { background: var(--bg); color: var(--text); border: 1px solid color-mix(in srgb, var(--border) 35%, transparent); border-radius: 6px; padding: 7px 10px; font-family: inherit; }
+
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 14px; }
+    .chartCard { border: 1px solid color-mix(in srgb, var(--border) 25%, transparent); border-radius: 10px; overflow: hidden; background: color-mix(in srgb, var(--panel) 80%, var(--bg) 20%); }
+    .chartHdr { padding: 8px 10px; color: var(--text2); font-size: 12px; border-bottom: 1px solid color-mix(in srgb, var(--border) 18%, transparent); background: var(--panel2); }
+    canvas { width: 100%; height: 220px; display: block; background: var(--panel); }
+
+    /* Top navigation */
+    .topnav {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px 14px;
+      margin: 0 0 12px 0;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+    }
+    .topnav .btn {
+      text-decoration: none;
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+    }
+    .chk { display: inline-flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text2); }
+    .input { display: inline-flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text2); }
+    input[type="text"] { background: var(--bg); color: var(--text); border: 1px solid color-mix(in srgb, var(--border) 35%, transparent); border-radius: 6px; padding: 7px 10px; font-family: inherit; }
+
+    .status { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+    .tableWrap { padding: 12px 14px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th { position: sticky; top: 0; background: var(--panel2); z-index: 1; border-bottom: 2px solid color-mix(in srgb, var(--border) 40%, transparent); }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--border) 18%, transparent); }
+
+    tr.real_exec { background: color-mix(in srgb, var(--success) 15%, transparent); }
+    tr.real_noexec { background: color-mix(in srgb, var(--warning) 15%, transparent); }
+    tr.dry { background: transparent; }
+
+    .muted { color: var(--muted); }
+    .mono { font-family: "Courier New", monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topnav" role="navigation" aria-label="Navegação">
+      <a class="btn" id="navHome" href="#">🏠 Home</a>
+      <a class="btn" id="navMonitor" href="#">🪟 Monitor</a>
+      <a class="btn" id="navReport" href="#">📑 Relatório</a>
+      <span class="status" id="navHint" style="margin-left:auto;">—</span>
+    </div>
+    <!-- Tabs + controls (required by the page JS) -->
+    <div class="tabs" role="tablist" style="margin-bottom:12px;">
+      <button id="tabTrades" class="tabBtn active" role="tab" aria-selected="true">📈 Trades</button>
+      <button id="tabLearning" class="tabBtn" role="tab" aria-selected="false">🧠 Aprendizado</button>
+      <div style="flex:1"></div>
+      <div class="input" style="align-items:center;">
+        <label class="chk" style="margin-right:8px;"><input type="checkbox" id="chkOnlyReal" /> Somente reais</label>
+        <label class="input" style="margin-right:8px;">Bot: <input type="text" id="inpBot" style="margin-left:6px; padding:6px 8px;" /></label>
+        <button class="btn" id="btnRefreshTrades">🔃 Atualizar</button>
+      </div>
+      <span class="status" id="status" style="margin-left:8px;">—</span>
+      <span class="muted" id="caption" style="margin-left:12px; font-size:12px;">—</span>
+    </div>
+
+    <div id="panelTrades" class="panel">
+    <div class="tableWrap">
+      <div class="chartCard" style="margin-bottom:18px;">
+        <div class="chartHdr">Evolução patrimonial (USDT acumulado)</div>
+        <canvas id="cvEquityLine" width="900" height="220"></canvas>
+      </div>
+      <div class="chartCard" style="margin-bottom:18px;">
+        <div class="chartHdr">Evolução por moeda e total</div>
+        <canvas id="cvEquityCoins" width="900" height="220"></canvas>
+      </div>
+      <table aria-label="Trades">
+        <thead>
+          <tr>
+            <th>Data/Hora</th>
+            <th>Símbolo</th>
+            <th>Side</th>
+            <th class="mono">Preço</th>
+            <th class="mono">Size</th>
+            <th class="mono">Funds</th>
+            <th class="mono">Profit</th>
+            <th class="mono">Commission</th>
+            <th>Real</th>
+            <th>Efetivada</th>
+            <th class="mono">Order ID</th>
+            <th>Bot ID</th>
+            <th>Strategy</th>
+            <th class="mono">Trade ID</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="14" class="muted">Carregando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+      </div>
+      </div>
+
+        <div class="panel hidden" id="panelLearning" role="tabpanel">
+        <div class="row">
+          <button class="btn" id="btnRefreshLearning">🔃 Refresh</button>
+          <label class="input">Símbolo:
+            <select id="selLearnSymbol"></select>
+          </label>
+          <label class="input">Parâmetro:
+            <select id="selLearnParam"></select>
+          </label>
+          <span class="muted" id="learnSummary">—</span>
+        </div>
+
+        <div class="charts">
+          <div class="chartCard">
+            <div class="chartHdr">Média de reward por parâmetro</div>
+            <canvas id="cvLearnBars" width="900" height="260"></canvas>
+          </div>
+          <div class="chartCard">
+            <div class="chartHdr">Reward ao longo do tempo (parâmetro selecionado)</div>
+            <canvas id="cvLearnLine" width="900" height="260"></canvas>
+          </div>
+        </div>
+
+        <div class="tableWrap">
+          <div class="muted" style="margin: 0 0 8px 0;">Estatísticas</div>
+          <table aria-label="Aprendizado - stats">
+            <thead>
+              <tr>
+                <th class="mono">Param</th>
+                <th class="mono">N</th>
+                <th class="mono">Mean Reward</th>
+              </tr>
+            </thead>
+            <tbody id="learnStatsBody">
+              <tr><td colspan="3" class="muted">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+        async function fetchEquity() {
+          const u = new URL('/api/equity/history', window.location.origin);
+          const r = await fetch(u.toString(), { cache: 'no-store' });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const data = await r.json();
+          return data.rows || [];
+        }
+
+        function drawEquity(canvas, rows) {
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          const { w, h } = fitCanvasToCss(canvas);
+          ctx.clearRect(0, 0, w, h);
+
+          if (!Array.isArray(rows) || rows.length === 0) {
+            // Draw a test chart
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(50, h - 50);
+            ctx.lineTo(w - 50, 50);
+            ctx.stroke();
+            ctx.fillStyle = '#888';
+            ctx.font = '14px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('Sem dados de patrimônio (teste)', w / 2, h / 2);
+            return;
+          }
+          // Defensive: sanitize data
+          rows = rows.filter(r => r && typeof r.timestamp === 'number' && typeof r.balance_usdt === 'number');
+          if (rows.length === 0) {
+            ctx.fillStyle = '#888';
+            ctx.font = '14px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('Sem dados válidos.', w / 2, h / 2);
+            return;
+          }
+
+          const pad = 28;
+          const innerW = w - pad * 2;
+          const innerH = h - pad * 2;
+          if (innerW <= 10 || innerH <= 10) return;
+
+          ctx.strokeStyle = '#22c55e';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          for (let j = 0; j < rows.length; j++) {
+            const px = rows[j].timestamp;
+            const py = rows[j].balance_usdt;
+            const x = pad + ((px - rows[0].timestamp) / (rows[rows.length-1].timestamp - rows[0].timestamp)) * innerW;
+            const y = h - pad - ((py) / Math.max(1, ...rows.map(r=>r.balance_usdt))) * innerH;
+            if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+
+        async function tickEquity() {
+          try {
+            const rows = await fetchEquity();
+            drawEquity(document.getElementById('cvEquityLine'), rows);
+          } catch (e) {
+            console.error('tickEquity error:', e);
+          }
+        }
+
+        async function fetchEquityCoins() {
+          const u = new URL('/api/equity/coins', window.location.origin);
+          const r = await fetch(u.toString(), { cache: 'no-store' });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const data = await r.json();
+          return data.rows || [];
+        }
+
+        function drawEquityCoins(canvas, rows) {
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          const { w, h } = fitCanvasToCss(canvas);
+          ctx.clearRect(0, 0, w, h);
+
+          if (!Array.isArray(rows) || rows.length === 0) {
+            ctx.fillStyle = '#888';
+            ctx.font = '14px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('Aguardando dados de patrimônio...', w / 2, h / 2);
+            return;
+          }
+          // Defensive: sanitize data
+          rows = rows.filter(r => r && typeof r.timestamp === 'number' && typeof r.balances === 'object' && r.balances);
+          if (rows.length === 0) {
+            ctx.fillStyle = '#888';
+            ctx.font = '14px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('Sem dados válidos.', w / 2, h / 2);
+            return;
+          }
+
+          const pad = 28;
+          const innerW = w - pad * 2;
+          const innerH = h - pad * 2;
+          if (innerW <= 10 || innerH <= 10) return;
+
+          // Prepare series: one for each coin, one for total
+          const coins = {};
+          let total = [];
+          let allY = [];
+          for (const r of rows) {
+            const ts = Number(r.timestamp);
+            for (const k in r.balances) {
+              if (!coins[k]) coins[k] = [];
+              const y = Number(r.balances[k]);
+              coins[k].push({ x: ts, y: y });
+              allY.push(y);
+            }
+            const totY = Number(r.total);
+            total.push({ x: ts, y: totY });
+            allY.push(totY);
+          }
+          const maxY = Math.max(1, ...allY);
+          // Colors for coins
+          const palette = ['#0000ff','#ff0000','#ffff00','#ff8800','#00ff88','#8888ff','#ff4444','#44ff44','#4444ff'];
+          let i = 0;
+          for (const coin in coins) {
+            ctx.strokeStyle = palette[i % palette.length];
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            for (let j = 0; j < coins[coin].length; j++) {
+              const px = coins[coin][j].x;
+              const py = coins[coin][j].y;
+              const x = pad + ((px - rows[0].timestamp) / (rows[rows.length-1].timestamp - rows[0].timestamp)) * innerW;
+              const y = h - pad - (py / maxY) * innerH;
+              if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            i++;
+          }
+          // Draw total
+          ctx.strokeStyle = '#22c55e';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          for (let j = 0; j < total.length; j++) {
+            const px = total[j].x;
+            const py = total[j].y;
+            const x = pad + ((px - rows[0].timestamp) / (rows[rows.length-1].timestamp - rows[0].timestamp)) * innerW;
+            const y = h - pad - (py / maxY) * innerH;
+            if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          // Draw legend
+          const legendX = w - 120;
+          const legendY = h - 100;
+          ctx.fillStyle = 'rgba(0,0,0,0.7)';
+          ctx.fillRect(legendX - 10, legendY - 10, 110, (Object.keys(coins).length + 1) * 20 + 10);
+          let li = 0;
+          i = 0;
+          for (const coin in coins) {
+            ctx.fillStyle = palette[i % palette.length];
+            ctx.fillRect(legendX, legendY + li * 20, 10, 10);
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px "Courier New", monospace';
+            ctx.fillText(coin, legendX + 15, legendY + li * 20 + 10);
+            li++;
+            i++;
+          }
+          // Total
+          ctx.fillStyle = '#22c55e';
+          ctx.fillRect(legendX, legendY + li * 20, 10, 10);
+          ctx.fillStyle = '#fff';
+          ctx.fillText('TOTAL', legendX + 15, legendY + li * 20 + 10);
+        }
+
+        async function tickEquityCoins() {
+          try {
+            const rows = await fetchEquityCoins();
+            drawEquityCoins(document.getElementById('cvEquityCoins'), rows);
+          } catch (e) {
+            // ignore errors for now
+          }
+        }
+    // Top-nav links (same tab)
+    (function initTopNav(){
+      try {
+        const u = new URL(window.location.href);
+        const q = u.search || '';
+        const bot = u.searchParams.get('bot');
+
+        // Home should go back to the Streamlit app, not this report server.
+        const homeRaw = u.searchParams.get('home') || '/?view=dashboard';
+        let home = homeRaw;
+        try {
+          if (!/^https?:\/\//i.test(String(homeRaw || ''))) {
+            if (String(homeRaw).startsWith('/')) {
+              home = `${u.protocol}//${u.hostname}:8501${homeRaw}`;
+            } else if (String(homeRaw).startsWith('?')) {
+              home = `${u.protocol}//${u.hostname}:8501/${homeRaw}`;
+            }
+          }
+        } catch (_) {}
+
+        const elHome = document.getElementById('navHome');
+        const elMon = document.getElementById('navMonitor');
+        const elRep = document.getElementById('navReport');
+        const elHint = document.getElementById('navHint');
+
+        if (elHome) {
+          try { elHome.href = home; } catch (_) {}
+          elHome.addEventListener('click', (ev) => {
+            try { ev.preventDefault(); } catch (_) {}
+            try {
+              window.top.location.href = home;
+            } catch (_) {
+              window.location.href = home;
+            }
+          });
+        }
+
+        if (elMon) elMon.href = '/monitor' + q;
+        if (elRep) elRep.href = '/report' + q;
+
+        if (elHint) {
+          elHint.textContent = bot ? ('bot ' + String(bot).slice(0, 12) + '…') : '—';
+        }
+      } catch (_) {}
+    })();
+
+    function qs(name) {
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name);
+    }
+
+    // Apply theme passed from main UI (same keys as monitor)
+    function applyThemeFromQuery() {
+      const safeColor = (v) => {
+        if (!v) return null;
+        const s = String(v).trim();
+        if (/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(s)) return s;
+        if (/^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/.test(s)) return s;
+        if (/^rgba\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*(0|0?\.\d+|1(\.0+)?)\s*\)$/.test(s)) return s;
+        return null;
+      };
+      const safeGradient = (v) => {
+        if (!v) return null;
+        const s = String(v).trim();
+        if (!s.startsWith('linear-gradient(') || !s.endsWith(')')) return null;
+        if (!/^[a-zA-Z0-9#(),.%\s-]+$/.test(s)) return null;
+        return s;
+      };
+
+      const set = (cssVar, qsKey) => {
+        const v = safeColor(qs(qsKey));
+        if (v) document.documentElement.style.setProperty(cssVar, v);
+      };
+      const setGradient = (cssVar, qsKey) => {
+        const v = safeGradient(qs(qsKey));
+        if (v) document.documentElement.style.setProperty(cssVar, v);
+      };
+
+      set('--bg', 't_bg');
+      set('--bg2', 't_bg2');
+      set('--border', 't_border');
+      set('--accent', 't_accent');
+      set('--text', 't_text');
+      set('--text2', 't_text2');
+      set('--muted', 't_muted');
+      set('--warning', 't_warning');
+      set('--error', 't_error');
+      set('--success', 't_success');
+      setGradient('--hdr_bg', 't_header_bg');
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function fmtTs(ts) {
+      if (!ts) return '';
+      try {
+        const d = new Date(Number(ts) * 1000);
+        if (Number.isNaN(d.getTime())) return String(ts);
+        const pad = (n) => String(n).padStart(2,'0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      } catch (_) {
+        return String(ts);
+      }
+    }
+
+    function toNum(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function setActiveTab(name) {
+      const isTrades = name === 'trades';
+      const tabT = document.getElementById('tabTrades');
+      const tabL = document.getElementById('tabLearning');
+      const pT = document.getElementById('panelTrades');
+      const pL = document.getElementById('panelLearning');
+
+      if (tabT) {
+        tabT.classList.toggle('active', isTrades);
+        tabT.setAttribute('aria-selected', isTrades ? 'true' : 'false');
+      }
+      if (tabL) {
+        tabL.classList.toggle('active', !isTrades);
+        tabL.setAttribute('aria-selected', !isTrades ? 'true' : 'false');
+      }
+      if (pT) pT.classList.toggle('hidden', !isTrades);
+      if (pL) pL.classList.toggle('hidden', isTrades);
+
+      window.__activeTab = name;
+    }
+
+    async function fetchLearningSymbols() {
+      const u = new URL('/api/learning/symbols', window.location.origin);
+      const r = await fetch(u.toString(), { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const arr = Array.isArray(data) ? data : (Array.isArray(data?.symbols) ? data.symbols : []);
+      return arr.map(String).filter(Boolean);
+    }
+
+    async function fetchLearningStats(symbol, param) {
+      const u = new URL('/api/learning/stats', window.location.origin);
+      if (symbol) u.searchParams.set('symbol', symbol);
+      if (param != null && String(param).trim() !== '') u.searchParams.set('param', String(param));
+      const r = await fetch(u.toString(), { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const rows = Array.isArray(data) ? data : (Array.isArray(data?.rows) ? data.rows : []);
+      return rows;
+    }
+
+    async function fetchLearningHistory(symbol, param, limit) {
+      const u = new URL('/api/learning/history', window.location.origin);
+      if (symbol) u.searchParams.set('symbol', symbol);
+      if (param != null && String(param).trim() !== '') u.searchParams.set('param', String(param));
+      u.searchParams.set('limit', String(limit || 400));
+      const r = await fetch(u.toString(), { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const rows = Array.isArray(data) ? data : (Array.isArray(data?.rows) ? data.rows : []);
+      return rows;
+    }
+
+    function fitCanvasToCss(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const w = Math.max(1, Math.round(rect.width * dpr));
+      const h = Math.max(1, Math.round(rect.height * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      return { w, h, dpr };
+    }
+
+    function drawBars(canvas, labels, values) {
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const { w, h } = fitCanvasToCss(canvas);
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = 28;
+      const innerW = w - pad * 2;
+      const innerH = h - pad * 2;
+      if (innerW <= 10 || innerH <= 10) return;
+
+      const vals = values.map((v) => (Number.isFinite(Number(v)) ? Number(v) : 0));
+      const maxAbs = Math.max(1e-9, ...vals.map((v) => Math.abs(v)));
+
+      // axes
+      ctx.strokeStyle = 'rgba(170,255,170,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, pad);
+      ctx.lineTo(pad, h - pad);
+      ctx.lineTo(w - pad, h - pad);
+      ctx.stroke();
+
+      const n = Math.max(1, vals.length);
+      const gap = Math.max(4, innerW * 0.02);
+      const barW = Math.max(6, (innerW - gap * (n - 1)) / n);
+
+      for (let i = 0; i < n; i++) {
+        const v = vals[i];
+        const x = pad + i * (barW + gap);
+        const y0 = h - pad;
+        const barH = (Math.abs(v) / maxAbs) * (innerH * 0.9);
+        const y = y0 - barH;
+
+        ctx.fillStyle = v >= 0 ? 'rgba(34,197,94,0.65)' : 'rgba(239,68,68,0.65)';
+        ctx.fillRect(x, y, barW, barH);
+
+        // label (trim)
+        const lab = String(labels[i] ?? '').slice(0, 10);
+        ctx.fillStyle = 'rgba(201,209,217,0.85)';
+        ctx.font = '12px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(lab, x + barW / 2, h - pad + 16);
+      }
+    }
+
+    function drawLine(canvas, points) {
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const { w, h } = fitCanvasToCss(canvas);
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = 28;
+      const innerW = w - pad * 2;
+      const innerH = h - pad * 2;
+      if (innerW <= 10 || innerH <= 10) return;
+
+      const xs = points.map((p) => Number(p.x)).filter((n) => Number.isFinite(n));
+      const ys = points.map((p) => Number(p.y)).filter((n) => Number.isFinite(n));
+      if (!xs.length || !ys.length) {
+        ctx.fillStyle = 'rgba(139,148,158,0.9)';
+        ctx.font = '12px "Courier New", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('Sem dados ainda.', pad, pad + 12);
+        return;
+      }
+
+      const xMin = Math.min(...xs);
+      const xMax = Math.max(...xs);
+      const yMin = Math.min(...ys);
+      const yMax = Math.max(...ys);
+
+      const xSpan = Math.max(1e-9, xMax - xMin);
+      const ySpan = Math.max(1e-9, yMax - yMin);
+
+      // axes
+      ctx.strokeStyle = 'rgba(170,255,170,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, pad);
+      ctx.lineTo(pad, h - pad);
+      ctx.lineTo(w - pad, h - pad);
+      ctx.stroke();
+
+      // zero line if visible range crosses 0
+      if (yMin < 0 && yMax > 0) {
+        const y0 = h - pad - ((0 - yMin) / ySpan) * innerH;
+        ctx.strokeStyle = 'rgba(0,255,255,0.25)';
+        ctx.beginPath();
+        ctx.moveTo(pad, y0);
+        ctx.lineTo(w - pad, y0);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = 'rgba(0,255,255,0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i++) {
+        const px = Number(points[i].x);
+        const py = Number(points[i].y);
+        if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
+        const x = pad + ((px - xMin) / xSpan) * innerW;
+        const y = h - pad - ((py - yMin) / ySpan) * innerH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    function setClock() {
+      try {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2,'0');
+        document.getElementById('clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      } catch (_) {}
+    }
+
+    async function fetchTrades(bot, onlyReal) {
+      const u = new URL('/api/trades', window.location.origin);
+      u.searchParams.set('limit', '2000');
+      if (bot) u.searchParams.set('bot', bot);
+      if (onlyReal) u.searchParams.set('only_real', '1');
+      const r = await fetch(u.toString(), { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      if (!Array.isArray(data)) return [];
+      return data;
+    }
+
+    function classifyRow(r) {
+      const dry = !!(r.dry_run === 1 || r.dry_run === true);
+      const real = !dry;
+      const orderId = (r.order_id != null) ? String(r.order_id).trim() : '';
+      const exec = !!(real && orderId);
+      if (!real) return 'dry';
+      return exec ? 'real_exec' : 'real_noexec';
+    }
+
+    function renderTable(rows) {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+      if (!Array.isArray(rows) || rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="14" class="muted">Nenhum trade encontrado no banco.</td></tr>';
+        return;
+      }
+      // Defensive: sanitize data
+      rows = rows.filter(r => r && typeof r.timestamp !== 'undefined');
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="14" class="muted">Nenhum trade válido encontrado.</td></tr>';
+        return;
+      }
+
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+        tr.className = classifyRow(r);
+
+        const dry = !!(r.dry_run === 1 || r.dry_run === true);
+        const real = !dry;
+        const orderId = (r.order_id != null) ? String(r.order_id).trim() : '';
+        const exec = !!(real && orderId);
+
+        const cells = [
+          fmtTs(r.timestamp),
+          r.symbol ?? '',
+          (r.side ?? '').toString().toUpperCase(),
+          (toNum(r.price) != null) ? toNum(r.price).toFixed(8) : '',
+          (toNum(r.size) != null) ? toNum(r.size).toFixed(10) : '',
+          (toNum(r.funds) != null) ? toNum(r.funds).toFixed(8) : '',
+          (toNum(r.profit) != null) ? toNum(r.profit).toFixed(8) : '',
+          (toNum(r.commission) != null) ? toNum(r.commission).toFixed(8) : '',
+          real ? '1' : '0',
+          exec ? '1' : '0',
+          r.order_id ?? '',
+          r.bot_id ?? '',
+          r.strategy ?? '',
+          r.id ?? '',
+        ];
+
+        for (let i = 0; i < cells.length; i++) {
+          const td = document.createElement('td');
+          td.innerHTML = escapeHtml(String(cells[i] ?? ''));
+          if ([3,4,5,6,7,10,13].includes(i)) td.classList.add('mono');
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function tickTrades() {
+      const status = document.getElementById('status');
+      const caption = document.getElementById('caption');
+      const onlyReal = document.getElementById('chkOnlyReal').checked;
+      const bot = (document.getElementById('inpBot').value || '').trim();
+
+      status.textContent = 'atualizando trades…';
+      try {
+        const rows = await fetchTrades(bot, onlyReal);
+        renderTable(rows);
+        caption.textContent = `Mostrando até 2000 trades${bot ? ' do bot ' + bot : ''}${onlyReal ? ' (somente reais)' : ''} (mais recentes primeiro).`;
+        status.textContent = `ok — ${rows.length} trades`;
+      } catch (e) {
+        status.textContent = `erro: ${String(e.message || e)}`;
+      }
+    }
+
+    function renderLearningStatsTable(stats) {
+      const tbody = document.getElementById('learnStatsBody');
+      tbody.innerHTML = '';
+      if (!stats.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="muted">Sem dados de aprendizado ainda.</td></tr>';
+        return;
+      }
+      for (const s of stats) {
+        const tr = document.createElement('tr');
+        const param = s.param ?? s.param_value ?? s.value ?? '';
+        const n = s.n ?? s.count ?? '';
+        const mean = s.mean_reward ?? s.mean ?? s.avg_reward ?? '';
+        const cells = [param, n, (toNum(mean) != null ? toNum(mean).toFixed(6) : mean)];
+        for (let i = 0; i < cells.length; i++) {
+          const td = document.createElement('td');
+          td.innerHTML = escapeHtml(String(cells[i] ?? ''));
+          td.classList.add('mono');
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+    }
+
+    function setSelectOptions(selectEl, values, keepValue) {
+      if (!selectEl) return;
+      const cur = keepValue ? selectEl.value : '';
+      selectEl.innerHTML = '';
+      for (const v of values) {
+        const opt = document.createElement('option');
+        opt.value = String(v);
+        opt.textContent = String(v);
+        selectEl.appendChild(opt);
+      }
+      if (keepValue && values.includes(cur)) selectEl.value = cur;
+    }
+
+    async function tickLearning() {
+      const status = document.getElementById('status');
+      const selSym = document.getElementById('selLearnSymbol');
+      const selParam = document.getElementById('selLearnParam');
+      const summary = document.getElementById('learnSummary');
+
+      status.textContent = 'atualizando aprendizado…';
+      try {
+        // symbols
+        const symbols = await fetchLearningSymbols();
+        setSelectOptions(selSym, symbols, true);
+        const symbol = (selSym && selSym.value) ? selSym.value : (symbols[0] || '');
+        if (selSym && symbol && selSym.value !== symbol) selSym.value = symbol;
+
+        if (!symbol) {
+          renderLearningStatsTable([]);
+          drawBars(document.getElementById('cvLearnBars'), [], []);
+          drawLine(document.getElementById('cvLearnLine'), []);
+          if (summary) summary.textContent = 'Sem dados de aprendizado ainda.';
+          status.textContent = 'ok — sem dados';
+          return;
+        }
+
+        // param selection (param_name)
+        const paramChoices = [
+          'take_profit_trailing_pct',
+          'flow_min_confidence',
+          'flow_max_spread_bps',
+          'flow_trade_cooldown_s',
+        ];
+        setSelectOptions(selParam, paramChoices, true);
+        const param = (selParam && selParam.value) ? selParam.value : (paramChoices[0] || 'take_profit_trailing_pct');
+        if (selParam && param && selParam.value !== param) selParam.value = param;
+
+        // stats
+        const stats = await fetchLearningStats(symbol, param);
+        renderLearningStatsTable(stats);
+
+        // history for selected param
+        const hist = await fetchLearningHistory(symbol, param, 400);
+        const points = hist
+          .map((h) => {
+            const ts = h.ts ?? h.timestamp ?? h.created_at ?? h.time;
+            const reward = h.reward ?? h.profit_pct ?? h.value;
+            return { x: Number(ts), y: Number(reward) };
+          })
+          .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
+          .sort((a, b) => a.x - b.x);
+
+        // charts
+        const barLabels = stats.map((s) => String(s.param_value ?? s.param ?? s.value ?? ''));
+        const barVals = stats.map((s) => Number(s.mean_reward ?? s.mean ?? s.avg_reward ?? 0));
+        drawBars(document.getElementById('cvLearnBars'), barLabels, barVals);
+        drawLine(document.getElementById('cvLearnLine'), points);
+
+        const totalN = stats.reduce((acc, s) => acc + (Number(s.n ?? s.count ?? 0) || 0), 0);
+        if (summary) summary.textContent = symbol ? `symbol ${symbol} — ${param} — ${totalN} amostras` : '—';
+        status.textContent = 'ok — aprendizado';
+      } catch (e) {
+        status.textContent = `erro: ${String(e.message || e)}`;
+      }
+    }
+
+    async function tick() {
+      const active = window.__activeTab || 'trades';
+      if (active === 'learning') return tickLearning();
+      return tickTrades();
+    }
+
+    // init
+    applyThemeFromQuery();
+    setClock();
+    setInterval(setClock, 500);
+
+    // tabs
+    setActiveTab('trades');
+    document.getElementById('tabTrades').addEventListener('click', () => { setActiveTab('trades'); tick(); });
+    document.getElementById('tabLearning').addEventListener('click', () => { setActiveTab('learning'); tick(); });
+
+    // read query defaults
+    const botQ = qs('bot');
+    const onlyRealQ = String(qs('only_real') || '').trim().toLowerCase();
+    if (botQ) document.getElementById('inpBot').value = botQ;
+    if (['1','true','yes','y','on'].includes(onlyRealQ)) document.getElementById('chkOnlyReal').checked = true;
+
+    document.getElementById('btnRefreshTrades').addEventListener('click', () => { tickEquity(); tickEquityCoins(); tickTrades(); });
+    document.getElementById('chkOnlyReal').addEventListener('change', () => { tickEquity(); tickEquityCoins(); tick(); });
+
+    document.getElementById('btnRefreshLearning').addEventListener('click', () => tickLearning());
+    document.getElementById('selLearnSymbol').addEventListener('change', () => tickLearning());
+    document.getElementById('selLearnParam').addEventListener('change', () => tickLearning());
+
+    tickEquity();
+    tickEquityCoins();
+    tickEquityCoins();
+    tick();
+  </script>
+</body>
+</html>

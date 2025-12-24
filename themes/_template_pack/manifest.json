@@ -1,0 +1,33 @@
+{
+  "name": "Template Pack",
+  "version": 1,
+  "backgrounds": {
+    "default": "my_background_01"
+  },
+  "characters": {
+    "mascot": {
+      "type": "png",
+      "path": "characters/mascot.png"
+    }
+  },
+  "ui": {
+    "progress_block": {
+      "type": "png",
+      "path": "ui/qblock.png"
+    }
+  },
+  "tiles": {
+    "chr_4bpp": {
+      "path": "tiles/tileset.chr",
+      "format": "snes_4bpp",
+      "tileSize": [8, 8]
+    }
+  },
+  "palettes": {
+    "main": {
+      "path": "palettes/main.pal",
+      "format": "snes_bgr555"
+    }
+  },
+  "notes": "Place your own licensed/owned assets into the folders and update this manifest."
+}

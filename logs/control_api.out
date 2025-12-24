@@ -1,0 +1,18 @@
+nohup: ignorando entrada
+2025-12-22 21:31:21,734 | INFO | kucoin_app.api | ✅ Loaded .env from /home/edenilson/Downloads/kucoin_app/.env
+2025-12-22 21:31:21,764 | INFO | api | ✅ Loaded .env from /home/edenilson/Downloads/kucoin_app/.env
+CONTROL_API_PORT 8765
+[BOT_CONTROLLER] /home/edenilson/Downloads/kucoin_app/venv/bin/python -u /home/edenilson/Downloads/kucoin_app/bot_core.py --bot-id bot_13d389c2 --symbol BTC-USDT --entry 0.0 --mode buy --targets=-1:0.5,-2:0.5 --interval 5.0 --size 0.0 --funds 100.0 --reserve-pct 50.0 --target-profit-pct 2.0 --dry
+2025-12-22 21:31:38,934 | INFO | kucoin_app.database | Database initialized successfully
+2025-12-22 21:31:38,947 | INFO | kucoin_app.database | Bot session created: bot_13d389c2 (PID: 4162078)
+[BOT_CONTROLLER] Bot bot_13d389c2 iniciado com PID 4162078 (Reserve: 50.0%, Lucro: 2.0%)
+127.0.0.1 - - [22/Dec/2025 21:31:38] "POST /api/start HTTP/1.1" 200 -
+2025-12-22 21:31:40,207 | INFO | kucoin_app.database | Database initialized successfully
+127.0.0.1 - - [22/Dec/2025 21:31:40] "POST /api/stop HTTP/1.1" 200 -
+2025-12-23 09:57:12,088 | INFO | kucoin_app.database | Database initialized successfully
+127.0.0.1 - - [23/Dec/2025 09:57:12] "GET /api/logs?bot=bot_54abb52f&limit=50 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Dec/2025 09:57:16] "GET /report?bot=bot_54abb52f&id=66c777f4-03c3-4a54-bb84-4ca490ed8a90&vscodeBrowserReqId=1766494635988 HTTP/1.1" 200 -
+2025-12-23 09:57:16,070 | INFO | kucoin_app.database | Database initialized successfully
+127.0.0.1 - - [23/Dec/2025 09:57:16] "GET /api/trades?limit=2000&bot=bot_54abb52f HTTP/1.1" 200 -
+2025-12-23 09:58:04,510 | INFO | kucoin_app.database | Database initialized successfully
+127.0.0.1 - - [23/Dec/2025 09:58:04] "POST /api/stop HTTP/1.1" 200 -
