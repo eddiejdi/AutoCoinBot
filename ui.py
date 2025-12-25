@@ -5041,13 +5041,13 @@ def _render_full_ui(controller=None):
                     for b in list(active_bots)
                     if bool(st.session_state.get(f"sel_kill_{b}", False))
                 ]
-                    if not selected:
-                        st.warning("Nenhum bot selecionado para Kill -9.")
-                    else:
-                        killed_any = False
-                        killed_ids: list[str] = []
-                        for bot_id in selected:
-                            killed = False
+                if not selected:
+                    st.warning("Nenhum bot selecionado para Kill -9.")
+                else:
+                    killed_any = False
+                    killed_ids: list[str] = []
+                    for bot_id in selected:
+                        killed = False
 
                             bot_info = controller.registry.get_bot_info(bot_id)
                             sess = db_sessions_by_id.get(str(bot_id))
