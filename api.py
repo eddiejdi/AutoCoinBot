@@ -48,6 +48,12 @@ except ImportError:
     logger.warning("⚠️ python-dotenv not installed, using system env vars only")
 
 def _get_secret(key, default=""):
+    # First try environment variables (for development)
+    env_value = os.getenv(key, None)
+    if env_value is not None:
+        return env_value
+    
+    # Then try streamlit secrets
     try:
         import streamlit as st
         # Assuming secrets are in sections, but for simplicity, try flat first
@@ -59,7 +65,7 @@ def _get_secret(key, default=""):
                 return st.secrets[section][key]
         return default
     except (ImportError, AttributeError):
-        return os.getenv(key, default)
+        return default
 
 # ====================== API CREDENTIALS ======================
 # Suporta tanto V1 quanto V2

@@ -244,6 +244,69 @@ class DatabaseManager:
             for r in rows
         ]
 
+    def get_trade_history_grouped(self, limit: int = 1000, bot_id: str = None, 
+                                 only_real: bool = False, group_by_order_id: bool = True):
+        """
+        Retorna histórico de trades com opções de filtro e agrupamento.
+        
+        Args:
+            limit: Número máximo de registros
+            bot_id: Filtrar por bot específico
+            only_real: Apenas trades reais (não dry-run)
+            group_by_order_id: Agrupar por order_id para deduplicar
+            
+        Returns:
+            Lista de dicionários com dados dos trades
+        """
+        conn = self.get_connection()
+        cur = conn.cursor()
+        
+        query = """
+            SELECT id, timestamp, symbol, side, price, size, funds, profit, 
+                   commission, order_id, bot_id, strategy, dry_run, metadata
+            FROM trades
+            WHERE 1=1
+        """
+        params = []
+        
+        if bot_id:
+            query += " AND bot_id = ?"
+            params.append(bot_id)
+            
+        if only_real:
+            query += " AND dry_run = 0"
+        
+        if group_by_order_id:
+            query += " GROUP BY order_id"
+        
+        query += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(limit)
+        
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        conn.close()
+        
+        # Converte para lista de dicts
+        return [
+            {
+                "id": r[0],
+                "timestamp": r[1],
+                "symbol": r[2],
+                "side": r[3],
+                "price": r[4],
+                "size": r[5],
+                "funds": r[6],
+                "profit": r[7],
+                "commission": r[8],
+                "order_id": r[9],
+                "bot_id": r[10],
+                "strategy": r[11],
+                "dry_run": r[12],
+                "metadata": r[13],
+            }
+            for r in rows
+        ]
+
     
     # --- BOT SESSIONS ---
     

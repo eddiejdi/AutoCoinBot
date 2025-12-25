@@ -220,13 +220,20 @@ class SidebarController:
         except Exception:
             pass
 
-    def render_balances(self):
-        st.sidebar.subheader("💰 Portfolio")
+    def render_balances(self, container=None):
+        """Render balances section"""
+        sidebar = container if container is not None else st.sidebar
 
         try:
+            # Check if API credentials are configured
+            if not hasattr(api, '_has_keys') or not api._has_keys():
+                sidebar.warning("⚠️ API credentials not configured")
+                sidebar.info("💡 Configure KUCOIN_API_KEY, KUCOIN_API_SECRET, and KUCOIN_API_PASSPHRASE in .env file")
+                return
+
             balances = api.get_balances()
             if not balances or len(balances) == 0:
-                st.sidebar.info("📭 Nenhum saldo disponível")
+                sidebar.info("📭 Nenhum saldo disponível")
                 return
 
             # Calcular valor total da carteira
@@ -235,17 +242,17 @@ class SidebarController:
             assets = portfolio["assets"]
             
             if total_usdt == 0:
-                st.sidebar.warning("⚠️ Saldo total é zero")
+                sidebar.warning("⚠️ Saldo total é zero")
                 return
             
             # 📊 Mostra saldo total de investimento
-            st.sidebar.markdown(f"### 📊 **${total_usdt:,.2f}**")
+            sidebar.markdown(f"### 📊 **${total_usdt:,.2f}**")
             
-            st.sidebar.markdown("<hr style='margin: 0.5rem 0'>", unsafe_allow_html=True)
+            sidebar.markdown("<hr style='margin: 0.5rem 0'>", unsafe_allow_html=True)
             
             # Listar cada ativo com P&L real
             if len(assets) == 0:
-                st.sidebar.info("Sem ativos com valor")
+                sidebar.info("Sem ativos com valor")
                 return
             
             # Separa USDT das outras moedas
@@ -258,7 +265,7 @@ class SidebarController:
                     value = asset["value_usdt"]
                     pct = (value / total_usdt) * 100 if total_usdt > 0 else 0
                     
-                    col1, col2, col3 = st.sidebar.columns([2, 2, 2])
+                    col1, col2, col3 = sidebar.columns([2, 2, 2])
                     with col1:
                         st.write("💵 **USDT**")
                     with col2:
@@ -269,7 +276,7 @@ class SidebarController:
             
             # Mostra cryptos com P&L
             if crypto_assets:
-                st.sidebar.markdown("<hr style='margin: 0.5rem 0'>", unsafe_allow_html=True)
+                sidebar.markdown("<hr style='margin: 0.5rem 0'>", unsafe_allow_html=True)
                 
                 for asset in crypto_assets:
                     try:
@@ -322,7 +329,7 @@ class SidebarController:
                             emoji_target = "📍"
                         
                         # Layout melhorado
-                        col1, col2 = st.sidebar.columns([3, 3])
+                        col1, col2 = sidebar.columns([3, 3])
                         
                         with col1:
                             st.write(f"💎 **{cur}**")
@@ -338,7 +345,7 @@ class SidebarController:
                             )
                         
                         # Linha de detalhe - Valor, Custo e % carteira
-                        col1, col2, col3 = st.sidebar.columns([2, 2, 2])
+                        col1, col2, col3 = sidebar.columns([2, 2, 2])
                         with col1:
                             st.caption(f"Valor: ${value_current:,.2f}")
                         with col2:
@@ -350,7 +357,7 @@ class SidebarController:
                             st.caption(f"{pct_portfólio:.1f}% carteira")
                         
                         # Linha de target - Preço Alvo, Distância e Meta
-                        col1, col2, col3 = st.sidebar.columns([2, 2, 2])
+                        col1, col2, col3 = sidebar.columns([2, 2, 2])
                         with col1:
                             if target_price > 0:
                                 st.caption(f"🎯 Alvo: ${target_price:,.2f}")
@@ -367,23 +374,25 @@ class SidebarController:
                         
                         # Linha resumida - Valor que precisa alcançar
                         # if target_price > 0:
-                        #     st.sidebar.markdown(f"💰 {cur} precisa alcançar **${target_price:,.2f}** para +{target_profit_pct:.1f}%")
+                        #     sidebar.markdown(f"💰 {cur} precisa alcançar **${target_price:,.2f}** para +{target_profit_pct:.1f}%")
                         
                         st.markdown("<hr style='margin: 0.3rem 0'>", unsafe_allow_html=True)
                         
                     except Exception as item_error:
-                        st.sidebar.warning(f"⚠️ Erro: {cur}")
+                        sidebar.warning(f"⚠️ Erro: {cur}")
                         continue
                     
         except Exception as e:
-            st.sidebar.error(f"❌ Erro ao carregar saldos")
-            st.sidebar.info("💡 Verifique API")
+            sidebar.error(f"❌ Erro ao carregar saldos")
+            sidebar.info("💡 Verifique API")
 
     # --------------------------------------------------
     # INPUTS DO BOT
     # --------------------------------------------------
-    def render_inputs(self):
-        st.sidebar.header("Controls")
+    def render_inputs(self, container=None):
+        """Render inputs section"""
+        sidebar = container if container is not None else st.sidebar
+        sidebar.header("Controls")
 
         symbol = st.text_input("Symbol", "BTC-USDT", key="symbol")
         
@@ -398,7 +407,7 @@ class SidebarController:
 
         st.selectbox(
             "Mode",
-            ["sell", "buy", "mixed"],
+            ["sell", "buy", "mixed", "flow"],
             key="mode",
         )
 
@@ -437,6 +446,19 @@ class SidebarController:
         
         # ===== CÁLCULO DE TARGETS E LUCRO PREVISTO =====
         self._render_target_preview()
+        
+        # ===== START N BOTS =====
+        st.divider()
+        st.markdown("**🤖 Multi-Bot Launch**")
+        st.number_input(
+            "Start N Bots",
+            min_value=1,
+            max_value=10,
+            value=1,
+            step=1,
+            help="Número de bots idênticos a iniciar simultaneamente",
+            key="num_bots",
+        )
         
         # ===== ETERNAL RUNNING MODE =====
         st.divider()
@@ -559,11 +581,13 @@ class SidebarController:
     # --------------------------------------------------
     # AÇÕES (SEM LÓGICA)
     # --------------------------------------------------
-    def render_actions(self):
-        st.sidebar.divider()
-        st.sidebar.subheader("🚀 Bot Control")
+    def render_actions(self, container=None):
+        """Render actions section"""
+        sidebar = container if container is not None else st.sidebar
+        sidebar.divider()
+        sidebar.subheader("🚀 Bot Control")
 
-        col1, col2 = st.sidebar.columns(2)
+        col1, col2 = sidebar.columns(2)
         
         with col1:
             start_real = st.button("▶️ START (REAL)", type="primary", key="start_real")
@@ -571,9 +595,10 @@ class SidebarController:
         with col2:
             kill_bot = st.button("🛑 KILL BOT", type="secondary", key="kill_bot")
 
-        start_dry = st.sidebar.button("🧪 START (DRY-RUN)", key="start_dry")
+        start_dry = sidebar.button("🧪 START (DRY-RUN)", key="start_dry")
 
-        return start_real, start_dry, kill_bot
+        num_bots = st.session_state.get("num_bots", 1)
+        return start_real, start_dry, kill_bot, num_bots
 
     # --------------------------------------------------
     # STATUS DO BOT
@@ -601,7 +626,7 @@ class SidebarController:
         with st.sidebar:
             # Obter status do bot
             status = self.get_bot_status()
-            
+
             # Mostrar título com status e alvo
             if status["is_running"]:
                 st.sidebar.markdown(
@@ -611,9 +636,32 @@ class SidebarController:
                 st.sidebar.markdown(
                     f"### 🤖 **BOT PARADO** | 🎯 Alvo: +{status['target']:.1f}%"
                 )
-            
+
             st.sidebar.markdown("<hr style='margin: 0.3rem 0'>", unsafe_allow_html=True)
-            
+
+            self.render_balances()
+            st.divider()
+            self.render_inputs()
+            return self.render_actions()
+
+    def render_in(self, container):
+        """Render sidebar controls dentro de um container específico"""
+        with container:
+            # Obter status do bot
+            status = self.get_bot_status()
+
+            # Mostrar título com status e alvo
+            if status["is_running"]:
+                st.markdown(
+                    f"### 🤖 **BOT RODANDO** | 🎯 Alvo: +{status['target']:.1f}%"
+                )
+            else:
+                st.markdown(
+                    f"### 🤖 **BOT PARADO** | 🎯 Alvo: +{status['target']:.1f}%"
+                )
+
+            st.markdown("<hr style='margin: 0.3rem 0'>", unsafe_allow_html=True)
+
             self.render_balances()
             st.divider()
             self.render_inputs()

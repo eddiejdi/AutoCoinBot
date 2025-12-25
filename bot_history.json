@@ -74024,5 +74024,44 @@
     ],
     "total_profit": 0.0,
     "dry_run": false
+  },
+  {
+    "id": "bot_dbf15ca2",
+    "symbol": "BTC-USDT",
+    "entry_price": 87484.8,
+    "mode": "flow",
+    "start_ts": 1766665845.4568686,
+    "end_ts": 1766665942.5380795,
+    "executed_trades": [
+      {
+        "timestamp": 1766665853.3866575,
+        "datetime": "2025-12-25T12:30:53.386659",
+        "kind": "flow_sell",
+        "price": 87600.52,
+        "portion": 0.3,
+        "profit_usdt": 0.02,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766665916.136282,
+        "datetime": "2025-12-25T12:31:56.136283",
+        "kind": "flow_buy",
+        "price": 88668.54,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": true
+      },
+      {
+        "timestamp": 1766665937.5168715,
+        "datetime": "2025-12-25T12:32:17.516873",
+        "kind": "flow_buy",
+        "price": 88777.2,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": true
+      }
+    ],
+    "total_profit": 0.02,
+    "dry_run": true
   }
 ]
