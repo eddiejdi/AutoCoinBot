@@ -1,3 +1,4 @@
+import html
 # dashboard.py
 import time
 import logging

@@ -1,3 +1,4 @@
+import html
 """Wallet releases RSS/Atom widget.
 
 Goal:
