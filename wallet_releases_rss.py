@@ -1,4 +1,4 @@
-import html
+
 """Wallet releases RSS/Atom widget.
 
 Goal:
@@ -11,8 +11,6 @@ Design constraints:
 """
 
 from __future__ import annotations
-
-import html
 import time
 from typing import Any
 

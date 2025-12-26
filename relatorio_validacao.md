@@ -1,4 +1,15 @@
+
 # Validação visual do app: http://localhost:8501
+
+**Nota:**
+Este relatório foi gerado automaticamente por agentes de validação visual. Cada linha representa a presença ou ausência de elementos essenciais na interface do bot KuCoin App.
+
+- **OK**: Elemento encontrado na tela.
+- **NÃO ENCONTRADO**: Elemento esperado não foi localizado.
+- **Elementos**: Os nomes (ex: 'h1', 'stButton', 'text_contains:saldo') referem-se a seletores HTML, classes do Streamlit ou palavras-chave relevantes para o domínio do app.
+- **login_preenchido**: Indica se o login automático foi tentado/preenchido pelo agente.
+
+Se algum elemento essencial estiver como 'NÃO ENCONTRADO', pode indicar falha de renderização, login ou configuração do app.
 
 ![Screenshot](screenshot.png)
 

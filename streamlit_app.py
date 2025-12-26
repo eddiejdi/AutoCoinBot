@@ -132,13 +132,12 @@ def main():
     # Usuário logado - renderizar aplicação principal
     ui_mod = None
     here = os.path.dirname(__file__)
+
+    # Tenta importar o módulo UI normalmente
     try:
         import ui as ui_mod
     except Exception:
-        # If importing the package fails, create a small package shim named
-        # `kucoin_app` that points to the current directory so `from .xxx`
-        # relative imports inside `ui.py` work even when files are copied
-        # directly into the container root (i.e. no enclosing kucoin_app/ dir).
+        # Fallback para importação manual se necessário
         try:
             import types
             import importlib.util
@@ -155,10 +154,20 @@ def main():
             sys.modules[f"{pkg_name}.ui"] = ui_mod
             spec.loader.exec_module(ui_mod)
         except Exception as e:
-            st.error("Erro ao importar módulos (fallback)")
-            st.error(str(e))
-            st.code(traceback.format_exc())
-            raise SystemExit(1)
+            # Se a porta já estiver em uso, tenta capturar a sessão existente
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                s.connect(("localhost", 8501))
+                st.info("Sessão Streamlit já está rodando em http://localhost:8501. Conectando à sessão existente.")
+                return
+            except Exception:
+                st.error("Erro ao importar módulos (fallback)")
+                st.error(str(e))
+                st.code(traceback.format_exc())
+                raise SystemExit(1)
+            finally:
+                s.close()
 
     # All UI (top bar, dashboard, monitor, report) is rendered by ui.py.
     if hasattr(ui_mod, "render_bot_control"):

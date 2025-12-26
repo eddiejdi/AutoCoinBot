@@ -61,13 +61,9 @@ ELEMENTOS_TEXTO = [
 def validar_tela(url, elementos_esperados, screenshot_path='screenshot.png', check_buttons=False, button_labels=None):
     options = Options()
     # Decide whether to run visible browser. Default: headless unless SHOW_BROWSER=1
-    show_browser = os.environ.get('SHOW_BROWSER', '0').lower() in ('1', 'true', 'yes')
-    if not show_browser:
-        # Use headless by default in CI/headless hosts
-        try:
-            options.add_argument('--headless=new')
-        except Exception:
-            options.add_argument('--headless')
+    # Sempre mostrar o navegador (headless desativado)
+    show_browser = True
+    # Não adiciona argumento headless
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--incognito')  # Abre janela anônima
@@ -281,10 +277,23 @@ def validar_tela(url, elementos_esperados, screenshot_path='screenshot.png', che
                     is_disabled = True
             except Exception:
                 is_disabled = False
-            if not is_disabled:
+            # Só clica se não for botão 'Deploy' ou vazio
+            if not is_disabled and t and t.lower() not in ['deploy']:
                 try:
                     if b.is_displayed() and b.is_enabled():
                         clickable_found = True
+                        # Tenta clicar no botão e captura erros de navegação
+                        try:
+                            b.click()
+                            time.sleep(2)  # Aguarda possível navegação
+                        except Exception as click_err:
+                            with open('erro_clique_botao.txt', 'a') as f:
+                                f.write(f"Erro ao clicar no botão '{t}': {click_err}\n")
+                        try:
+                            driver.get(url)
+                            time.sleep(2)
+                        except Exception:
+                            pass
                 except Exception:
                     clickable_found = True
 

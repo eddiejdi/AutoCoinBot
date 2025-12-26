@@ -1,9 +1,9 @@
+import html
 import os
 import streamlit as st
 from pathlib import Path
 import threading
 import urllib.parse
-import html
 def set_logged_in(status):
     if status:
         with open(LOGIN_FILE, 'w') as f:
@@ -1242,8 +1242,12 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
         dry = "DRY" if int(sess.get("dry_run") or 0) == 1 else "REAL"
         return f"{bot_id[:12]}…  {symbol}  {mode}  {dry}  [{status}]"
 
-    # Resolve selection
-    selected_bot = preselected_bot if preselected_bot in bot_ids else (bot_ids[0] if bot_ids else None)
+
+    # Seleção automática do bot mais recente se não houver seleção manual
+    if 'selected_bot' not in st.session_state or st.session_state.selected_bot not in bot_ids:
+        selected_bot = bot_ids[0] if bot_ids else None
+    else:
+        selected_bot = st.session_state.selected_bot
     try:
         idx = bot_ids.index(selected_bot) if selected_bot in bot_ids else 0
     except Exception:
@@ -4930,7 +4934,84 @@ def _render_full_ui(controller=None):
     start_dry = st.button("🧪 START (DRY-RUN)", key="start_dry")
     num_bots = st.session_state.get("num_bots", 1)
 
-    # STATUS + BOTS ATIVOS (logo abaixo do painel de controle)
+    # PAINEL DE BOTS ATIVOS (sempre visível logo após o controle)
+    db = DatabaseManager()
+    active_bots_db = db.get_active_bots()
+    real_active_bots = []
+    for bot in active_bots_db:
+        pid = bot.get('pid')
+        if pid and _pid_alive(pid):
+            real_active_bots.append(bot)
+        else:
+            db.update_bot_session(bot['id'], {"status": "stopped", "end_ts": time.time()})
+    count_real = len(real_active_bots)
+    with _safe_container(border=True):
+        st.subheader(f"🤖 Bots Ativos ({count_real})")
+        if count_real > 0:
+            kill_sel_key = "_kill_sel_bots"
+            if kill_sel_key not in st.session_state:
+                st.session_state[kill_sel_key] = {}
+            top_cols = st.columns([3.2, 1.0])
+            with top_cols[0]:
+                st.caption("Marque os bots e use o botão à direita para SIGKILL (-9).")
+            with top_cols[1]:
+                selected_now = [
+                    b['id']
+                    for b in real_active_bots
+                    if bool(st.session_state.get(f"sel_kill_{b['id']}", False))
+                ]
+                try:
+                    clicked_kill_selected = st.button(
+                        f"🛑 Kill -9 ({len(selected_now)})",
+                        key="kill_selected",
+                        type="secondary",
+                        use_container_width=True,
+                        disabled=(len(selected_now) == 0),
+                    )
+                except TypeError:
+                    clicked_kill_selected = st.button(
+                        f"🛑 Kill -9 ({len(selected_now)})",
+                        key="kill_selected",
+                        type="secondary",
+                        use_container_width=True,
+                    )
+            if clicked_kill_selected:
+                selected = [
+                    b['id']
+                    for b in real_active_bots
+                    if bool(st.session_state.get(f"sel_kill_{b['id']}", False))
+                ]
+                if not selected:
+                    st.warning("Nenhum bot selecionado para Kill -9.")
+                else:
+                    killed_any = False
+                    killed_ids: list[str] = []
+                    for bot_id in selected:
+                        killed = False
+                        try:
+                            controller.stop_bot(str(bot_id))
+                        except Exception:
+                            pass
+                        try:
+                            pid = next((b['pid'] for b in real_active_bots if b['id'] == bot_id), None)
+                            if pid:
+                                killed = _kill_pid_sigkill_only(int(pid))
+                        except Exception as e:
+                            st.error(f"Erro ao dar Kill -9 em {str(bot_id)[:8]} (PID {pid}): {e}")
+                            killed = False
+                        if killed:
+                            killed_any = True
+                            killed_ids.append(str(bot_id))
+                    if killed_any:
+                        st.success(f"Kill -9 aplicado em {len(killed_ids)} bot(s).")
+                        st.rerun()
+            # Exibe lista simples dos bots ativos
+            for b in real_active_bots:
+                st.markdown(f"- **ID:** {b['id']} | **Símbolo:** {b.get('symbol','')} | **Modo:** {b.get('mode','')} | **PID:** {b.get('pid','')} | **Status:** {b.get('status','')}")
+        else:
+            st.info("Nenhum bot ativo no momento.")
+
+    # STATUS + RESTANTE DO DASHBOARD
     with _safe_container(border=True):
         st.subheader("📋 Status")
         selected_bot_txt = st.session_state.get("selected_bot")

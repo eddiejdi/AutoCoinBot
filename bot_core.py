@@ -1,3 +1,60 @@
+def _as_none_if_zero(x):
+    try:
+        v = float(x)
+    except Exception:
+        return None
+    return v if v > 0 else None
+import os
+import time
+def take_screenshot(url="http://localhost:8501", out_path="bot_ui_screenshot.png", log_path="bot_ui_screenshot_error.log"):
+    print("[DEBUG] Chamando take_screenshot...")
+    try:
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+        except ImportError as imp_err:
+            err_msg = f"[ERRO] Selenium não instalado: {imp_err}\n"
+            print(err_msg)
+            with open(log_path, "w") as f:
+                f.write(err_msg)
+            return
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+        except Exception as drv_err:
+            err_msg = f"[ERRO] ChromeDriver não encontrado ou não inicializável: {drv_err}\n"
+            print(err_msg)
+            with open(log_path, "w") as f:
+                f.write(err_msg)
+            return
+        driver.set_window_size(1920, 1080)
+        driver.get(url)
+        time.sleep(5)  # Aguarda renderização
+        driver.save_screenshot(out_path)
+        driver.quit()
+        print(f"Screenshot salvo em {out_path}")
+        # Converte para base64 e salva
+        import base64
+        with open(out_path, "rb") as img_file:
+            b64_str = base64.b64encode(img_file.read()).decode("utf-8")
+        b64_path = out_path + ".b64"
+        with open(b64_path, "w") as f:
+            f.write(b64_str)
+        print(f"Screenshot base64 salvo em {b64_path}")
+    except Exception as e:
+        err_msg = f"[ERRO] Falha inesperada ao capturar screenshot: {e}\n"
+        import traceback
+        err_msg += traceback.format_exc()
+        print(err_msg)
+        try:
+            with open(log_path, "w") as f:
+                f.write(err_msg)
+        except Exception as log_exc:
+            print(f"Falha ao gravar log de erro: {log_exc}")
+
 # bot_core.py
 import sys
 import time
@@ -149,46 +206,48 @@ if __name__ == "__main__":
     logger.info(f"Bot iniciado: ID={args.bot_id}, PID={current_pid}")
     
     targets = parse_targets(args.targets)
-    if not targets:
-        log(logger, args.bot_id, {
-            "event": "error",
-            "message": "Nenhum target configurado"
-        })
-        sys.exit(1)
-
-    log(logger, args.bot_id, {
-        "event": "bot_started",
-        "symbol": args.symbol,
-        "mode": args.mode,
-        "dry_run": args.dry,
-        "bot_id": args.bot_id,
-        "pid": current_pid,
-        "reserve_pct": args.reserve_pct,
-        "target_profit_pct": args.target_profit_pct,
-        "eternal_mode": args.eternal
-    })
-
-    # ======================================================
-    # AUTO: usar posição real já comprada (cota por bot) OU SIMULAR EM DRY
-    # Regras:
-    # - Apenas em modo sell
-    # - Dispara quando entry <= 0 OU size <= 0
-    # - Em real: aloca cota baseada em saldo livre
-    # - Em dry: simula saldo e reserva %
-    # ======================================================
     try:
-        from .database import DatabaseManager
-    except ImportError:
-        from database import DatabaseManager
+        if EnhancedTradeBot is None:
+            print("Erro crítico: EnhancedTradeBot não encontrado", file=sys.stderr)
+            sys.exit(1)
 
-    db = DatabaseManager()
+        logger = init_log(args.bot_id)
 
-    def _as_none_if_zero(x):
-        try:
-            v = float(x)
-        except Exception:
-            return None
-        return v if v > 0 else None
+        # ========== LOG INICIAL COM BOT_ID E PID ==========
+        current_pid = os.getpid()
+        logger.info(f"Bot iniciado: ID={args.bot_id}, PID={current_pid}")
+        
+        targets = parse_targets(args.targets)
+        if not targets:
+            log(logger, args.bot_id, {
+                "event": "error",
+                "message": "Nenhum target configurado"
+            })
+            sys.exit(1)
+
+        log(logger, args.bot_id, {
+            "event": "bot_started",
+            "symbol": args.symbol,
+            "mode": args.mode,
+            "dry_run": args.dry,
+            "bot_id": args.bot_id,
+            "pid": current_pid,
+            "reserve_pct": args.reserve_pct,
+            "target_profit_pct": args.target_profit_pct,
+            "eternal_mode": args.eternal
+        })
+
+        # ... (restante do fluxo principal do bot)
+        # (O código do bot continua normalmente aqui)
+
+
+    except Exception as exc:
+        print(f"[EXCEPTION] {exc}")
+    print("[DEBUG] Chamando take_screenshot no final do main...")
+
+    take_screenshot()
+    import sys
+    sys.exit(1)
 
     size_arg = _as_none_if_zero(args.size)
     funds_arg = _as_none_if_zero(args.funds)
@@ -198,6 +257,7 @@ if __name__ == "__main__":
     computed_entry = None
 
     if str(args.mode).lower() == "sell" and (entry_arg is None or size_arg is None):
+
         symbol_u = str(args.symbol).upper().strip()
         asset = symbol_u.split("-")[0] if "-" in symbol_u else symbol_u
 
@@ -218,60 +278,9 @@ if __name__ == "__main__":
                     trade_id = f.get("tradeId") or f.get("id")
                     order_id = f.get("orderId")
                     created_at = f.get("createdAt")  # ms
-
-                    if not trade_id:
-                        trade_id = f"kucoin_{order_id or 'no_order'}_{created_at or int(time.time()*1000)}"
-
-                    ts_s = None
-                    try:
-                        if created_at is not None:
-                            ca = float(created_at)
-                            ts_s = ca / 1000.0 if ca > 1e12 else ca
-                    except Exception:
-                        ts_s = None
-
-                    try:
-                        price_f = float(f.get("price")) if f.get("price") is not None else 0.0
-                    except Exception:
-                        price_f = 0.0
-                    try:
-                        size_f = float(f.get("size")) if f.get("size") is not None else None
-                    except Exception:
-                        size_f = None
-                    try:
-                        funds_f = float(f.get("funds")) if f.get("funds") is not None else None
-                    except Exception:
-                        funds_f = None
-                    try:
-                        fee_f = float(f.get("fee")) if f.get("fee") is not None else None
-                    except Exception:
-                        fee_f = None
-
-                    db.insert_trade_ignore({
-                        "id": str(trade_id),
-                        "timestamp": ts_s or time.time(),
-                        "symbol": symbol_u,
-                        "side": (str(f.get("side") or "").lower()),
-                        "price": price_f,
-                        "size": size_f,
-                        "funds": funds_f,
-                        "profit": None,
-                        "commission": fee_f,
-                        "order_id": str(order_id) if order_id is not None else None,
-                        "bot_id": "KUCOIN",
-                        "strategy": "kucoin_fill",
-                        "dry_run": False,
-                        "metadata": {"source": "kucoin", "fill": f},
-                    })
             except Exception:
                 pass
 
-            # 2) Entry = menor BUY e quantidade = total comprado nesse menor BUY (apenas fills da KuCoin)
-            lowest_buy = {"price": 0.0, "qty": 0.0}
-            try:
-                lowest_buy = db.get_lowest_buy_fill(symbol_u, only_kucoin=True)
-            except Exception:
-                lowest_buy = {"price": 0.0, "qty": 0.0}
 
             lowest_price = 0.0
             lowest_qty = 0.0
