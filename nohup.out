@@ -1376,3 +1376,196 @@ CONTROL_API_PORT 8766
 Traceback (most recent call last):
   File "<stdin>", line 6, in <module>
 KeyboardInterrupt
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://192.168.15.15:8501
+
+2025-12-26 01:33:11,149 | INFO | api | ✅ Loaded .env from /home/edenilson/Downloads/kucoin_app/.env
+2025-12-26 01:33:11,157 | INFO | api | ✅ Loaded .env from /home/edenilson/Downloads/kucoin_app/.env
+2025-12-26 01:33:11.811 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:33:11.811 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:33:11,814 | INFO | database | Database initialized successfully
+2025-12-26 01:33:17,608 | INFO | database | Database initialized successfully
+2025-12-26 01:33:51.918 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:33:51.918 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:33:51,928 | INFO | database | Database initialized successfully
+2025-12-26 01:33:51,955 | INFO | database | Database initialized successfully
+2025-12-26 01:33:52,830 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:33:52,831 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:33:58,305 | INFO | database | Database initialized successfully
+2025-12-26 01:34:11,415 | INFO | database | Database initialized successfully
+2025-12-26 01:34:11,441 | INFO | database | Database initialized successfully
+2025-12-26 01:34:12,347 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:34:12,348 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:34:12,664 | INFO | database | Database initialized successfully
+2025-12-26 01:34:12,721 | INFO | database | Database initialized successfully
+2025-12-26 01:34:13,520 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:34:13,521 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:34:15,386 | INFO | database | Database initialized successfully
+2025-12-26 01:34:17.869 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:34:17.869 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:34:17,878 | INFO | database | Database initialized successfully
+2025-12-26 01:34:17,912 | INFO | database | Database initialized successfully
+2025-12-26 01:34:18,840 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:34:18,841 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:34:20,328 | INFO | database | Database initialized successfully
+2025-12-26 01:34:40.389 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:34:40.397 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:34:40,405 | INFO | database | Database initialized successfully
+2025-12-26 01:34:45,891 | INFO | database | Database initialized successfully
+2025-12-26 01:34:45,929 | INFO | database | Database initialized successfully
+2025-12-26 01:34:46,814 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:34:46,816 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:34:46,817 | INFO | database | Database initialized successfully
+2025-12-26 01:34:48,658 | INFO | database | Database initialized successfully
+2025-12-26 01:34:59.775 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:34:59.776 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:34:59,787 | INFO | database | Database initialized successfully
+2025-12-26 01:35:05,438 | INFO | database | Database initialized successfully
+2025-12-26 01:35:15,871 | INFO | database | Database initialized successfully
+2025-12-26 01:35:15,899 | INFO | database | Database initialized successfully
+2025-12-26 01:35:16,780 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:35:16,790 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:35:17.443 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:35:17.447 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:35:17,473 | INFO | database | Database initialized successfully
+2025-12-26 01:35:18,996 | INFO | database | Database initialized successfully
+2025-12-26 01:35:23,068 | INFO | database | Database initialized successfully
+2025-12-26 01:35:45,867 | INFO | database | Database initialized successfully
+2025-12-26 01:35:45,890 | INFO | database | Database initialized successfully
+2025-12-26 01:35:46,699 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:35:46,700 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:35:48,558 | INFO | database | Database initialized successfully
+2025-12-26 01:36:15,868 | INFO | database | Database initialized successfully
+2025-12-26 01:36:15,923 | INFO | database | Database initialized successfully
+2025-12-26 01:36:16,705 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:36:16,707 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:36:21,977 | INFO | database | Database initialized successfully
+2025-12-26 01:36:24.968 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:36:24.969 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:36:24,977 | INFO | database | Database initialized successfully
+2025-12-26 01:36:25,004 | INFO | database | Database initialized successfully
+2025-12-26 01:36:26,000 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:36:26,003 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:36:27,345 | INFO | database | Database initialized successfully
+2025-12-26 01:36:47,192 | INFO | database | Database initialized successfully
+2025-12-26 01:36:47,220 | INFO | database | Database initialized successfully
+2025-12-26 01:36:48,248 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:36:48,249 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:36:49.284 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:36:49.296 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:36:49,333 | INFO | database | Database initialized successfully
+2025-12-26 01:36:50,574 | INFO | database | Database initialized successfully
+2025-12-26 01:36:55,105 | INFO | database | Database initialized successfully
+2025-12-26 01:37:09.448 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:37:09.450 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:37:09,473 | INFO | database | Database initialized successfully
+2025-12-26 01:37:15,279 | INFO | database | Database initialized successfully
+2025-12-26 01:37:17,199 | INFO | database | Database initialized successfully
+2025-12-26 01:37:17,251 | INFO | database | Database initialized successfully
+2025-12-26 01:37:18,041 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:37:18,042 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:37:19,848 | INFO | database | Database initialized successfully
+2025-12-26 01:37:28.124 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:37:28.125 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:37:28,133 | INFO | database | Database initialized successfully
+2025-12-26 01:37:34,231 | INFO | database | Database initialized successfully
+2025-12-26 01:37:50,068 | INFO | database | Database initialized successfully
+2025-12-26 01:37:50,091 | INFO | database | Database initialized successfully
+2025-12-26 01:37:51,526 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:37:51,528 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:37:53,398 | INFO | database | Database initialized successfully
+2025-12-26 01:38:20,069 | INFO | database | Database initialized successfully
+2025-12-26 01:38:20,102 | INFO | database | Database initialized successfully
+2025-12-26 01:38:20,892 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:38:20,900 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:38:23.851 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:38:23.852 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:38:23,867 | INFO | database | Database initialized successfully
+2025-12-26 01:38:23,917 | INFO | database | Database initialized successfully
+2025-12-26 01:38:24,705 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:38:24,708 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:38:25,864 | INFO | database | Database initialized successfully
+2025-12-26 01:38:26,162 | INFO | database | Database initialized successfully
+2025-12-26 01:38:46.669 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:38:46.670 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:38:46,682 | INFO | database | Database initialized successfully
+2025-12-26 01:38:50,079 | INFO | database | Database initialized successfully
+2025-12-26 01:38:50,118 | INFO | database | Database initialized successfully
+2025-12-26 01:38:50,942 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:38:50,945 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:38:52,365 | INFO | database | Database initialized successfully
+2025-12-26 01:38:52,985 | INFO | database | Database initialized successfully
+2025-12-26 01:39:06.757 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:39:06.757 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:39:06,800 | INFO | database | Database initialized successfully
+2025-12-26 01:39:12,632 | INFO | database | Database initialized successfully
+2025-12-26 01:39:20,076 | INFO | database | Database initialized successfully
+2025-12-26 01:39:20,112 | INFO | database | Database initialized successfully
+2025-12-26 01:39:20,854 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:39:20,858 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:39:22,813 | INFO | database | Database initialized successfully
+2025-12-26 01:39:25.044 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:39:25.045 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:39:25,062 | INFO | database | Database initialized successfully
+2025-12-26 01:39:30,446 | INFO | database | Database initialized successfully
+2025-12-26 01:39:50,093 | INFO | database | Database initialized successfully
+2025-12-26 01:39:50,127 | INFO | database | Database initialized successfully
+2025-12-26 01:39:51,027 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:39:51,028 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:39:52,747 | INFO | database | Database initialized successfully
+2025-12-26 01:40:22,892 | INFO | database | Database initialized successfully
+2025-12-26 01:40:22,925 | INFO | database | Database initialized successfully
+2025-12-26 01:40:23,793 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:40:23,798 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:40:25,858 | INFO | database | Database initialized successfully
+2025-12-26 01:40:54,093 | INFO | database | Database initialized successfully
+2025-12-26 01:40:54,118 | INFO | database | Database initialized successfully
+2025-12-26 01:40:54,864 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:40:54,866 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:40:59,677 | INFO | database | Database initialized successfully
+2025-12-26 01:41:11.964 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:41:11.969 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:41:11,968 | INFO | database | Database initialized successfully
+2025-12-26 01:41:12,000 | INFO | database | Database initialized successfully
+2025-12-26 01:41:12,842 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:41:12,843 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:41:14,304 | INFO | database | Database initialized successfully
+2025-12-26 01:41:23.202 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:41:23.205 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:41:23,219 | INFO | database | Database initialized successfully
+2025-12-26 01:41:24,112 | INFO | database | Database initialized successfully
+2025-12-26 01:41:24,176 | INFO | database | Database initialized successfully
+2025-12-26 01:41:25,134 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:41:25,138 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:41:27,412 | INFO | database | Database initialized successfully
+2025-12-26 01:41:28,824 | INFO | database | Database initialized successfully
+2025-12-26 01:41:38.680 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:41:38.681 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:41:38,703 | INFO | database | Database initialized successfully
+2025-12-26 01:41:44,291 | INFO | database | Database initialized successfully
+2025-12-26 01:41:50.181 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:41:50.181 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:41:50,198 | INFO | database | Database initialized successfully
+2025-12-26 01:41:54,088 | INFO | database | Database initialized successfully
+2025-12-26 01:41:54,123 | INFO | database | Database initialized successfully
+2025-12-26 01:41:54,864 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:41:54,866 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:41:55,777 | INFO | database | Database initialized successfully
+2025-12-26 01:41:56,902 | INFO | database | Database initialized successfully
+2025-12-26 01:42:15.070 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:42:15.070 Thread 'start-api-server': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-26 01:42:15,087 | INFO | database | Database initialized successfully
+2025-12-26 01:42:20,745 | INFO | database | Database initialized successfully
+2025-12-26 01:42:24,087 | INFO | database | Database initialized successfully
+2025-12-26 01:42:24,111 | INFO | database | Database initialized successfully
+2025-12-26 01:42:24,933 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:42:24,936 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:42:26,772 | INFO | database | Database initialized successfully
+2025-12-26 01:42:54,088 | INFO | database | Database initialized successfully
+2025-12-26 01:42:54,109 | INFO | database | Database initialized successfully
+2025-12-26 01:42:55,043 | INFO | api | ✅ Successfully fetched accounts
+2025-12-26 01:42:55,046 | INFO | api | ✅ Found 3 non-zero trade balances
+2025-12-26 01:42:57,002 | INFO | database | Database initialized successfully

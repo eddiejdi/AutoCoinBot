@@ -23,8 +23,11 @@ This file gives targeted, discoverable guidance for AI code contributors working
 	- `database.py`: DB schema + helpers (`insert_bot_session`, `get_active_bots`, `add_bot_log`, `get_bot_logs`, `insert_trade`).
 	- `api.py`: KuCoin integration; reads secrets from env or `st.secrets` via `_get_secret()`.
 
-	Quick developer workflows
-	- Dev run UI: `python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true`.
+	- Sempre rode o Streamlit e o bot em terminais separados para facilitar debug e visualização:
+		1. **Terminal 1:** `python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true`
+		2. **Terminal 2:** Inicie o bot manualmente (exemplo):
+			 `python -u bot_core.py --bot-id <id> --symbol BTC-USDT --entry 30000 --targets "2:0.3,5:0.4" --interval 5 --size 0.1 --funds 0 --dry`
+		Isso garante que logs, status e problemas de sincronização fiquem visíveis e isolados.
 	- Setup venv and deps:
 		- `python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`.
 	- Tests: `pytest` (repo includes `test_bot_start.py`, `test_interface.py`, `test_visual_validation.py`).
@@ -73,4 +76,10 @@ This file gives targeted, discoverable guidance for AI code contributors working
 	Scrapers & headless validation
 	- `agent0_scraper.py` is a Selenium-based visual check (requires Chrome + chromedriver); `run_dry_validate.py` exercises dry-run bots and the scraper.
 
+	# Deployment notes
+
+	- For production or persistent use, prefer running as a systemd service (see deploy/streamlit.service.template) or via Docker Compose (see deploy/docker-compose.yml).
+	- When using Docker, the project directory is mounted into the container; adjust volumes for persistent DB storage (the default SQLite DB is ephemeral in containers/cloud).
+	- The helper script `start_streamlit.sh` supports `--foreground` for systemd and background mode by default.
+	- See deploy/README.md for step-by-step deployment instructions.
 	If anything critical is missing or you want the DB schemas, tell me which table(s) to append and I'll add concise schemas and example queries.

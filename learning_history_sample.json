@@ -1,0 +1,6 @@
+[
+  {"symbol": "BTCUSDT", "param_name": "take_profit_trailing_pct", "param_value": 0.5, "reward": 0.02, "timestamp": 1703550000},
+  {"symbol": "BTCUSDT", "param_name": "take_profit_trailing_pct", "param_value": 0.5, "reward": 0.04, "timestamp": 1703553600},
+  {"symbol": "BTCUSDT", "param_name": "take_profit_trailing_pct", "param_value": 1.0, "reward": 0.05, "timestamp": 1703557200},
+  {"symbol": "BTCUSDT", "param_name": "take_profit_trailing_pct", "param_value": 2.0, "reward": 0.01, "timestamp": 1703560800}
+]

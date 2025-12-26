@@ -39,8 +39,65 @@ else:
     DB_PATH = ROOT / "trades.db"
 
 class DatabaseManager:
+    # --- LEARNING (APRENDIZADO) ---
+    def get_learning_symbols(self) -> list:
+        """Retorna todos os símbolos presentes em learning_stats."""
+        conn = self.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT DISTINCT symbol FROM learning_stats ORDER BY symbol")
+            rows = cur.fetchall()
+            return [r[0] for r in rows if r[0]]
+        except Exception as e:
+            logger.error(f"Erro ao buscar símbolos de aprendizado: {e}")
+            return []
+        finally:
+            conn.close()
+
+    def get_learning_stats(self, symbol: str, param_name: str) -> list:
+        """Retorna estatísticas de aprendizado para um símbolo e parâmetro."""
+        conn = self.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                """
+                SELECT * FROM learning_stats
+                WHERE symbol = ? AND param_name = ?
+                ORDER BY param_value
+                """,
+                (symbol, param_name)
+            )
+            rows = cur.fetchall()
+            return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Erro ao buscar learning_stats: {e}")
+            return []
+        finally:
+            conn.close()
+
+    def get_learning_history(self, symbol: str, param_name: str, limit: int = 2000) -> list:
+        """Retorna histórico de aprendizado para um símbolo e parâmetro."""
+        conn = self.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                """
+                SELECT * FROM learning_history
+                WHERE symbol = ? AND param_name = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (symbol, param_name, limit)
+            )
+            rows = cur.fetchall()
+            return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Erro ao buscar learning_history: {e}")
+            return []
+        finally:
+            conn.close()
     """Gerencia todas as operações do banco de dados"""
-    
+
     def __init__(self, db_path: Path = DB_PATH):
         self.db_path = db_path
         self.init_database()

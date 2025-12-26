@@ -1,36 +1,5 @@
-# ui.py
-import time
-import hashlib
-import os
-import signal
-import subprocess
-import shlex
-import threading
-import streamlit as st
-import streamlit.components.v1 as components
-import urllib.parse
-import html
-import json
 from pathlib import Path
-import sys
-import logging
-
-# Ensure current directory is in sys.path for imports
-sys.path.insert(0, os.path.dirname(__file__))
-
-# Reduce Streamlit/related logger verbosity for tests and headless runs
-try:
-    logging.getLogger("streamlit").setLevel(logging.ERROR)
-except Exception:
-    pass
-try:
-    logging.getLogger("blinker").setLevel(logging.ERROR)
-except Exception:
-    pass
-
-# Persistência de login
-LOGIN_FILE = os.path.join(os.path.dirname(__file__), '.login_status')
-
+import threading
 def set_logged_in(status):
     if status:
         with open(LOGIN_FILE, 'w') as f:
@@ -47,44 +16,6 @@ try:
     from wallet_releases_rss import render_wallet_releases_widget
 except Exception:
     render_wallet_releases_widget = None
-
-try:
-    from market import analyze_market_regime_5m
-except Exception:
-    analyze_market_regime_5m = None
-
-# =====================================================
-# CONTROLLER GLOBAL
-# =====================================================
-def get_global_controller():
-    """Retorna uma instância global do BotController"""
-    return BotController()
-
-# =====================================================
-# UTILITÁRIOS
-# =====================================================
-
-try:
-    from terminal_component import render_terminal as render_terminal
-    from terminal_component import start_api_server as start_api_server
-    HAS_TERMINAL = True
-except Exception:
-    HAS_TERMINAL = False
-
-
-ROOT = Path(__file__).resolve().parent
-
-
-@st.cache_data(ttl=20, show_spinner=False)
-def _get_strategy_snapshot_cached(symbol: str):
-        if not symbol or not analyze_market_regime_5m:
-                return None
-        try:
-                return analyze_market_regime_5m(symbol)
-        except Exception:
-                return None
-
-
 def render_strategy_semaphore(snapshot: dict, theme: dict) -> str:
         if not snapshot:
                 return ""
@@ -203,42 +134,41 @@ def _kill_pid_best_effort(pid: int, timeout_s: float = 0.4) -> bool:
     except Exception:
         pgrp = None
 
-    def _kill_term():
-        if pgrp and pgrp > 0:
-            # Never kill our own process group.
-            try:
-                if pgrp != os.getpgrp():
-                    os.killpg(pgrp, signal.SIGTERM)
-                    return
-            except Exception:
-                pass
+    # Try SIGTERM to process group first
+    if pgrp and pgrp > 0:
         try:
-            os.kill(pid_i, signal.SIGTERM)
+            if pgrp != os.getpgrp():
+                os.killpg(pgrp, signal.SIGTERM)
         except Exception:
             pass
 
-    def _kill_kill():
-        if pgrp and pgrp > 0:
-            try:
-                if pgrp != os.getpgrp():
-                    os.killpg(pgrp, signal.SIGKILL)
-                    return
-            except Exception:
-                pass
-        try:
-            os.kill(pid_i, signal.SIGKILL)
-        except Exception:
-            pass
-
-    _kill_term()
+    # Fallback: SIGTERM to the process itself
     try:
-        time.sleep(max(0.0, float(timeout_s)))
+        os.kill(pid_i, signal.SIGTERM)
     except Exception:
         pass
+
+    # Wait a bit for graceful shutdown
+    try:
+        time.sleep(timeout_s)
+    except Exception:
+        pass
+
     if not _pid_alive(pid_i):
         return True
 
-    _kill_kill()
+    # If still alive, escalate to SIGKILL
+    if pgrp and pgrp > 0:
+        try:
+            if pgrp != os.getpgrp():
+                os.killpg(pgrp, signal.SIGKILL)
+        except Exception:
+            pass
+    try:
+        os.kill(pid_i, signal.SIGKILL)
+    except Exception:
+        pass
+
     try:
         time.sleep(0.1)
     except Exception:
@@ -969,6 +899,14 @@ def _qs_get_any(q, key: str, default=None):
     except Exception:
         pass
     return v
+    if v is None:
+        return default
+    try:
+        if isinstance(v, (list, tuple)):
+            return v[0] if v else default
+    except Exception:
+        pass
+    return v
 
 
 def _merge_query_params(updates: dict[str, str | None]):
@@ -1189,7 +1127,6 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
 
     # --- Load summary data (SQL aggregates are fast and UI-friendly)
     db = DatabaseManager()
-    conn = None
     sessions: list[dict] = []
     trade_agg: dict[str, dict] = {}
     log_agg: dict[str, dict] = {}
@@ -1366,162 +1303,161 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
     if pd is not None:
         df_over = pd.DataFrame(overview_rows)
         st.subheader("Bots (visão geral)")
-        st.dataframe(df_over, use_container_width=True, hide_index=True)
+        import os
+        from database import DatabaseManager
+        def _pid_alive(pid):
+            try:
+                os.kill(int(pid), 0)
+                return True
+            except Exception:
+                return False
 
-    # --- Selected bot details
-    sel_sess = next((x for x in sessions if str(x.get("id")) == str(selected_bot)), None) or {}
+        db = DatabaseManager()
+        active_bots_db = db.get_active_bots()
+        real_active_bots = []
+        for bot in active_bots_db:
+            pid = bot.get('pid')
+            if pid and _pid_alive(pid):
+                real_active_bots.append(bot)
+            else:
+                db.update_bot_session(bot['id'], {"status": "stopped", "end_ts": time.time()})
 
-    # Best-effort live-ish price (from recent logs)
-    recent_logs = []
-    try:
-        # Use the direct DB for >30 logs if needed; default view uses 60.
-        conn = db.get_connection()
-        cur = conn.cursor()
-        cur.execute(
-            """SELECT * FROM bot_logs WHERE bot_id = ? ORDER BY timestamp DESC LIMIT 60""",
-            (str(selected_bot),)
-        )
-        recent_logs = [dict(r) for r in (cur.fetchall() or [])]
-        conn.close()
-    except Exception:
-        try:
-            recent_logs = db.get_bot_logs(str(selected_bot), limit=30)
-        except Exception:
-            recent_logs = []
+        count_real = len(real_active_bots)
+        st.subheader(f"🤖 Bots Ativos ({count_real})")
+        if count_real > 0:
+            kill_sel_key = "_kill_sel_bots"
+            if kill_sel_key not in st.session_state:
+                st.session_state[kill_sel_key] = {}
 
-    latest_price = _extract_latest_price_from_logs(recent_logs)
-    # Prefer live market price when available; fallback to logs
-    price_source = "logs"
-    live_price = None
-    try:
-        try:
-            from . import api as kucoin_api
-        except Exception:
-            import api as kucoin_api  # type: ignore
-        sym = str(sel_sess.get("symbol") or "").strip()
-        if sym:
-            live_price = kucoin_api.get_price_fast(sym)
-            if live_price and float(live_price) > 0:
-                price_source = "live"
-    except Exception:
-        live_price = None
+            top_cols = st.columns([3.2, 1.0])
+            with top_cols[0]:
+                st.caption("Marque os bots e use o botão à direita para SIGKILL (-9).")
+            with top_cols[1]:
+                selected_now = [
+                    b['id']
+                    for b in real_active_bots
+                    if bool(st.session_state.get(f"sel_kill_{b['id']}", False))
+                ]
+                try:
+                    clicked_kill_selected = st.button(
+                        f"🛑 Kill -9 ({len(selected_now)})",
+                        key="kill_selected",
+                        type="secondary",
+                        use_container_width=True,
+                        disabled=(len(selected_now) == 0),
+                    )
+                except TypeError:
+                    clicked_kill_selected = st.button(
+                        f"🛑 Kill -9 ({len(selected_now)})",
+                        key="kill_selected",
+                        type="secondary",
+                        use_container_width=True,
+                    )
 
-    if live_price and float(live_price) > 0:
-        preferred_price = float(live_price)
-    elif latest_price:
-        preferred_price = float(latest_price)
-    else:
-        preferred_price = 0.0
-
-    # Keep `latest_price` name for compatibility
-    latest_price = preferred_price
-
-    # Trades (for charts + table)
-    trades = []
-    try:
-        # Pull more than the report default to build time-series.
-        conn = db.get_connection()
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT timestamp, side, price, size, funds, profit, dry_run, strategy
-            FROM trades
-            WHERE bot_id = ?
-            ORDER BY COALESCE(timestamp,0) ASC
-            LIMIT 4000
-            """,
-            (str(selected_bot),)
-        )
-        rows = cur.fetchall() or []
-        conn.close()
-        for r in rows:
-            trades.append(dict(r))
-    except Exception:
-        trades = []
-
-    total_profit = 0.0
-    try:
-        total_profit = sum(_safe_float(t.get("profit")) for t in trades)
-    except Exception:
-        total_profit = 0.0
-
-    # Equity snapshots (preferred performance series)
-    equity_rows = []
-    try:
-        conn = db.get_connection()
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT timestamp, balance_usdt
-            FROM equity_snapshots
-            WHERE bot_id = ?
-            ORDER BY COALESCE(timestamp,0) ASC
-            LIMIT 3000
-            """,
-            (str(selected_bot),)
-        )
-        eq = cur.fetchall() or []
-        conn.close()
-        equity_rows = [dict(r) for r in eq]
-    except Exception:
-        equity_rows = []
-
-    st.subheader("Bot selecionado")
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Status", str(sel_sess.get("status") or ""))
-    m2.metric("Symbol", str(sel_sess.get("symbol") or ""))
-    # Show a clear badge if this is a DRY run
-    dry_flag = int(sel_sess.get("dry_run") or 0) == 1
-    mode_label = str(sel_sess.get("mode") or "")
-    if dry_flag:
-        m3.metric("Modo (DRY)", mode_label)
-    else:
-        m3.metric("Modo", mode_label)
-    m4.metric("Realizado (USDT)", f"{total_profit:.6f}")
-
-    m5, m6, m7, m8 = st.columns(4)
-    m5.metric("Trades", str(len(trades)))
-    m6.metric("Entry", str(sel_sess.get("entry_price") or ""))
-    m7.metric("Preço (último)", f"{latest_price:.2f}" if latest_price else "")
-    m8.metric("Início", _fmt_ts(sel_sess.get("start_ts")))
-
-    # --- Charts
-    st.subheader("Gráficos de rendimento")
-
-    try:
-        import pandas as pd
-    except Exception:
-        pd = None
-
-    if pd is not None and equity_rows:
-        df_eq = pd.DataFrame(equity_rows)
-        try:
-            df_eq["timestamp"] = df_eq["timestamp"].astype(float)
-            df_eq["datetime"] = df_eq["timestamp"].apply(lambda x: _fmt_ts(x))
-            df_eq["balance_usdt"] = df_eq["balance_usdt"].astype(float)
-        except Exception:
-            pass
-        try:
-            import plotly.express as px
-            fig = px.line(df_eq, x="datetime", y="balance_usdt", title="Equity (balance_usdt)")
-            fig.update_layout(margin=dict(l=10, r=10, t=40, b=10), height=360)
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception:
-            st.line_chart(df_eq.set_index("datetime")["balance_usdt"], height=240)
-    elif pd is not None and trades:
-        # Fallback: cumulative profit from trades
-        df_t = pd.DataFrame(trades)
-        try:
-            df_t["timestamp"] = df_t["timestamp"].astype(float)
-            df_t["datetime"] = df_t["timestamp"].apply(lambda x: _fmt_ts(x))
-            df_t["profit"] = df_t["profit"].apply(_safe_float)
-            df_t["cum_profit"] = df_t["profit"].cumsum()
-            import plotly.express as px
-            fig = px.line(df_t, x="datetime", y="cum_profit", title="Lucro acumulado (fallback)")
-            fig.update_layout(margin=dict(l=10, r=10, t=40, b=10), height=320)
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception:
-            pass
+            if clicked_kill_selected:
+                selected = [
+                    b['id']
+                    for b in real_active_bots
+                    if bool(st.session_state.get(f"sel_kill_{b['id']}", False))
+                ]
+                if not selected:
+                    st.warning("Nenhum bot selecionado para Kill -9.")
+                else:
+                    killed_any = False
+                    killed_ids: list[str] = []
+                    for bot_id in selected:
+                        killed = False
+                        bot_info = controller.registry.get_bot_info(bot_id)
+                        sess = db_sessions_by_id.get(str(bot_id))
+                        pid = None
+                        try:
+                            pid = (
+                                (sess.get("pid") if sess else None)
+                                or (bot_info.get("pid") if bot_info else None)
+                                or ps_pids_by_id.get(str(bot_id))
+                            )
+                        except Exception:
+                            pid = None
+                        try:
+                            controller.stop_bot(str(bot_id))
+                        except Exception:
+                            pass
+                        if pid is not None:
+                            try:
+                                killed = _kill_pid_sigkill_only(int(pid))
+                            except Exception as e:
+                                st.error(f"Erro ao dar Kill -9 em {str(bot_id)[:8]} (PID {pid}): {e}")
+                                killed = False
+                        else:
+                            st.warning(f"PID não encontrado para bot {str(bot_id)[:8]}")
+                            try:
+                                DatabaseManager().update_bot_session(bot_id, {"status": "stopped", "end_ts": time.time()})
+                            except Exception:
+                                pass
+                            try:
+                                DatabaseManager().release_bot_quota(str(bot_id))
+                            except Exception:
+                                pass
+                            try:
+                                if bot_id in st.session_state.active_bots:
+                                    st.session_state.active_bots = [b for b in st.session_state.active_bots if b != bot_id]
+                                if st.session_state.get("selected_bot") == bot_id:
+                                    st.session_state.selected_bot = None
+                            except Exception:
+                                pass
+                            try:
+                                st.session_state[f"sel_kill_{bot_id}"] = False
+                            except Exception:
+                                pass
+                            if killed:
+                                killed_any = True
+                                killed_ids.append(str(bot_id))
+                        if killed_any:
+                            st.success(f"Kill -9 aplicado em {len(killed_ids)} bot(s).")
+                            st.rerun()
+                header_cols = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
+                header_cols[0].markdown("**🆔 Bot ID**")
+                header_cols[1].markdown("**📊 Símbolo**")
+                header_cols[2].markdown("**⚙️ Modo**")
+                header_cols[3].markdown("**📑 Relatório**")
+                header_cols[4].markdown("**✅ Sel.**")
+                header_cols[5].markdown("**📈 Progresso**")
+                db_for_progress = DatabaseManager()
+                target_pct_global = st.session_state.get("target_profit_pct", 2.0)
+                for bot in real_active_bots:
+                    bot_id = bot['id']
+                    bot_info = controller.registry.get_bot_info(bot_id)
+                    sess = db_sessions_by_id.get(str(bot_id))
+                    symbol = (bot_info.get('symbol') if bot_info else None) or (sess.get('symbol') if sess else None) or 'N/A'
+                    mode = (bot_info.get('mode') if bot_info else None) or (sess.get('mode') if sess else None) or 'N/A'
+                    progress_value = 0.0
+                    profit_pct_value = 0.0
+                    try:
+                        logs = db_for_progress.get_bot_logs(bot_id, limit=30)
+                        current_price = 0.0
+                        entry_price = 0.0
+                        for log in logs:
+                            msg = (log.get('message') or "")
+                            try:
+                                import json as _json
+                                data = _json.loads(msg)
+                                if 'price' in data and data['price'] is not None:
+                                    current_price = float(data['price'])
+                                if 'entry_price' in data and data['entry_price'] is not None:
+                                    entry_price = float(data['entry_price'])
+                            except Exception:
+                                continue
+                        if entry_price > 0 and current_price > 0:
+                            profit_pct_value = ((current_price - entry_price) / entry_price) * 100
+                        if target_pct_global and float(target_pct_global) > 0:
+                            progress_value = min(1.0, max(0.0, (profit_pct_value / float(target_pct_global))))
+                    except Exception:
+                        pass
+                    progress_bar = st.progress(progress_value, text=f"{profit_pct_value:.2f}% / {target_pct_global}%")
+                    st.write(f"{bot_id} | {symbol} | {mode}")
+        else:
+            st.subheader(f"🤖 Bots Ativos (0)")
+            st.info("🚦 Nenhum bot ativo. Use os controles à esquerda para iniciar um novo bot.")
     else:
         st.info("Sem dados suficientes para plotar rendimento (equity/trades).")
 
@@ -5021,6 +4957,24 @@ def _render_full_ui(controller=None):
                 key="dash_wallet_rss",
             )
 
+    # --- Sincroniza lista de bots ativos com DB e processos vivos ---
+    try:
+        db_sync = DatabaseManager()
+        db_bots = db_sync.get_active_bots() or []
+        active_bots = []
+        for sess in db_bots:
+            pid = sess.get('pid')
+            if pid:
+                try:
+                    os.kill(int(pid), 0)
+                    active_bots.append(sess.get('id'))
+                except Exception:
+                    # Se o processo não está vivo, marca como parado
+                    db_sync.update_bot_session(sess.get('id'), {"status": "stopped", "end_ts": time.time()})
+        st.session_state.active_bots = active_bots
+    except Exception:
+        pass
+
     with _safe_container(border=True):
         active_bots = st.session_state.active_bots
         if active_bots:
@@ -5070,8 +5024,9 @@ def _render_full_ui(controller=None):
                     for bot_id in selected:
                         killed = False
 
-                        bot_info = controller.registry.get_bot_info(bot_id)
+                        # Busca detalhes completos do bot
                         sess = db_sessions_by_id.get(str(bot_id))
+                        bot_info = controller.registry.get_bot_info(bot_id)
 
                         pid = None
                         try:
@@ -5131,100 +5086,60 @@ def _render_full_ui(controller=None):
                             st.success(f"Kill -9 aplicado em {len(killed_ids)} bot(s).")
                             st.rerun()
 
-                header_cols = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
-                header_cols[0].markdown("**🆔 Bot ID**")
-                header_cols[1].markdown("**📊 Símbolo**")
-                header_cols[2].markdown("**⚙️ Modo**")
-                header_cols[3].markdown("**📑 Relatório**")
-                header_cols[4].markdown("**✅ Sel.**")
-                header_cols[5].markdown("**📈 Progresso**")
+            header_cols = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
+            header_cols[0].markdown("**🆔 Bot ID**")
+            header_cols[1].markdown("**📊 Símbolo**")
+            header_cols[2].markdown("**⚙️ Modo**")
+            header_cols[3].markdown("**📑 Relatório**")
+            header_cols[4].markdown("**✅ Sel.**")
+            header_cols[5].markdown("**📈 Progresso**")
 
-                db_for_progress = DatabaseManager()
-                target_pct_global = st.session_state.get("target_profit_pct", 2.0)
+            db_for_progress = DatabaseManager()
+            target_pct_global = st.session_state.get("target_profit_pct", 2.0)
 
-                for bot_id in list(active_bots):
-                    bot_info = controller.registry.get_bot_info(bot_id)
-                    sess = db_sessions_by_id.get(str(bot_id))
-                    symbol = (bot_info.get('symbol') if bot_info else None) or (sess.get('symbol') if sess else None) or 'N/A'
-                    mode = (bot_info.get('mode') if bot_info else None) or (sess.get('mode') if sess else None) or 'N/A'
+            for bot_id in list(active_bots):
+                # Busca detalhes completos do bot
+                sess = db_sessions_by_id.get(str(bot_id))
+                bot_info = controller.registry.get_bot_info(bot_id)
+                symbol = (bot_info.get('symbol') if bot_info else None) or (sess.get('symbol') if sess else None) or 'N/A'
+                mode = (bot_info.get('mode') if bot_info else None) or (sess.get('mode') if sess else None) or 'N/A'
 
-                    # Compute progress toward target profit based on recent logs
-                    progress_value = 0.0
-                    profit_pct_value = 0.0
-                    try:
-                        logs = db_for_progress.get_bot_logs(bot_id, limit=30)
-                        current_price = 0.0
-                        entry_price = 0.0
-                        for log in logs:
-                            msg = (log.get('message') or "")
-                            try:
-                                import json as _json
-                                data = _json.loads(msg)
-                                if 'price' in data and data['price'] is not None:
-                                    current_price = float(data['price'])
-                                if 'entry_price' in data and data['entry_price'] is not None:
-                                    entry_price = float(data['entry_price'])
-                            except Exception:
-                                continue
-
-                        if entry_price > 0 and current_price > 0:
-                            profit_pct_value = ((current_price - entry_price) / entry_price) * 100
-                        if target_pct_global and float(target_pct_global) > 0:
-                            progress_value = min(1.0, max(0.0, (profit_pct_value / float(target_pct_global))))
-                    except Exception:
-                        pass
-
-                    # Determine if this session/bot is a dry-run to adjust visuals
-                    try:
-                        dry_flag = False
+                # Compute progress toward target profit based on recent logs
+                progress_value = 0.0
+                profit_pct_value = 0.0
+                try:
+                    logs = db_for_progress.get_bot_logs(bot_id, limit=30)
+                    current_price = 0.0
+                    entry_price = 0.0
+                    for log in logs:
+                        msg = (log.get('message') or "")
                         try:
-                            dry_flag = bool(int((sess.get("dry_run") if sess is not None else None) or 0) == 1)
+                            import json as _json
+                            data = _json.loads(msg)
+                            if 'price' in data and data['price'] is not None:
+                                current_price = float(data['price'])
+                            if 'entry_price' in data and data['entry_price'] is not None:
+                                entry_price = float(data['entry_price'])
                         except Exception:
-                            dry_flag = False
-                        try:
-                            if not dry_flag and bot_info:
-                                dry_flag = bool(int((bot_info.get("dry_run") if bot_info is not None else None) or 0) == 1)
-                        except Exception:
-                            pass
+                            continue
+
+                    if entry_price > 0 and current_price > 0:
+                        profit_pct_value = ((current_price - entry_price) / entry_price) * 100
+                    if target_pct_global and float(target_pct_global) > 0:
+                        progress_value = min(1.0, max(0.0, (profit_pct_value / float(target_pct_global))))
+                except Exception:
+                    pass
+
+                # Determine if this session/bot is a dry-run to adjust visuals
+                try:
+                    dry_flag = False
+                    try:
+                        dry_flag = bool(int((sess.get("dry_run") if sess is not None else None) or 0) == 1)
                     except Exception:
                         dry_flag = False
-
-                    row = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
-                    # Render bot id with a colored badge depending on dry-run status
                     try:
-                        if dry_flag:
-                            badge_html = (
-                                f'<div style="background:#0b1220;color:#f8f8f2;padding:6px;border-radius:6px;'
-                                f'border-left:4px solid #f59e0b;font-family:monospace;font-weight:700">{str(bot_id)[:12]}… '
-                                f'<span style="color:#ffd166;font-size:0.85em;margin-left:8px;font-weight:600">DRY</span></div>'
-                            )
-                        else:
-                            badge_html = (
-                                f'<div style="background:#071329;color:#c9d1d9;padding:6px;border-radius:6px;'
-                                f'border-left:4px solid #22c55e;font-family:monospace;font-weight:700">{str(bot_id)[:12]}…</div>'
-                            )
-                        row[0].markdown(badge_html, unsafe_allow_html=True)
-                        # Bot quick-open: botão que abre a tela dedicada do bot
-                        try:
-                            btn_key = f"open_bot_{bot_id}"
-                            # Small action button alongside the badge
-                            if row[0].button("Abrir", key=btn_key):
-                                try:
-                                    _merge_query_params({"bot": bot_id})
-                                except Exception:
-                                    try:
-                                        st.session_state.selected_bot = bot_id
-                                    except Exception:
-                                        pass
-                                try:
-                                    st.experimental_rerun()
-                                except Exception:
-                                    try:
-                                        st.rerun()
-                                    except Exception:
-                                        pass
-                        except Exception:
-                            pass
+                        if not dry_flag and bot_info:
+                            dry_flag = bool(int((bot_info.get("dry_run") if bot_info is not None else None) or 0) == 1)
                     except Exception:
                         row[0].write(str(bot_id)[:12])
 
@@ -5252,68 +5167,113 @@ def _render_full_ui(controller=None):
                                 api_port = int(p)
                     except Exception:
                         pass
+                except Exception:
+                    dry_flag = False
 
-                    with row[3]:
-                        c_log, c_rep = st.columns(2)
-                        if not api_port:
-                            c_log.caption("LOG: off")
-                            c_rep.caption("REP: off")
-                        else:
-                            theme_query = str(theme_qs).lstrip('&')
-                            base = f"http://127.0.0.1:{int(api_port)}"
+                row = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
+                # Render bot id with a colored badge depending on dry-run status
+                try:
+                    if dry_flag:
+                        badge_html = (
+                            f'<div style="background:#0b1220;color:#f8f8f2;padding:6px;border-radius:6px;'
+                            f'border-left:4px solid #f59e0b;font-family:monospace;font-weight:700">{str(bot_id)[:12]}… '
+                            f'<span style="color:#ffd166;font-size:0.85em;margin-left:8px;font-weight:600">DRY</span></div>'
+                        )
+                    else:
+                        badge_html = (
+                            f'<div style="background:#071329;color:#c9d1d9;padding:6px;border-radius:6px;'
+                            f'border-left:4px solid #22c55e;font-family:monospace;font-weight:700">{str(bot_id)[:12]}…</div>'
+                        )
+                    row[0].markdown(badge_html, unsafe_allow_html=True)
+                except Exception:
+                    row[0].write(str(bot_id)[:12])
+
+                row[1].write(symbol)
+                # Mode rendered as a colored badge (green for real, amber for dry)
+                try:
+                    mode_color = "#f59e0b" if dry_flag else "#22c55e"
+                    mode_html = (
+                        f'<div style="display:inline-block;padding:6px 8px;border-radius:6px;'
+                        f'background:rgba(255,255,255,0.02);color:{mode_color};font-weight:700;'
+                        f'font-family:monospace">{str(mode).upper()}</div>'
+                    )
+                    row[2].markdown(mode_html, unsafe_allow_html=True)
+                except Exception:
+                    row[2].write(str(mode).upper())
+
+                # LOG + Relatório (HTML) in a NEW TAB.
+                # Use real links instead of server-side webbrowser (works in VS Code/remote too).
+                api_port = st.session_state.get("_api_port")
+                try:
+                    if not api_port and 'start_api_server' in globals():
+                        p = start_api_server(8765)
+                        if p:
+                            st.session_state["_api_port"] = int(p)
+                            api_port = int(p)
+                except Exception:
+                    pass
+
+                with row[3]:
+                    c_log, c_rep = st.columns(2)
+                    if not api_port:
+                        c_log.caption("LOG: off")
+                        c_rep.caption("REP: off")
+                    else:
+                        theme_query = str(theme_qs).lstrip('&')
+                        base = f"http://127.0.0.1:{int(api_port)}"
+                        try:
                             try:
-                                try:
-                                    st_port = int(st.get_option("server.port"))
-                                except Exception:
-                                    st_port = 8501
-                                home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
-                                home_val = urllib.parse.quote(home_url, safe='')
+                                st_port = int(st.get_option("server.port"))
                             except Exception:
-                                home_val = ''
+                                st_port = 8501
+                            home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
+                            home_val = urllib.parse.quote(home_url, safe='')
+                        except Exception:
+                            home_val = ''
 
-                            log_url = (
-                                f"{base}/monitor?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                                if theme_query
-                                else f"{base}/monitor?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                            )
-                            rep_url = (
-                                f"{base}/report?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                                if theme_query
-                                else f"{base}/report?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                            )
-
-                            if hasattr(st, "link_button"):
-                                c_log.link_button("📜 LOG", log_url, use_container_width=True)
-                                c_rep.link_button("📑 REL.", rep_url, use_container_width=True)
-                            else:
-                                c_log.markdown(
-                                    f'<a href="{log_url}" target="_blank" rel="noopener noreferrer">📜 LOG</a>',
-                                    unsafe_allow_html=True,
-                                )
-                                c_rep.markdown(
-                                    f'<a href="{rep_url}" target="_blank" rel="noopener noreferrer">📑 REL.</a>',
-                                    unsafe_allow_html=True,
-                                )
-
-                    # Selection checkbox (replaces per-row kill)
-                    with row[4]:
-                        st.checkbox(
-                            "Selecionar",
-                            key=f"sel_kill_{bot_id}",
-                            label_visibility="collapsed",
+                        log_url = (
+                            f"{base}/monitor?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
+                            if theme_query
+                            else f"{base}/monitor?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
+                        )
+                        rep_url = (
+                            f"{base}/report?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
+                            if theme_query
+                            else f"{base}/report?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
                         )
 
-                    row[5].progress(progress_value)
-                    try:
-                        pct_color = "#f59e0b" if dry_flag else "#22c55e"
-                        row[5].markdown(
-                            f"<div style='color:{pct_color};font-weight:700'>{profit_pct_value:+.2f}% / alvo {float(target_pct_global):.2f}%</div>",
-                            unsafe_allow_html=True,
-                        )
-                    except Exception:
-                        row[5].caption(f"{profit_pct_value:+.2f}% / alvo {float(target_pct_global):.2f}%")
-            else:
-                st.info("🚦 Nenhum bot ativo. Use os controles à esquerda para iniciar um novo bot.")
+                        if hasattr(st, "link_button"):
+                            c_log.link_button("📜 LOG", log_url, use_container_width=True)
+                            c_rep.link_button("📑 REL.", rep_url, use_container_width=True)
+                        else:
+                            c_log.markdown(
+                                f'<a href="{log_url}" target="_blank" rel="noopener noreferrer">📜 LOG</a>',
+                                unsafe_allow_html=True,
+                            )
+                            c_rep.markdown(
+                                f'<a href="{rep_url}" target="_blank" rel="noopener noreferrer">📑 REL.</a>',
+                                unsafe_allow_html=True,
+                            )
+
+                # Selection checkbox (replaces per-row kill)
+                with row[4]:
+                    st.checkbox(
+                        "Selecionar",
+                        key=f"sel_kill_{bot_id}",
+                        label_visibility="collapsed",
+                    )
+
+                row[5].progress(progress_value)
+                try:
+                    pct_color = "#f59e0b" if dry_flag else "#22c55e"
+                    row[5].markdown(
+                        f"<div style='color:{pct_color};font-weight:700'>{profit_pct_value:+.2f}% / alvo {float(target_pct_global):.2f}%</div>",
+                        unsafe_allow_html=True,
+                    )
+                except Exception:
+                    row[5].caption(f"{profit_pct_value:+.2f}% / alvo {float(target_pct_global):.2f}%")
+        else:
+            st.info("🚦 Nenhum bot ativo. Use os controles à esquerda para iniciar um novo bot.")
 
         with _safe_container(border=True):
             # Bots encerrados hoje (sessões com end_ts dentro do dia atual)

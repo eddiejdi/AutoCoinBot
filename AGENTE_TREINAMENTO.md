@@ -1,4 +1,41 @@
+<<<<<<< HEAD
+# Manual de Treinamento para Agente - Aplicação KuCoin Trading Bot
+# Pontos de Ajuste Encontrados (Sessão de Debug 2025)
+
+## Resumo dos Principais Ajustes e Problemas Identificados
+
+- **Bots ativos não aparecem no dashboard:**
+    - Verificar se a função `get_active_bots` em `database.py` está retornando corretamente e se o frontend (`ui.py`) está consumindo corretamente.
+    - Checar se o status dos bots está sendo atualizado corretamente no banco (campo `status` em `bot_sessions`).
+    - Validar se o dashboard está buscando do banco ou apenas da memória (problema comum após reload/F5).
+
+- **Gráficos de aprendizado não aparecem:**
+    - Faltavam métodos `get_learning_stats`, `get_learning_history`, `get_learning_symbols` no `DatabaseManager` (`database.py`).
+    - Corrigir para garantir que a aba Aprendizado sempre busque dados reais do banco.
+    - Validar se as tabelas `learning_stats` e `learning_history` existem e estão populadas.
+
+- **Navegação por URL/tab não funcionava:**
+    - Implementado suporte a seleção de abas via query string (`?view=aprendizado`, `?view=report`, etc.) no frontend (`ui.py`).
+    - Permite abrir diretamente a aba desejada por link.
+
+- **Frontend quebrado após alterações:**
+    - Sempre rodar `python -m py_compile ui.py` e checar logs após mudanças.
+    - Validar se todos os componentes obrigatórios estão presentes (ex: botões START/STOP, tabelas, gráficos).
+
+- **Testes Selenium e validação visual:**
+    - Scripts Selenium ajustados para login robusto, navegação por abas e validação de elementos.
+    - Testes automatizados para garantir que gráficos e bots ativos aparecem corretamente.
+
+- **Outros pontos recorrentes:**
+    - Persistência de login pode falhar se `.login_status` não for manipulado corretamente.
+    - Problemas de API KuCoin geralmente são credenciais ou rate limit.
+    - Sempre reiniciar a aplicação após mudanças críticas.
+
+---
+
+=======
 # AGENTE_TREINAMENTO — Diretrizes e Relatórios
+>>>>>>> Autooin/main
 
 ## Política obrigatória
 - Todos os bots, scripts e agentes devem seguir estritamente as instruções do usuário responsável pelo projeto.
