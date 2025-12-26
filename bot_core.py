@@ -619,9 +619,27 @@ if __name__ == "__main__":
                     if int(s.get("pid") or 0) != current_pid:
                         db.update_bot_session(args.bot_id, {"pid": current_pid})
                     return True
-            # Se não encontrou sessão, encerra
-            logger.info("Sessão do bot não encontrada no banco, encerrando.")
-            return False
+            # Se não encontrou sessão, tentar criar uma sessão mínima no DB
+            logger.info("Sessão do bot não encontrada no banco, tentando criar sessão mínima.")
+            try:
+                # Insere uma sessão mínima — controller normalmente já faz isso,
+                # mas em casos de race/DB inconsistente tentamos garantir que o
+                # bot tenha sua sessão registrada para não encerrar prematuramente.
+                db.insert_bot_session({
+                    "id": args.bot_id,
+                    "pid": current_pid,
+                    "symbol": args.symbol,
+                    "mode": args.mode,
+                    "entry_price": args.entry,
+                    "targets": args.targets,
+                    "start_ts": time.time(),
+                    "dry_run": 1 if args.dry else 0,
+                    "status": "running",
+                })
+                return True
+            except Exception as e:
+                logger.error(f"Falha ao inserir sessão mínima no DB: {e}")
+                return False
         except Exception as e:
             logger.error(f"Erro ao validar status do bot no banco: {e}")
             return True  # Em caso de erro, não mata o bot imediatamente

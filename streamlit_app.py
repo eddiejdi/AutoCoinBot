@@ -159,7 +159,17 @@ def main():
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 s.connect(("localhost", 8501))
-                st.info("Sessão Streamlit já está rodando em http://localhost:8501. Conectando à sessão existente.")
+                # If another Streamlit session is active, open its dashboard in browser and exit.
+                try:
+                    import webbrowser
+                    try:
+                        st_port = int(st.get_option("server.port"))
+                    except Exception:
+                        st_port = 8501
+                    home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
+                    webbrowser.open_new_tab(home_url)
+                except Exception:
+                    pass
                 return
             except Exception:
                 st.error("Erro ao importar módulos (fallback)")

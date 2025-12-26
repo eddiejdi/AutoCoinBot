@@ -105,7 +105,7 @@ class BotController:
                 "target_profit_pct": target_profit_pct,
                 "eternal_mode": eternal_mode,
             },
-            proc.pid,
+            proc,
         )
 
         # ✅ Registrar no banco de dados (persistência)
@@ -118,12 +118,15 @@ class BotController:
                 "mode": mode,
                 "entry_price": entry,
                 "targets": targets,
+                "trailing_stop_pct": None,
+                "stop_loss_pct": None,
                 "size": size,
                 "funds": funds,
                 "start_ts": time.time(),
                 "dry_run": dry,
                 "reserve_pct": reserve_pct,
                 "target_profit_pct": target_profit_pct,
+                "status": "running",
             })
         except Exception as e:
             print(f"[BOT_CONTROLLER] Erro ao registrar sessão no DB: {e}", flush=True)
