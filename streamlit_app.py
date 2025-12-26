@@ -3,6 +3,7 @@ import sys
 import traceback
 import streamlit as st
 import hashlib
+import logging
 
 # Add current directory to sys.path to ensure imports work
 sys.path.insert(0, os.path.dirname(__file__))
@@ -37,6 +38,34 @@ def is_logged_in():
 
 st.set_page_config(page_title="KuCoin PRO", layout="wide")
 
+
+def _ensure_app_structure():
+    """Create required folders and silence noisy streamlit warnings during tests."""
+    try:
+        # Create common runtime folders
+        base = os.path.dirname(__file__)
+        for d in ("logs", "pids"):
+            try:
+                os.makedirs(os.path.join(base, d), exist_ok=True)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # Reduce Streamlit/related logger verbosity when running under tests
+    try:
+        logging.getLogger("streamlit").setLevel(logging.ERROR)
+    except Exception:
+        pass
+    try:
+        logging.getLogger("blinker").setLevel(logging.ERROR)
+    except Exception:
+        pass
+
+
+# Ensure folders and logging config early
+_ensure_app_structure()
+
 def fazer_login():
     st.title("🔐 Login - KuCoin PRO")
     st.markdown("---")
@@ -56,8 +85,28 @@ def fazer_login():
                 st.error("Usuário ou senha incorretos!")
 
 def main():
-    # Verificar se usuário está logado
-    if not is_logged_in():
+    # Mostrar loader/top placeholder como primeiro elemento renderizado
+    top_loader = st.empty()
+    try:
+        top_loader.info("⏳ Carregando...")
+    except Exception:
+        try:
+            top_loader.markdown("⏳ Carregando...")
+        except Exception:
+            pass
+
+    # Verificar se usuário está logado (exigir login por sessão)
+    try:
+        logged = bool(st.session_state.get("logado", False))
+    except Exception:
+        logged = False
+
+    if not logged:
+        # Remover loader antes de exibir o formulário de login
+        try:
+            top_loader.empty()
+        except Exception:
+            pass
         fazer_login()
         return
 
@@ -97,7 +146,14 @@ def main():
 
     # All UI (top bar, dashboard, monitor, report) is rendered by ui.py.
     if hasattr(ui_mod, "render_bot_control"):
-        ui_mod.render_bot_control()
+        try:
+            ui_mod.render_bot_control()
+        finally:
+            # Garantir que o loader seja removido após a UI carregar
+            try:
+                top_loader.empty()
+            except Exception:
+                pass
     else:
         st.error("render_bot_control não encontrado em ui.py")
 

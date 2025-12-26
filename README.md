@@ -49,3 +49,8 @@ streamlit run streamlit_app.py
 
 ## Contato
 Dúvidas ou sugestões: abra uma issue ou envie um pull request.
+
+## Dev helpers
+
+- DB inspector: `scripts/db_inspect.py` — run `./scripts/db_inspect.py logs --bot BOT_ID`.
+- Start all registry bots (dry-run): `./scripts/run_all_bots.py` (safe: forces `dry=True`).
