@@ -78,5 +78,30 @@ if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument('--num', type=int, default=1, help='Number of dry-run bots to start')
+    p.add_argument('--url', type=str, default=None, help='URL to validate (overrides local/remote defaults)')
+    p.add_argument('--remote', action='store_true', help='Validate remote URL (shortcut)')
+    p.add_argument('--no-start', action='store_true', help='Do not start bots; only run validations against the URL')
     args = p.parse_args()
-    start_and_validate(args.num)
+
+    # Determine target URL for validation
+    target_url = None
+    if args.url:
+        target_url = args.url
+    elif args.remote:
+        target_url = scraper.REMOTE_URL
+    else:
+        target_url = scraper.LOCAL_URL
+
+    # If no-start specified, skip starting bots and only validate once
+    if args.no_start:
+        print(f"Running validation only against {target_url}")
+        results, screenshot = scraper.validar_tela(target_url, scraper.ELEMENTOS_ESPERADOS, screenshot_path=f"screenshot_validation.png")
+        report = scraper.gerar_relatorio(results, screenshot, target_url)
+        with open('relatorio_validation_only.md', 'w') as f:
+            f.write(report)
+        print('Validation-only run complete. See relatorio_validation_only.md')
+    else:
+        # Otherwise, run normal start and validate loop but pass APP_URL into scraper
+        # Temporarily set scraper.APP_URL so existing calls pick it up
+        scraper.APP_URL = target_url
+        start_and_validate(args.num)

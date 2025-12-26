@@ -9,6 +9,21 @@ import time
 from pathlib import Path
 from typing import Dict
 import os
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
+# Load .env if present (local dev)
+if load_dotenv:
+    try:
+        load_dotenv(dotenv_path=Path.cwd() / '.env')
+    except Exception:
+        pass
+    try:
+        load_dotenv()
+    except Exception:
+        pass
 
 # Ensure current directory is in sys.path for imports
 sys.path.insert(0, os.path.dirname(__file__))

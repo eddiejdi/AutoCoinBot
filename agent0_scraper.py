@@ -1,16 +1,42 @@
 import time
+import os
+from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
 
 import argparse
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
+# Load .env if present
+ENV_PATH = Path(__file__).resolve().parent / '.env'
+if load_dotenv:
+    # load .env from repo root first, then module dir
+    try:
+        load_dotenv(dotenv_path=Path.cwd() / '.env')
+    except Exception:
+        pass
+    try:
+        load_dotenv(dotenv_path=ENV_PATH)
+    except Exception:
+        pass
+# Allow overriding via environment: APP_ENV=dev|hom and HOM_URL
 # Configurações
-LOCAL_URL = "http://localhost:8501"
-REMOTE_URL = "https://autocoinbot-hom.streamlit.app/"
-APP_URL = LOCAL_URL  # Padrão: localhost
+LOCAL_URL = os.environ.get('LOCAL_URL', "http://localhost:8501")
+REMOTE_URL = os.environ.get('HOM_URL', "https://autocoinbot-hom.streamlit.app/")
+# APP_ENV: 'dev' uses LOCAL_URL, 'hom' uses REMOTE_URL, default 'dev'
+APP_ENV = os.environ.get('APP_ENV', os.environ.get('ENV', 'dev')).lower()
+if APP_ENV == 'hom' or APP_ENV == 'homologation' or APP_ENV == 'prod_hom':
+    APP_URL = REMOTE_URL
+else:
+    APP_URL = LOCAL_URL  # default
 ELEMENTOS_ESPERADOS = [
     # Prefer any common header tag (h1/h2/h3) — Streamlit may render as h2
     (By.TAG_NAME, 'h1'),
@@ -26,17 +52,41 @@ ELEMENTOS_ESPERADOS = [
     (By.TAG_NAME, 'aside'),
 ]
 
+# Additional loose content checks (case-insensitive substrings expected somewhere on page)
+ELEMENTOS_TEXTO = [
+    'balance', 'saldo', 'trade', 'trades', 'bot', 'ativo', 'entradas', 'entry', 'profit', 'loss', 'btc', 'usdt'
+]
 
-def validar_tela(url, elementos_esperados, screenshot_path='screenshot.png'):
+
+def validar_tela(url, elementos_esperados, screenshot_path='screenshot.png', check_buttons=False, button_labels=None):
     options = Options()
-    # options.add_argument('--headless')  # Removido para abrir navegador visível
+    # Decide whether to run visible browser. Default: headless unless SHOW_BROWSER=1
+    show_browser = os.environ.get('SHOW_BROWSER', '0').lower() in ('1', 'true', 'yes')
+    if not show_browser:
+        # Use headless by default in CI/headless hosts
+        try:
+            options.add_argument('--headless=new')
+        except Exception:
+            options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--incognito')  # Abre janela anônima
-    driver = webdriver.Chrome(options=options)
+    # Prefer webdriver_manager if available to auto-download chromedriver
+    driver = None
+    try:
+        from webdriver_manager.chrome import ChromeDriverManager
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+    except Exception:
+        try:
+            driver = webdriver.Chrome(options=options)
+        except Exception:
+            # Last resort: try using Selenium Manager (newer selenium) via default constructor
+            driver = webdriver.Chrome()
     driver.set_window_size(1920, 1080)
     driver.get(url)
-    time.sleep(5)  # Aguarda renderização
+    # wait a bit for Streamlit to render
+    time.sleep(6)
 
     # Tenta login automático dentro do iframe (ou no documento principal)
     login_preenchido = False
@@ -182,6 +232,73 @@ def validar_tela(url, elementos_esperados, screenshot_path='screenshot.png'):
             resultados[seletor] = len(elementos) > 0
         except NoSuchElementException:
             resultados[seletor] = False
+    # Additional loose text checks: look for key words anywhere in visible text
+    page_text = ''
+    try:
+        page_text = driver.find_element(By.TAG_NAME, 'body').text or ''
+    except Exception:
+        page_text = driver.page_source or ''
+    page_text_lower = page_text.lower()
+    for token in ELEMENTOS_TEXTO:
+        resultados[f'text_contains:{token}'] = token.lower() in page_text_lower
+    # Check for at least one numeric metric on the page (e.g., 1234.56)
+    import re
+    nums = re.findall(r"\d{1,3}(?:[\.,]\d{3})*(?:[\.,]\d+)?", page_text)
+    resultados['numeric_found'] = len(nums) > 0
+
+    # Button checks: collect visible/clickable buttons and verify expected labels
+    try:
+        # Determine expected labels from parameter or env var
+        if button_labels:
+            expected_labels = [b.strip().lower() for b in button_labels.split(',') if b.strip()]
+        else:
+            env_labels = os.environ.get('BUTTON_LABELS', '')
+            if env_labels:
+                expected_labels = [b.strip().lower() for b in env_labels.split(',') if b.strip()]
+            else:
+                expected_labels = [
+                    'start', 'stop', 'iniciar', 'parar', 'run', 'executar', 'start bot', 'stop bot'
+                ]
+
+        btn_elements = []
+        try:
+            btn_elements = driver.find_elements(By.XPATH, "//button|//input[@type='button']|//input[@type='submit']|//div[@role='button']|//a[@role='button']")
+        except Exception:
+            btn_elements = []
+
+        textos = []
+        clickable_found = False
+        for b in btn_elements:
+            try:
+                t = (b.text or b.get_attribute('value') or '').strip()
+            except Exception:
+                t = ''
+            textos.append(t)
+            is_disabled = False
+            try:
+                disabled_attr = b.get_attribute('disabled')
+                if disabled_attr:
+                    is_disabled = True
+            except Exception:
+                is_disabled = False
+            if not is_disabled:
+                try:
+                    if b.is_displayed() and b.is_enabled():
+                        clickable_found = True
+                except Exception:
+                    clickable_found = True
+
+        resultados['buttons_count'] = len(btn_elements)
+        # store up to 10 button texts for debugging
+        resultados['button_texts'] = textos[:10]
+        resultados['clickable_button_found'] = clickable_found
+        # expected label checks
+        for lbl in expected_labels:
+            key = f'button_label:{lbl}'
+            found_lbl = any(lbl in (t or '').lower() for t in textos)
+            resultados[key] = found_lbl
+    except Exception:
+        resultados['buttons_check_error'] = True
     driver.quit()
     # Adiciona ao relatório se login foi tentado e detalhes de erro
     resultados['login_preenchido'] = login_preenchido
@@ -222,21 +339,29 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Valida tela do KuCoin Bot")
     parser.add_argument('--remote', action='store_true', help='Valida endpoint remoto')
     parser.add_argument('--local', action='store_true', help='Valida endpoint local')
+    parser.add_argument('--url', type=str, default=None, help='URL explícita para validar (substitui --remote/--local)')
     parser.add_argument('--retries', type=int, default=3, help='Número de tentativas automáticas')
     parser.add_argument('--wait', type=int, default=3, help='Segundos entre tentativas')
+    parser.add_argument('--check-buttons', action='store_true', help='Valida presença e rótulos de botões na tela')
+    parser.add_argument('--button-labels', type=str, default=None, help='Lista separada por vírgula de rótulos esperados para botões')
     args = parser.parse_args()
 
-    if args.remote:
+    # CLI precedence: explicit --url > --remote > --local > default APP_URL
+    if args.url:
+        url = args.url
+    elif args.remote:
         url = REMOTE_URL
-    else:
+    elif args.local:
         url = LOCAL_URL
+    else:
+        url = APP_URL
 
     expected_selectors = [s for (_, s) in ELEMENTOS_ESPERADOS]
 
     final_results = None
     for attempt in range(1, args.retries + 1):
         print(f"[attempt {attempt}/{args.retries}] Validando {url} ...")
-        resultados, screenshot = validar_tela(url, ELEMENTOS_ESPERADOS)
+        resultados, screenshot = validar_tela(url, ELEMENTOS_ESPERADOS, screenshot_path='screenshot.png', check_buttons=args.check_buttons or os.environ.get('CHECK_BUTTONS','0') in ('1','true','yes'), button_labels=args.button_labels)
         relatorio = gerar_relatorio(resultados, screenshot, url)
         fname = f"relatorio_validacao_attempt_{attempt}.md"
         with open(fname, "w") as f:
