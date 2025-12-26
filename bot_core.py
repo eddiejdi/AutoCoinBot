@@ -596,8 +596,35 @@ if __name__ == "__main__":
         eternal_mode=False,
     )
 
+    def _validate_db_status():
+        """Valida se o status do bot no banco está correto. Se não estiver, encerra o bot."""
+        try:
+            sess = db.get_active_bots()
+            for s in sess:
+                if str(s.get("id")) == str(args.bot_id):
+                    # Se status não for running, encerra
+                    if str(s.get("status")).lower() != "running":
+                        logger.info(f"Status no banco não é 'running' (é '{s.get('status')}'), encerrando bot.")
+                        return False
+                    # Se PID não bate, atualiza
+                    if int(s.get("pid") or 0) != current_pid:
+                        db.update_bot_session(args.bot_id, {"pid": current_pid})
+                    return True
+            # Se não encontrou sessão, encerra
+            logger.info("Sessão do bot não encontrada no banco, encerrando.")
+            return False
+        except Exception as e:
+            logger.error(f"Erro ao validar status do bot no banco: {e}")
+            return True  # Em caso de erro, não mata o bot imediatamente
+
     try:
-        bot.run()
+        while True:
+            # Validação periódica do status no banco
+            if not _validate_db_status():
+                logger.info("Validação de status detectou encerramento externo. Saindo...")
+                break
+            bot.run()
+            break  # Sai após execução normal
     finally:
         # Libera a cota do bot ao sair
         try:

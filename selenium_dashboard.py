@@ -59,30 +59,32 @@ try:
     except Exception:
         pass
 
-    # Não clicar em outros botões genéricos após login
 
-    # Interagir com abas/tabs se existirem
-    tabs = driver.find_elements(By.CLASS_NAME, 'stTabs')
-    for tab in tabs:
-        try:
-            tab_buttons = tab.find_elements(By.TAG_NAME, 'button')
-            for tbtn in tab_buttons:
-                if tbtn.is_displayed() and tbtn.is_enabled():
-                    tbtn.click()
-                    time.sleep(1)
-        except Exception:
-            continue
+    # Verificar se há bots ativos na tela
 
-    # Interagir com campos de entrada
-    inputs = driver.find_elements(By.TAG_NAME, 'input')
-    for inp in inputs:
-        try:
-            if inp.is_displayed() and inp.is_enabled():
-                inp.clear()
-                inp.send_keys('123')
-                time.sleep(0.5)
-        except Exception:
-            continue
+    # Critério ajustado: verifica header e mensagem de ausência
+    bots_ativos_header = None
+    nenhum_bot_ativo_msg = None
+    try:
+        bots_ativos_header = driver.find_element(By.XPATH, "//*[contains(text(), 'Bots Ativos')]").text
+    except Exception:
+        pass
+    try:
+        nenhum_bot_ativo_msg = driver.find_element(By.XPATH, "//*[contains(text(), 'Nenhum bot ativo')]").text
+    except Exception:
+        pass
+
+    with open('selenium_output.txt', 'a', encoding='utf-8') as f:
+        f.write(f"\n--- Rodada em {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+        f.write(f"Header Bots Ativos: {bots_ativos_header}\n")
+        f.write(f"Mensagem Nenhum bot ativo: {nenhum_bot_ativo_msg}\n")
+
+    if bots_ativos_header and not nenhum_bot_ativo_msg:
+        print("[OK] Bots ativos detectados na tela do dashboard.")
+    elif nenhum_bot_ativo_msg:
+        print("[ERRO] Nenhum bot ativo detectado na tela do dashboard! Mensagem: " + nenhum_bot_ativo_msg)
+    else:
+        print("[ERRO] Não foi possível determinar o status dos bots ativos na tela do dashboard.")
 
     # Scroll para baixo
     driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.END)
