@@ -5049,34 +5049,34 @@ def _render_full_ui(controller=None):
                     for bot_id in selected:
                         killed = False
 
-                            bot_info = controller.registry.get_bot_info(bot_id)
-                            sess = db_sessions_by_id.get(str(bot_id))
+                        bot_info = controller.registry.get_bot_info(bot_id)
+                        sess = db_sessions_by_id.get(str(bot_id))
 
+                        pid = None
+                        try:
+                            pid = (
+                                (sess.get("pid") if sess else None)
+                                or (bot_info.get("pid") if bot_info else None)
+                                or ps_pids_by_id.get(str(bot_id))
+                            )
+                        except Exception:
                             pid = None
-                            try:
-                                pid = (
-                                    (sess.get("pid") if sess else None)
-                                    or (bot_info.get("pid") if bot_info else None)
-                                    or ps_pids_by_id.get(str(bot_id))
-                                )
-                            except Exception:
-                                pid = None
 
-                            # Ask controller to stop first (best-effort)
-                            try:
-                                controller.stop_bot(str(bot_id))
-                            except Exception:
-                                pass
+                        # Ask controller to stop first (best-effort)
+                        try:
+                            controller.stop_bot(str(bot_id))
+                        except Exception:
+                            pass
 
-                            # Force SIGKILL by PID if available
-                            if pid is not None:
-                                try:
-                                    killed = _kill_pid_sigkill_only(int(pid))
-                                except Exception as e:
-                                    st.error(f"Erro ao dar Kill -9 em {str(bot_id)[:8]} (PID {pid}): {e}")
-                                    killed = False
-                            else:
-                                st.warning(f"PID não encontrado para bot {str(bot_id)[:8]}")
+                        # Force SIGKILL by PID if available
+                        if pid is not None:
+                            try:
+                                killed = _kill_pid_sigkill_only(int(pid))
+                            except Exception as e:
+                                st.error(f"Erro ao dar Kill -9 em {str(bot_id)[:8]} (PID {pid}): {e}")
+                                killed = False
+                        else:
+                            st.warning(f"PID não encontrado para bot {str(bot_id)[:8]}")
 
                             try:
                                 DatabaseManager().update_bot_session(bot_id, {"status": "stopped", "end_ts": time.time()})
