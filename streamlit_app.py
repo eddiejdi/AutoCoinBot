@@ -5,6 +5,22 @@ import streamlit as st
 import hashlib
 import logging
 
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
+# Load .env from repo root if available (local dev)
+if load_dotenv:
+    try:
+        load_dotenv(dotenv_path=os.path.join(os.getcwd(), '.env'))
+    except Exception:
+        pass
+    try:
+        load_dotenv()  # fallback: default lookup
+    except Exception:
+        pass
+
 # Add current directory to sys.path to ensure imports work
 sys.path.insert(0, os.path.dirname(__file__))
 
