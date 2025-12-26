@@ -44,4 +44,6 @@ watchdog==6.0.0
 websockets==15.0.1
 wheel==0.45.1
 selenium==4.39.0
-webdriver-manager==4.11.0
+# webdriver-manager pinned to a higher unavailable version broke Streamlit deploys.
+# Use a published, compatible release. 4.0.2 is available on PyPI.
+webdriver-manager==4.0.2
