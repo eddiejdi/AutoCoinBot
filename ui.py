@@ -13,9 +13,20 @@ import html
 import json
 from pathlib import Path
 import sys
+import logging
 
 # Ensure current directory is in sys.path for imports
 sys.path.insert(0, os.path.dirname(__file__))
+
+# Reduce Streamlit/related logger verbosity for tests and headless runs
+try:
+    logging.getLogger("streamlit").setLevel(logging.ERROR)
+except Exception:
+    pass
+try:
+    logging.getLogger("blinker").setLevel(logging.ERROR)
+except Exception:
+    pass
 
 # Persistência de login
 LOGIN_FILE = os.path.join(os.path.dirname(__file__), '.login_status')
@@ -4550,6 +4561,16 @@ def colorize_logs_html(log_text: str) -> str:
 
 
 def render_bot_control():
+    # Defensive: require login per session before rendering any UI
+    try:
+        if not bool(st.session_state.get("logado", False)):
+            st.title("🔐 Login obrigatório")
+            st.warning("Você precisa estar autenticado para acessar o dashboard.")
+            st.stop()
+    except Exception:
+        st.error("Erro ao verificar autenticação. Acesso negado.")
+        st.stop()
+
     # Entry point: call the full UI renderer (kept separate so we can recover safely).
     try:
         controller = None
@@ -5183,6 +5204,27 @@ def _render_full_ui(controller=None):
                                 f'border-left:4px solid #22c55e;font-family:monospace;font-weight:700">{str(bot_id)[:12]}…</div>'
                             )
                         row[0].markdown(badge_html, unsafe_allow_html=True)
+                        # Bot quick-open: botão que abre a tela dedicada do bot
+                        try:
+                            btn_key = f"open_bot_{bot_id}"
+                            # Small action button alongside the badge
+                            if row[0].button("Abrir", key=btn_key):
+                                try:
+                                    _merge_query_params({"bot": bot_id})
+                                except Exception:
+                                    try:
+                                        st.session_state.selected_bot = bot_id
+                                    except Exception:
+                                        pass
+                                try:
+                                    st.experimental_rerun()
+                                except Exception:
+                                    try:
+                                        st.rerun()
+                                    except Exception:
+                                        pass
+                        except Exception:
+                            pass
                     except Exception:
                         row[0].write(str(bot_id)[:12])
 

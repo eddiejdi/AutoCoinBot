@@ -7,6 +7,7 @@ Testa os cenários dry-run e real diretamente nos módulos
 import sys
 import os
 import time
+import pytest
 
 # Adicionar diretório atual ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -34,6 +35,7 @@ sys.modules['streamlit'] = type('MockStreamlit', (), {
     'divider': lambda: None,
     'subheader': lambda *args: None
 })()
+
 
 def test_start_bot_dry_run():
     """Testa o start de bot em modo dry-run"""
@@ -81,16 +83,14 @@ def test_start_bot_dry_run():
             else:
                 print("⚠️  Bot não está rodando")
 
-            return True
+            # Assert bot was created
+            assert bot_id
         else:
-            print("❌ Falha ao iniciar bot")
-            return False
+            pytest.fail("Falha ao iniciar bot em dry-run")
 
     except Exception as e:
-        print(f"❌ Erro durante teste dry-run: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        pytest.fail(f"Erro durante teste dry-run: {e}")
+
 
 def test_start_bot_real():
     """Testa o start de bot em modo real"""
@@ -128,15 +128,15 @@ def test_start_bot_real():
         auto_confirm = os.getenv('AUTO_CONFIRM_REAL_TEST', '').lower() == 'true'
 
         if not auto_confirm:
+            # If non-interactive environment, skip the real mode test for safety
+            if not sys.stdin.isatty():
+                pytest.skip("Ambiente não-interativo - pulando teste real")
             try:
                 resposta = input("Deseja continuar? (digite 'SIM' para confirmar ou pressione Enter para pular): ").strip()
                 if resposta.upper() != 'SIM':
-                    print("❌ Teste real cancelado pelo usuário")
-                    return None
+                    pytest.skip("Teste real cancelado pelo usuário")
             except EOFError:
-                # Se não há input interativo (como em CI/CD), pular
-                print("⏭️  Ambiente não-interativo detectado, pulando teste real")
-                return None
+                pytest.skip("Ambiente não-interativo detectado - pulando teste real")
 
         # Iniciar bot
         print("🚀 Iniciando bot REAL...")
@@ -158,16 +158,13 @@ def test_start_bot_real():
             else:
                 print("⚠️  Bot não está rodando")
 
-            return True
+            assert bot_id
         else:
-            print("❌ Falha ao iniciar bot real")
-            return False
+            pytest.fail("Falha ao iniciar bot real")
 
     except Exception as e:
-        print(f"❌ Erro durante teste real: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        pytest.fail(f"Erro durante teste real: {e}")
+
 
 def cleanup_test_bots():
     """Para todos os bots de teste"""
@@ -191,12 +188,42 @@ def cleanup_test_bots():
     except Exception as e:
         print(f"❌ Erro ao limpar bots: {e}")
 
+
 if __name__ == "__main__":
     print("🚀 INICIANDO TESTES DE START DOS BOTS")
     print("=" * 60)
 
     # Teste 1: Dry Run
-    dry_success = test_start_bot_dry_run()
+    try:
+        test_start_bot_dry_run()
+        dry_success = True
+    except Exception:
+        dry_success = False
+
+    # Aguardar um pouco
+    time.sleep(3)
+
+    # Teste 2: Real Mode (com confirmação de segurança)
+    try:
+        test_start_bot_real()
+        real_success = True
+    except Exception:
+        real_success = None
+
+    # Resultados
+    print("\n📊 RESULTADOS DOS TESTES")
+    print("=" * 40)
+    print(f"🧪 Dry Run: {'✅ PASSOU' if dry_success else '❌ FALHOU'}")
+    if real_success is None:
+        print("💰 Real Mode: ⏭️  PULADO (segurança)")
+    else:
+        print(f"💰 Real Mode: {'✅ PASSOU' if real_success else '❌ FALHOU'}")
+
+    if dry_success or (real_success is not None and real_success):
+        print("\n🧹 Limpando bots de teste...")
+        cleanup_test_bots()
+
+    print("\n🎯 TESTES CONCLUÍDOS!")
 
     # Aguardar um pouco
     time.sleep(3)
