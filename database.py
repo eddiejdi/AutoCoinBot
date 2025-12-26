@@ -2,6 +2,8 @@
 # SQLite database manager for trades, logs, and equity tracking
 
 import sqlite3
+import os
+from pathlib import Path as _Path
 import json
 import time
 import logging
@@ -12,7 +14,29 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent
-DB_PATH = ROOT / "trades.db"
+
+# Load .env if available to allow configuring DB path via TRADES_DB
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
+if load_dotenv:
+    try:
+        load_dotenv(dotenv_path=_Path.cwd() / '.env')
+    except Exception:
+        pass
+    try:
+        load_dotenv()
+    except Exception:
+        pass
+
+# Allow overriding DB location with TRADES_DB env var
+_env_db = os.environ.get('TRADES_DB')
+if _env_db:
+    DB_PATH = Path(_env_db)
+else:
+    DB_PATH = ROOT / "trades.db"
 
 class DatabaseManager:
     # --- LEARNING (APRENDIZADO) ---
@@ -80,7 +104,7 @@ class DatabaseManager:
     
     def get_connection(self):
         """Obtém a conexão com o banco de dados com row factory"""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
         return conn
     

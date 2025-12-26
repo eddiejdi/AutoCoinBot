@@ -2,6 +2,7 @@
 
 ![Screenshot](screenshot.png)
 
+<<<<<<< HEAD
 - Elemento 'h1': OK
 - Elemento 'h2': OK
 - Elemento 'h3': OK
@@ -35,4 +36,11 @@
 - Elemento 'button_label:executar': NÃO ENCONTRADO
 - Elemento 'button_label:start bot': NÃO ENCONTRADO
 - Elemento 'button_label:stop bot': NÃO ENCONTRADO
+=======
+- Elemento 'h1': NÃO ENCONTRADO
+- Elemento 'stButton': OK
+- Elemento 'stDataFrame': NÃO ENCONTRADO
+- Elemento 'stAlert': NÃO ENCONTRADO
+- Elemento 'stSidebar': OK
+>>>>>>> Autooin/main
 - Elemento 'login_preenchido': OK

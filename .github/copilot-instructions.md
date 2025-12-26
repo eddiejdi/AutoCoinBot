@@ -23,7 +23,6 @@ This file gives targeted, discoverable guidance for AI code contributors working
 	- `database.py`: DB schema + helpers (`insert_bot_session`, `get_active_bots`, `add_bot_log`, `get_bot_logs`, `insert_trade`).
 	- `api.py`: KuCoin integration; reads secrets from env or `st.secrets` via `_get_secret()`.
 
-	Quick developer workflows
 	- Sempre rode o Streamlit e o bot em terminais separados para facilitar debug e visualização:
 		1. **Terminal 1:** `python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true`
 		2. **Terminal 2:** Inicie o bot manualmente (exemplo):
@@ -77,12 +76,10 @@ This file gives targeted, discoverable guidance for AI code contributors working
 	Scrapers & headless validation
 	- `agent0_scraper.py` is a Selenium-based visual check (requires Chrome + chromedriver); `run_dry_validate.py` exercises dry-run bots and the scraper.
 
-
 	# Deployment notes
 
 	- For production or persistent use, prefer running as a systemd service (see deploy/streamlit.service.template) or via Docker Compose (see deploy/docker-compose.yml).
 	- When using Docker, the project directory is mounted into the container; adjust volumes for persistent DB storage (the default SQLite DB is ephemeral in containers/cloud).
 	- The helper script `start_streamlit.sh` supports `--foreground` for systemd and background mode by default.
 	- See deploy/README.md for step-by-step deployment instructions.
-
 	If anything critical is missing or you want the DB schemas, tell me which table(s) to append and I'll add concise schemas and example queries.

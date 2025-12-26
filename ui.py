@@ -1,25 +1,5 @@
-# ui.py
-import time
-import hashlib
-import os
-import signal
-import subprocess
-import shlex
-import threading
-import streamlit as st
-import streamlit.components.v1 as components
-import urllib.parse
-import html
-import json
 from pathlib import Path
-import sys
-
-# Ensure current directory is in sys.path for imports
-sys.path.insert(0, os.path.dirname(__file__))
-
-# Persistência de login
-LOGIN_FILE = os.path.join(os.path.dirname(__file__), '.login_status')
-
+import threading
 def set_logged_in(status):
     if status:
         with open(LOGIN_FILE, 'w') as f:
@@ -36,44 +16,6 @@ try:
     from wallet_releases_rss import render_wallet_releases_widget
 except Exception:
     render_wallet_releases_widget = None
-
-try:
-    from market import analyze_market_regime_5m
-except Exception:
-    analyze_market_regime_5m = None
-
-# =====================================================
-# CONTROLLER GLOBAL
-# =====================================================
-def get_global_controller():
-    """Retorna uma instância global do BotController"""
-    return BotController()
-
-# =====================================================
-# UTILITÁRIOS
-# =====================================================
-
-try:
-    from terminal_component import render_terminal as render_terminal
-    from terminal_component import start_api_server as start_api_server
-    HAS_TERMINAL = True
-except Exception:
-    HAS_TERMINAL = False
-
-
-ROOT = Path(__file__).resolve().parent
-
-
-@st.cache_data(ttl=20, show_spinner=False)
-def _get_strategy_snapshot_cached(symbol: str):
-        if not symbol or not analyze_market_regime_5m:
-                return None
-        try:
-                return analyze_market_regime_5m(symbol)
-        except Exception:
-                return None
-
-
 def render_strategy_semaphore(snapshot: dict, theme: dict) -> str:
         if not snapshot:
                 return ""
@@ -192,42 +134,41 @@ def _kill_pid_best_effort(pid: int, timeout_s: float = 0.4) -> bool:
     except Exception:
         pgrp = None
 
-    def _kill_term():
-        if pgrp and pgrp > 0:
-            # Never kill our own process group.
-            try:
-                if pgrp != os.getpgrp():
-                    os.killpg(pgrp, signal.SIGTERM)
-                    return
-            except Exception:
-                pass
+    # Try SIGTERM to process group first
+    if pgrp and pgrp > 0:
         try:
-            os.kill(pid_i, signal.SIGTERM)
+            if pgrp != os.getpgrp():
+                os.killpg(pgrp, signal.SIGTERM)
         except Exception:
             pass
 
-    def _kill_kill():
-        if pgrp and pgrp > 0:
-            try:
-                if pgrp != os.getpgrp():
-                    os.killpg(pgrp, signal.SIGKILL)
-                    return
-            except Exception:
-                pass
-        try:
-            os.kill(pid_i, signal.SIGKILL)
-        except Exception:
-            pass
-
-    _kill_term()
+    # Fallback: SIGTERM to the process itself
     try:
-        time.sleep(max(0.0, float(timeout_s)))
+        os.kill(pid_i, signal.SIGTERM)
     except Exception:
         pass
+
+    # Wait a bit for graceful shutdown
+    try:
+        time.sleep(timeout_s)
+    except Exception:
+        pass
+
     if not _pid_alive(pid_i):
         return True
 
-    _kill_kill()
+    # If still alive, escalate to SIGKILL
+    if pgrp and pgrp > 0:
+        try:
+            if pgrp != os.getpgrp():
+                os.killpg(pgrp, signal.SIGKILL)
+        except Exception:
+            pass
+    try:
+        os.kill(pid_i, signal.SIGKILL)
+    except Exception:
+        pass
+
     try:
         time.sleep(0.1)
     except Exception:
@@ -4556,6 +4497,16 @@ def colorize_logs_html(log_text: str) -> str:
 
 
 def render_bot_control():
+    # Defensive: require login per session before rendering any UI
+    try:
+        if not bool(st.session_state.get("logado", False)):
+            st.title("🔐 Login obrigatório")
+            st.warning("Você precisa estar autenticado para acessar o dashboard.")
+            st.stop()
+    except Exception:
+        st.error("Erro ao verificar autenticação. Acesso negado.")
+        st.stop()
+
     # Entry point: call the full UI renderer (kept separate so we can recover safely).
     try:
         controller = None
@@ -5189,6 +5140,31 @@ def _render_full_ui(controller=None):
                     try:
                         if not dry_flag and bot_info:
                             dry_flag = bool(int((bot_info.get("dry_run") if bot_info is not None else None) or 0) == 1)
+                    except Exception:
+                        row[0].write(str(bot_id)[:12])
+
+                    row[1].write(symbol)
+                    # Mode rendered as a colored badge (green for real, amber for dry)
+                    try:
+                        mode_color = "#f59e0b" if dry_flag else "#22c55e"
+                        mode_html = (
+                            f'<div style="display:inline-block;padding:6px 8px;border-radius:6px;'
+                            f'background:rgba(255,255,255,0.02);color:{mode_color};font-weight:700;' 
+                            f'font-family:monospace">{str(mode).upper()}</div>'
+                        )
+                        row[2].markdown(mode_html, unsafe_allow_html=True)
+                    except Exception:
+                        row[2].write(str(mode).upper())
+
+                    # LOG + Relatório (HTML) in a NEW TAB.
+                    # Use real links instead of server-side webbrowser (works in VS Code/remote too).
+                    api_port = st.session_state.get("_api_port")
+                    try:
+                        if not api_port and 'start_api_server' in globals():
+                            p = start_api_server(8765)
+                            if p:
+                                st.session_state["_api_port"] = int(p)
+                                api_port = int(p)
                     except Exception:
                         pass
                 except Exception:

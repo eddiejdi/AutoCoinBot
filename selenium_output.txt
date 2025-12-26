@@ -1,0 +1,4 @@
+
+--- Rodada em 2025-12-26 02:20:14 ---
+Header Bots Ativos: 🤖 Bots Ativos (13)
+Mensagem Nenhum bot ativo: 🚦 Nenhum bot ativo. Use os controles à esquerda para iniciar um novo bot.

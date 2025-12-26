@@ -16,8 +16,9 @@ export KUCOIN_PASS="sua_senha"
 ### Método 2: Editando o Código (Não Recomendado)
 Edite o arquivo `auth_config.py` e altere as constantes:
 ```python
-USUARIO_PADRAO = "seu_usuario"
-SENHA_HASH_PADRAO = hashlib.sha256("sua_senha".encode()).hexdigest()
+USUARIO_PADRAO = "admin"
+SENHA_HASH_PADRAO = hashlib.sha256("senha123
+".encode()).hexdigest()
 ```
 
 ## Como Usar

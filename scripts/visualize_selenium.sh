@@ -1,3 +1,6 @@
+# Resolva os conflitos manualmente aqui, mantendo apenas comandos válidos e sem duplicidade.
+# Certifique-se de que não há comandos duplicados ou inválidos.
+# ...existing code...
 #!/usr/bin/env bash
 # Lightweight helper to run Selenium tests on a virtual display and expose it via VNC.
 # Usage: sudo apt install -y xvfb x11vnc fluxbox || install equivalents
