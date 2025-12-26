@@ -17,6 +17,7 @@ from typing import Any
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
+import html
 
 
 WALLET_RELEASE_FEEDS: list[dict[str, str]] = [

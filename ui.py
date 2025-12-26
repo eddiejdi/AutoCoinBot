@@ -1,5 +1,17 @@
-import html
+try:
+    import html
+except Exception:
+    class _HTMLShim:
+        @staticmethod
+        def escape(s):
+            try:
+                return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            except Exception:
+                return str(s)
+
+    html = _HTMLShim()
 import os
+import time
 import streamlit as st
 from pathlib import Path
 import threading
@@ -20,6 +32,10 @@ try:
     from wallet_releases_rss import render_wallet_releases_widget
 except Exception:
     render_wallet_releases_widget = None
+try:
+    from terminal_component import render_terminal_live_api
+except Exception:
+    render_terminal_live_api = None
 def render_strategy_semaphore(snapshot: dict, theme: dict) -> str:
         if not snapshot:
                 return ""
@@ -1333,136 +1349,183 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
         count_real = len(real_active_bots)
         st.subheader(f"🤖 Bots Ativos ({count_real})")
         if count_real > 0:
-            kill_sel_key = "_kill_sel_bots"
-            if kill_sel_key not in st.session_state:
-                st.session_state[kill_sel_key] = {}
-
-            top_cols = st.columns([3.2, 1.0])
-            with top_cols[0]:
-                st.caption("Marque os bots e use o botão à direita para SIGKILL (-9).")
-            with top_cols[1]:
-                selected_now = [
-                    b['id']
-                    for b in real_active_bots
-                    if bool(st.session_state.get(f"sel_kill_{b['id']}", False))
-                ]
-                try:
-                    clicked_kill_selected = st.button(
-                        f"🛑 Kill -9 ({len(selected_now)})",
-                        key="kill_selected",
-                        type="secondary",
-                        use_container_width=True,
-                        disabled=(len(selected_now) == 0),
-                    )
-                except TypeError:
-                    clicked_kill_selected = st.button(
-                        f"🛑 Kill -9 ({len(selected_now)})",
-                        key="kill_selected",
-                        type="secondary",
-                        use_container_width=True,
-                    )
-
-            if clicked_kill_selected:
-                selected = [
-                    b['id']
-                    for b in real_active_bots
-                    if bool(st.session_state.get(f"sel_kill_{b['id']}", False))
-                ]
-                if not selected:
-                    st.warning("Nenhum bot selecionado para Kill -9.")
-                else:
-                    killed_any = False
-                    killed_ids: list[str] = []
-                    for bot_id in selected:
-                        killed = False
-                        bot_info = controller.registry.get_bot_info(bot_id)
-                        sess = db_sessions_by_id.get(str(bot_id))
-                        pid = None
-                        try:
-                            pid = (
-                                (sess.get("pid") if sess else None)
-                                or (bot_info.get("pid") if bot_info else None)
-                                or ps_pids_by_id.get(str(bot_id))
-                            )
-                        except Exception:
-                            pid = None
-                        try:
-                            controller.stop_bot(str(bot_id))
-                        except Exception:
-                            pass
-                        if pid is not None:
-                            try:
-                                killed = _kill_pid_sigkill_only(int(pid))
-                            except Exception as e:
-                                st.error(f"Erro ao dar Kill -9 em {str(bot_id)[:8]} (PID {pid}): {e}")
-                                killed = False
-                        else:
-                            st.warning(f"PID não encontrado para bot {str(bot_id)[:8]}")
-                            try:
-                                DatabaseManager().update_bot_session(bot_id, {"status": "stopped", "end_ts": time.time()})
-                            except Exception:
-                                pass
-                            try:
-                                DatabaseManager().release_bot_quota(str(bot_id))
-                            except Exception:
-                                pass
-                            try:
-                                if bot_id in st.session_state.active_bots:
-                                    st.session_state.active_bots = [b for b in st.session_state.active_bots if b != bot_id]
-                                if st.session_state.get("selected_bot") == bot_id:
-                                    st.session_state.selected_bot = None
-                            except Exception:
-                                pass
-                            try:
-                                st.session_state[f"sel_kill_{bot_id}"] = False
-                            except Exception:
-                                pass
-                            if killed:
-                                killed_any = True
-                                killed_ids.append(str(bot_id))
-                        if killed_any:
-                            st.success(f"Kill -9 aplicado em {len(killed_ids)} bot(s).")
-                            st.rerun()
-                header_cols = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
-                header_cols[0].markdown("**🆔 Bot ID**")
-                header_cols[1].markdown("**📊 Símbolo**")
-                header_cols[2].markdown("**⚙️ Modo**")
-                header_cols[3].markdown("**📑 Relatório**")
-                header_cols[4].markdown("**✅ Sel.**")
-                header_cols[5].markdown("**📈 Progresso**")
+            # Force the simple legacy-style textual list by default (compatibility)
+            simple_view = True
+            if simple_view:
                 db_for_progress = DatabaseManager()
-                target_pct_global = st.session_state.get("target_profit_pct", 2.0)
                 for bot in real_active_bots:
-                    bot_id = bot['id']
+                    bot_id = bot.get('id')
                     bot_info = controller.registry.get_bot_info(bot_id)
                     sess = db_sessions_by_id.get(str(bot_id))
                     symbol = (bot_info.get('symbol') if bot_info else None) or (sess.get('symbol') if sess else None) or 'N/A'
                     mode = (bot_info.get('mode') if bot_info else None) or (sess.get('mode') if sess else None) or 'N/A'
-                    progress_value = 0.0
-                    profit_pct_value = 0.0
+                    pid = None
                     try:
-                        logs = db_for_progress.get_bot_logs(bot_id, limit=30)
-                        current_price = 0.0
-                        entry_price = 0.0
-                        for log in logs:
-                            msg = (log.get('message') or "")
-                            try:
-                                import json as _json
-                                data = _json.loads(msg)
-                                if 'price' in data and data['price'] is not None:
-                                    current_price = float(data['price'])
-                                if 'entry_price' in data and data['entry_price'] is not None:
-                                    entry_price = float(data['entry_price'])
-                            except Exception:
-                                continue
-                        if entry_price > 0 and current_price > 0:
-                            profit_pct_value = ((current_price - entry_price) / entry_price) * 100
-                        if target_pct_global and float(target_pct_global) > 0:
-                            progress_value = min(1.0, max(0.0, (profit_pct_value / float(target_pct_global))))
+                        pid = (sess.get('pid') if sess else None) or (bot_info.get('pid') if bot_info else None) or ps_pids_by_id.get(str(bot_id))
                     except Exception:
-                        pass
-                    progress_bar = st.progress(progress_value, text=f"{profit_pct_value:.2f}% / {target_pct_global}%")
-                    st.write(f"{bot_id} | {symbol} | {mode}")
+                        pid = None
+                    status = None
+                    try:
+                        status = (sess.get('status') if sess else None) or ('running' if pid else 'stopped')
+                    except Exception:
+                        status = 'unknown'
+                    # Render compact legacy-style line with LOG button and Kill checkbox
+                    cols = st.columns([4.5, 0.8, 0.8])
+                    with cols[0]:
+                        st.write(f"ID: {bot_id} | Símbolo: {symbol} | Modo: {mode} | PID: {pid or 'N/A'} | Status: {status}")
+                    with cols[1]:
+                        clicked_log = st.button("LOG", key=f"log_{bot_id}")
+                        if clicked_log:
+                            try:
+                                st.session_state.selected_bot = bot_id
+                            except Exception:
+                                pass
+                            try:
+                                if render_terminal_live_api is not None:
+                                    render_terminal_live_api(bot_id)
+                            except Exception:
+                                pass
+                    with cols[2]:
+                        st.checkbox("Kill", key=f"sel_kill_{bot_id}")
+            else:
+                kill_sel_key = "_kill_sel_bots"
+                if kill_sel_key not in st.session_state:
+                    st.session_state[kill_sel_key] = {}
+
+                top_cols = st.columns([3.2, 1.0])
+                with top_cols[0]:
+                    st.caption("Marque os bots e use o botão à direita para SIGKILL (-9).")
+                with top_cols[1]:
+                    selected_now = [
+                        b['id']
+                        for b in real_active_bots
+                        if bool(st.session_state.get(f"sel_kill_{b['id']}", False))
+                    ]
+                    # Add data-testid for Selenium
+                    kill_btn_html = f'<button data-testid="kill-selected-btn" style="display:none"></button>'
+                    st.markdown(kill_btn_html, unsafe_allow_html=True)
+                    try:
+                        clicked_kill_selected = st.button(
+                            f"🛑 Kill -9 ({len(selected_now)})",
+                            key="kill_selected",
+                            type="secondary",
+                            use_container_width=True,
+                            disabled=(len(selected_now) == 0),
+                        )
+                    except TypeError:
+                        clicked_kill_selected = st.button(
+                            f"🛑 Kill -9 ({len(selected_now)})",
+                            key="kill_selected",
+                            type="secondary",
+                            use_container_width=True,
+                        )
+
+                if clicked_kill_selected:
+                    selected = [
+                        b['id']
+                        for b in real_active_bots
+                        if bool(st.session_state.get(f"sel_kill_{b['id']}", False))
+                    ]
+                    if not selected:
+                        st.warning("Nenhum bot selecionado para Kill -9.")
+                    else:
+                        killed_any = False
+                        killed_ids: list[str] = []
+                        for bot_id in selected:
+                            killed = False
+                            bot_info = controller.registry.get_bot_info(bot_id)
+                            sess = db_sessions_by_id.get(str(bot_id))
+                            pid = None
+                            try:
+                                pid = (
+                                    (sess.get("pid") if sess else None)
+                                    or (bot_info.get("pid") if bot_info else None)
+                                    or ps_pids_by_id.get(str(bot_id))
+                                )
+                            except Exception:
+                                pid = None
+                            try:
+                                controller.stop_bot(str(bot_id))
+                            except Exception:
+                                pass
+                            if pid is not None:
+                                try:
+                                    killed = _kill_pid_sigkill_only(int(pid))
+                                except Exception as e:
+                                    st.error(f"Erro ao dar Kill -9 em {str(bot_id)[:8]} (PID {pid}): {e}")
+                                    killed = False
+                            else:
+                                st.warning(f"PID não encontrado para bot {str(bot_id)[:8]}")
+                                try:
+                                    DatabaseManager().update_bot_session(bot_id, {"status": "stopped", "end_ts": time.time()})
+                                except Exception:
+                                    pass
+                                try:
+                                    DatabaseManager().release_bot_quota(str(bot_id))
+                                except Exception:
+                                    pass
+                                try:
+                                    if bot_id in st.session_state.active_bots:
+                                        st.session_state.active_bots = [b for b in st.session_state.active_bots if b != bot_id]
+                                    if st.session_state.get("selected_bot") == bot_id:
+                                        st.session_state.selected_bot = None
+                                except Exception:
+                                    pass
+                                try:
+                                    st.session_state[f"sel_kill_{bot_id}"] = False
+                                except Exception:
+                                    pass
+                                if killed:
+                                    killed_any = True
+                                    killed_ids.append(str(bot_id))
+                            if killed_any:
+                                st.success(f"Kill -9 aplicado em {len(killed_ids)} bot(s).")
+                                st.rerun()
+                header_cols = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
+                header_cols[0].markdown("**🆔 Bot ID**")
+                header_cols[1].markdown("**📊 Símbolo**")
+                header_cols[2].markdown("**⚙️ Modo**")
+                header_cols[3].markdown("**📑 <span data-testid='relatorio-header'>Relatório</span>**", unsafe_allow_html=True)
+                header_cols[4].markdown("**✅ Sel.**")
+                header_cols[5].markdown("**📈 Progresso**")
+                db_for_progress = DatabaseManager()
+                # Compact per-bot rows: ID | Tipo (symbol/mode) | LOG button | Kill checkbox
+                for bot in real_active_bots:
+                    bot_id = bot.get('id')
+                    bot_info = controller.registry.get_bot_info(bot_id)
+                    sess = db_sessions_by_id.get(str(bot_id))
+                    symbol = (bot_info.get('symbol') if bot_info else None) or (sess.get('symbol') if sess else None) or 'N/A'
+                    mode = (bot_info.get('mode') if bot_info else None) or (sess.get('mode') if sess else None) or 'N/A'
+
+                    cols = st.columns([3.5, 2.5, 0.8, 0.8])
+                    # ID and brief info
+                    with cols[0]:
+                        try:
+                            st.markdown(f"**ID:** {bot_id}  \n**Tipo:** {symbol} | {mode}")
+                        except Exception:
+                            st.write(f"ID: {bot_id} | Tipo: {symbol} | {mode}")
+
+                    # Placeholder column (could be used for future data)
+                    with cols[1]:
+                        st.write("")
+
+                    # LOG button (stable key for tests)
+                    with cols[2]:
+                        clicked_log = st.button("LOG", key=f"log_{bot_id}")
+                        if clicked_log:
+                            try:
+                                st.session_state.selected_bot = bot_id
+                            except Exception:
+                                pass
+                            try:
+                                if render_terminal_live_api is not None:
+                                    render_terminal_live_api(bot_id)
+                            except Exception:
+                                pass
+
+                    # Kill checkbox (labelled Kill for clarity)
+                    with cols[3]:
+                        st.checkbox("Kill", key=f"sel_kill_{bot_id}")
         else:
             st.subheader(f"🤖 Bots Ativos (0)")
             st.info("🚦 Nenhum bot ativo. Use os controles à esquerda para iniciar um novo bot.")
