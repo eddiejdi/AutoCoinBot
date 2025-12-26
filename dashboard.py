@@ -5,7 +5,6 @@ import logging
 import streamlit as st
 import streamlit.components.v1 as components
 import urllib.parse
-import html
 from pathlib import Path
 import os
 import sys

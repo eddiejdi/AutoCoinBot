@@ -74063,5 +74063,27 @@
     ],
     "total_profit": 0.02,
     "dry_run": true
+  },
+  {
+    "id": "bot_3ec3da20",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "mixed",
+    "start_ts": 1766762565.364414,
+    "end_ts": 1766762719.4121485,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_3ec3da20",
+    "symbol": "BTC-USDT",
+    "entry_price": 88000.0,
+    "mode": "mixed",
+    "start_ts": 1766762876.6909668,
+    "end_ts": 1766762890.9323552,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
   }
 ]
