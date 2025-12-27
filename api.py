@@ -52,14 +52,18 @@ def _get_secret(key, default=""):
     env_value = os.getenv(key, None)
     if env_value is not None:
         return env_value
-    
+
     # Then try streamlit secrets
     try:
         import streamlit as st
-        # Assuming secrets are in sections, but for simplicity, try flat first
+        # Prioriza seção [secrets] se existir (Streamlit Cloud padrão)
+        if 'secrets' in st.secrets and isinstance(st.secrets['secrets'], dict):
+            if key in st.secrets['secrets']:
+                return st.secrets['secrets'][key]
+        # Busca flat (legacy)
         if key in st.secrets:
             return st.secrets[key]
-        # Or from sections
+        # Busca em outras seções
         for section in st.secrets:
             if isinstance(st.secrets[section], dict) and key in st.secrets[section]:
                 return st.secrets[section][key]
