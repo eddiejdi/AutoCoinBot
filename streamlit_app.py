@@ -13,33 +13,40 @@ except Exception as exc:
         import traceback as tb
         f.write("Erro fatal no import do streamlit_app.py:\n")
         f.write("".join(tb.format_exception(type(exc), exc, exc.__traceback__)))
-    raise
 
-# Importa página de exceção global
-from exception_page import render_exception_page
-
-try:
-    from dotenv import load_dotenv
-except Exception:
-    load_dotenv = None
-
-# Load .env from repo root if available (local dev)
-if load_dotenv:
-    try:
-        load_dotenv(dotenv_path=os.path.join(os.getcwd(), '.env'))
-    except Exception:
-        pass
-    try:
-        load_dotenv()  # fallback: default lookup
-    except Exception:
-        pass
-
-# Add current directory to sys.path to ensure imports work
-sys.path.insert(0, os.path.dirname(__file__))
-
-# auth_config.py - Configurações de autenticação (inlined to avoid import issues)
-USUARIO_PADRAO = os.getenv("KUCOIN_USER", "admin")
 SENHA_HASH_PADRAO = hashlib.sha256(os.getenv("KUCOIN_PASS", "senha123").encode()).hexdigest()
+        try:
+            # Persistir login após F5: se .login_status existe, setar session_state['logado']
+            try:
+                if os.path.exists(LOGIN_FILE):
+                    st.session_state["logado"] = True
+            except Exception:
+                pass
+
+            # Mostrar loader/top placeholder como primeiro elemento renderizado
+            top_loader = st.empty()
+            try:
+                top_loader.info("⏳ Carregando...")
+            except Exception:
+                try:
+                    top_loader.markdown("⏳ Carregando...")
+                except Exception:
+                    pass
+
+            # Verificar se usuário está logado (exigir login por sessão)
+            try:
+                logged = bool(st.session_state.get("logado", False))
+            except Exception:
+                logged = False
+
+            if not logged:
+                # Remover loader antes de exibir o formulário de login
+                try:
+                    top_loader.empty()
+                except Exception:
+                    pass
+                fazer_login()
+                return
 
 def verificar_credenciais(usuario, senha):
     senha_hash = hashlib.sha256(senha.encode()).hexdigest()
