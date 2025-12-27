@@ -5503,3 +5503,10 @@ def _render_full_ui(controller=None):
     # =====================================================
     # Aqui só chegamos se NÃO estivermos em modo janela
 
+    # Footer com versão
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align: center; color: #666; font-size: 0.8em;'>v1.0 - AutoCoinBot</div>",
+        unsafe_allow_html=True
+    )
+
