@@ -1,9 +1,13 @@
+
 import os
 import sys
 import traceback
 import streamlit as st
 import hashlib
 import logging
+
+# Importa página de exceção global
+from exception_page import render_exception_page
 
 try:
     from dotenv import load_dotenv
@@ -93,98 +97,101 @@ def fazer_login():
 
         if submitted:
             if verificar_credenciais(usuario, senha):
-                st.session_state["logado"] = True
-                set_logged_in(True)
-                st.success("Login realizado com sucesso!")
-                st.rerun()
-            else:
-                st.error("Usuário ou senha incorretos!")
 
-def main():
-    # Mostrar loader/top placeholder como primeiro elemento renderizado
-    top_loader = st.empty()
-    try:
-        top_loader.info("⏳ Carregando...")
-    except Exception:
-        try:
-            top_loader.markdown("⏳ Carregando...")
-        except Exception:
-            pass
-
-    # Verificar se usuário está logado (exigir login por sessão)
-    try:
-        logged = bool(st.session_state.get("logado", False))
-    except Exception:
-        logged = False
-
-    if not logged:
-        # Remover loader antes de exibir o formulário de login
-        try:
-            top_loader.empty()
-        except Exception:
-            pass
-        fazer_login()
-        return
-
-    # Garantir que session_state tenha logado
-    st.session_state["logado"] = True
-
-    # Usuário logado - renderizar aplicação principal
-    ui_mod = None
-    here = os.path.dirname(__file__)
-
-    # Tenta importar o módulo UI normalmente
-    try:
-        import ui as ui_mod
-    except Exception:
-        # Fallback para importação manual se necessário
-        try:
-            import types
-            import importlib.util
-
-            pkg_name = "kucoin_app"
-            pkg = types.ModuleType(pkg_name)
-            pkg.__path__ = [here]
-            sys.modules[pkg_name] = pkg
-
-            ui_path = os.path.join(here, "ui.py")
-            spec = importlib.util.spec_from_file_location(f"{pkg_name}.ui", ui_path)
-            ui_mod = importlib.util.module_from_spec(spec)
-            ui_mod.__package__ = pkg_name
-            sys.modules[f"{pkg_name}.ui"] = ui_mod
-            spec.loader.exec_module(ui_mod)
-        except Exception as e:
-            # Se a porta já estiver em uso, tenta capturar a sessão existente
-            import socket
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            try:
-                s.connect(("localhost", 8501))
-                # If another Streamlit session is active, open its dashboard in browser and exit.
-                try:
-                    import webbrowser
-                    try:
-                        st_port = int(st.get_option("server.port"))
-                    except Exception:
-                        st_port = 8501
-                    home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
-                    webbrowser.open_new_tab(home_url)
-                except Exception:
-                    pass
-                return
-            except Exception:
-                st.error("Erro ao importar módulos (fallback)")
-                st.error(str(e))
-                st.code(traceback.format_exc())
-                raise SystemExit(1)
-            finally:
-                s.close()
-
-    # All UI (top bar, dashboard, monitor, report) is rendered by ui.py.
-    if hasattr(ui_mod, "render_bot_control"):
-        try:
-            ui_mod.render_bot_control()
-        finally:
             # Garantir que o loader seja removido após a UI carregar
+                    try:
+                        # Mostrar loader/top placeholder como primeiro elemento renderizado
+                        top_loader = st.empty()
+                        try:
+                            top_loader.info("⏳ Carregando...")
+                        except Exception:
+                            try:
+                                top_loader.markdown("⏳ Carregando...")
+                            except Exception:
+                                pass
+
+                        # Verificar se usuário está logado (exigir login por sessão)
+                        try:
+                            logged = bool(st.session_state.get("logado", False))
+                        except Exception:
+                            logged = False
+
+                        if not logged:
+                            # Remover loader antes de exibir o formulário de login
+                            try:
+                                top_loader.empty()
+                            except Exception:
+                                pass
+                            fazer_login()
+                            return
+
+                        # Garantir que session_state tenha logado
+                        st.session_state["logado"] = True
+
+                        # Usuário logado - renderizar aplicação principal
+                        ui_mod = None
+                        here = os.path.dirname(__file__)
+
+                        # Tenta importar o módulo UI normalmente
+                        try:
+                            import ui as ui_mod
+                        except Exception:
+                            # Fallback para importação manual se necessário
+                            try:
+                                import types
+                                import importlib.util
+
+                                pkg_name = "kucoin_app"
+                                pkg = types.ModuleType(pkg_name)
+                                pkg.__path__ = [here]
+                                sys.modules[pkg_name] = pkg
+
+                                ui_path = os.path.join(here, "ui.py")
+                                spec = importlib.util.spec_from_file_location(f"{pkg_name}.ui", ui_path)
+                                ui_mod = importlib.util.module_from_spec(spec)
+                                ui_mod.__package__ = pkg_name
+                                sys.modules[f"{pkg_name}.ui"] = ui_mod
+                                spec.loader.exec_module(ui_mod)
+                            except Exception as e:
+                                # Se a porta já estiver em uso, tenta capturar a sessão existente
+                                import socket
+                                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                                try:
+                                    s.connect(("localhost", 8501))
+                                    # If another Streamlit session is active, open its dashboard in browser and exit.
+                                    try:
+                                        import webbrowser
+                                        try:
+                                            st_port = int(st.get_option("server.port"))
+                                        except Exception:
+                                            st_port = 8501
+                                        home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
+                                        webbrowser.open_new_tab(home_url)
+                                    except Exception:
+                                        pass
+                                    return
+                                except Exception:
+                                    # Exibe página de exceção global
+                                    render_exception_page(e, context="Erro ao importar módulos (fallback)")
+                                    return
+                                finally:
+                                    s.close()
+
+                        # All UI (top bar, dashboard, monitor, report) is rendered by ui.py.
+                        if hasattr(ui_mod, "render_bot_control"):
+                            try:
+                                ui_mod.render_bot_control()
+                            finally:
+                                # Garantir que o loader seja removido após a UI carregar
+                                try:
+                                    top_loader.empty()
+                                except Exception:
+                                    pass
+                        else:
+                            st.error("render_bot_control não encontrado em ui.py")
+                    except Exception as exc:
+                        # Exibe página de exceção global para qualquer erro não tratado
+                        render_exception_page(exc, context="Erro global na main() do streamlit_app.py")
             try:
                 top_loader.empty()
             except Exception:
