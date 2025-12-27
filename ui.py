@@ -4449,8 +4449,8 @@ def render_bot_control():
     # Defensive: require login per session before rendering any UI
     try:
         if not bool(st.session_state.get("logado", False)):
-            # Bypass login for hom environment for testing
-            if os.environ.get('APP_ENV') == 'hom':
+            # Bypass login for dev environment for testing
+            if os.environ.get('APP_ENV') == 'dev':
                 st.session_state["logado"] = True
             else:
                 st.title("🔐 Login obrigatório")
