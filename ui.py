@@ -11,6 +11,7 @@ except Exception:
 
     html = _HTMLShim()
 import os
+import subprocess
 import time
 import streamlit as st
 from pathlib import Path
@@ -22,6 +23,18 @@ import urllib.parse
 _PID_DEATH_CONFIRM_CHECKS = 3
 # Seconds to wait between checks
 _PID_DEATH_CONFIRM_SLEEP = 0.45
+
+def get_version():
+    try:
+        result = subprocess.run(['git', 'rev-list', '--count', 'HEAD'], capture_output=True, text=True, cwd=os.getcwd())
+        if result.returncode == 0:
+            count = int(result.stdout.strip())
+            return f"v{count}.0"
+        else:
+            return "v1.0"
+    except Exception:
+        return "v1.0"
+
 def set_logged_in(status):
     if status:
         with open(LOGIN_FILE, 'w') as f:
@@ -5510,7 +5523,7 @@ def _render_full_ui(controller=None):
     # Footer com versão
     st.markdown("---")
     st.markdown(
-        "<div style='text-align: center; color: #666; font-size: 0.8em;'>v1.0 - AutoCoinBot</div>",
+        f"<div style='text-align: center; color: #666; font-size: 0.8em;'>{get_version()} - AutoCoinBot</div>",
         unsafe_allow_html=True
     )
 
