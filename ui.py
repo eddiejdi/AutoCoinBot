@@ -4449,9 +4449,13 @@ def render_bot_control():
     # Defensive: require login per session before rendering any UI
     try:
         if not bool(st.session_state.get("logado", False)):
-            st.title("🔐 Login obrigatório")
-            st.warning("Você precisa estar autenticado para acessar o dashboard.")
-            st.stop()
+            # Bypass login for hom environment for testing
+            if os.environ.get('APP_ENV') == 'hom':
+                st.session_state["logado"] = True
+            else:
+                st.title("🔐 Login obrigatório")
+                st.warning("Você precisa estar autenticado para acessar o dashboard.")
+                st.stop()
     except Exception:
         st.error("Erro ao verificar autenticação. Acesso negado.")
         st.stop()
