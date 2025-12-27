@@ -11,6 +11,8 @@ except Exception:
 
     html = _HTMLShim()
 import os
+import shlex
+import signal
 import subprocess
 import time
 import streamlit as st
@@ -35,6 +37,7 @@ def get_version():
     except Exception:
         return "v1.0"
 
+LOGIN_FILE = ".login_status"
 def set_logged_in(status):
     if status:
         with open(LOGIN_FILE, 'w') as f:
@@ -149,46 +152,6 @@ def _get_kill_on_start_guard():
 def _pid_alive(pid: int | None) -> bool:
     if pid is None:
         return False
-
-
-    def _confirm_pid_dead(pid: int | None, checks: int = None, delay_s: float = None) -> bool:
-        """Return True only if PID appears dead for `checks` consecutive checks.
-
-        This makes cleanup less aggressive in environments with multiple Streamlit
-        processes by requiring repeated confirmation before marking sessions
-        stopped in the DB.
-        """
-        if checks is None:
-            checks = _PID_DEATH_CONFIRM_CHECKS
-        if delay_s is None:
-            delay_s = _PID_DEATH_CONFIRM_SLEEP
-
-        if pid is None:
-            return True
-
-        try:
-            pid_i = int(pid)
-        except Exception:
-            return True
-
-        if pid_i <= 0:
-            return True
-
-        # Require `checks` attempts where _pid_alive(pid) is False.
-        for _ in range(int(checks)):
-            try:
-                if _pid_alive(pid_i):
-                    return False
-            except Exception:
-                # If an unexpected error happens, be conservative and assume alive
-                return False
-            try:
-                time.sleep(float(delay_s))
-            except Exception:
-                pass
-
-        # If we reached here, PID was not alive for all checks
-        return not _pid_alive(pid_i)
     try:
         pid_i = int(pid)
     except Exception:
@@ -204,6 +167,32 @@ def _pid_alive(pid: int | None) -> bool:
         return True
     except Exception:
         return False
+
+def _confirm_pid_dead(pid: int | None, checks: int = None, delay_s: float = None) -> bool:
+    """Return True only if PID appears dead for `checks` consecutive checks."""
+    if checks is None:
+        checks = _PID_DEATH_CONFIRM_CHECKS
+    if delay_s is None:
+        delay_s = _PID_DEATH_CONFIRM_SLEEP
+    if pid is None:
+        return True
+    try:
+        pid_i = int(pid)
+    except Exception:
+        return True
+    if pid_i <= 0:
+        return True
+    for _ in range(int(checks)):
+        try:
+            if _pid_alive(pid_i):
+                return False
+        except Exception:
+            return False
+        try:
+            time.sleep(float(delay_s))
+        except Exception:
+            pass
+    return not _pid_alive(pid_i)
 
 
 def _kill_pid_best_effort(pid: int, timeout_s: float = 0.4) -> bool:
@@ -1425,6 +1414,7 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
 
     # Recent trades
     st.subheader("Trades recentes")
+    trades = locals().get('trades', None)
     if pd is not None and trades:
         df_tr = pd.DataFrame(trades)
         try:
@@ -1438,6 +1428,7 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
 
     # Recent logs
     st.subheader("Logs recentes")
+    recent_logs = locals().get('recent_logs', None)
     if recent_logs:
         # Show newest first; keep compact for readability
         for row in recent_logs[:25]:
