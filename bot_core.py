@@ -31,7 +31,15 @@ def take_screenshot(url="http://localhost:8501", out_path="bot_ui_screenshot.png
                 f.write(err_msg)
             return
         driver.set_window_size(1920, 1080)
-        driver.get(url)
+        try:
+            driver.get(url)
+        except Exception as nav_err:
+            err_msg = f"[ERRO] Falha ao acessar {url}: {nav_err}\nVerifique se o Streamlit está rodando na porta 8501.\n"
+            print(err_msg)
+            with open(log_path, "w") as f:
+                f.write(err_msg)
+            driver.quit()
+            return
         time.sleep(5)  # Aguarda renderização
         driver.save_screenshot(out_path)
         driver.quit()
@@ -179,6 +187,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="KuCoin Trading Bot")
 
+
     parser.add_argument("--bot-id", required=True)
     parser.add_argument("--symbol", required=True)
     parser.add_argument("--entry", type=float, required=True)
@@ -192,11 +201,26 @@ if __name__ == "__main__":
     parser.add_argument("--reserve-pct", type=float, default=50.0, help="% do saldo a reservar")
     parser.add_argument("--target-profit-pct", type=float, default=2.0, help="% de lucro alvo")
     parser.add_argument("--eternal", action="store_true", default=False, help="Eternal mode - reinicia após targets")
+    parser.add_argument("--screenshot", action="store_true", default=False, help="Captura screenshot da tela do Streamlit ao iniciar")
 
     args = parser.parse_args()
 
+
+    # Captura screenshot se solicitado
+    if getattr(args, "screenshot", False):
+        try:
+            out_path = f"bot_ui_screenshot_{args.bot_id}.png"
+            take_screenshot(out_path=out_path)
+        except Exception as e:
+            print(f"[SCREENSHOT ERROR] {e}", file=sys.stderr)
+
     if EnhancedTradeBot is None:
         print("Erro crítico: EnhancedTradeBot não encontrado", file=sys.stderr)
+        sys.exit(1)
+
+    # Validação obrigatória para funds ou size
+    if (args.funds is None or args.funds <= 0) and (args.size is None or args.size <= 0):
+        print("[ERRO] É obrigatório informar --funds (>0) ou --size (>0).", file=sys.stderr)
         sys.exit(1)
 
     logger = init_log(args.bot_id)
@@ -237,17 +261,73 @@ if __name__ == "__main__":
             "eternal_mode": args.eternal
         })
 
-        # ... (restante do fluxo principal do bot)
-        # (O código do bot continua normalmente aqui)
+        # Loop principal do bot (eternal mode)
+        if args.eternal:
+            run_number = 0
+            while True:
+                run_number += 1
+                log(logger, args.bot_id, {
+                    "event": "eternal_cycle_start",
+                    "cycle": run_number,
+                    "timestamp": time.time()
+                })
+                try:
+                    bot = EnhancedTradeBot(
+                        symbol=args.symbol,
+                        entry_price=args.entry,
+                        mode=args.mode,
+                        targets=targets,
+                        interval=args.interval,
+                        size=args.size,
+                        funds=args.funds,
+                        dry_run=args.dry,
+                        bot_id=args.bot_id,
+                        target_profit_pct=args.target_profit_pct,
+                        eternal_mode=args.eternal
+                    )
+                    bot.run()
+                except Exception as exc:
+                    log(logger, args.bot_id, {
+                        "event": "eternal_cycle_error",
+                        "cycle": run_number,
+                        "error": str(exc),
+                        "timestamp": time.time()
+                    })
+                    time.sleep(5)
+        else:
+            # Execução normal (não-eternal)
+            bot = EnhancedTradeBot(
+                symbol=args.symbol,
+                entry_price=args.entry,
+                mode=args.mode,
+                targets=targets,
+                interval=args.interval,
+                size=args.size,
+                funds=args.funds,
+                dry_run=args.dry,
+                bot_id=args.bot_id,
+                target_profit_pct=args.target_profit_pct,
+                eternal_mode=args.eternal
+            )
+            bot.run()
 
 
     except Exception as exc:
         print(f"[EXCEPTION] {exc}")
-    print("[DEBUG] Chamando take_screenshot no final do main...")
-
-    take_screenshot()
-    import sys
-    sys.exit(1)
+        # Só tenta screenshot se o Streamlit estiver rodando
+        import socket
+        def is_port_open(host, port):
+            try:
+                with socket.create_connection((host, port), timeout=2):
+                    return True
+            except Exception:
+                return False
+        if is_port_open("localhost", 8501):
+            print("[DEBUG] Chamando take_screenshot no final do main...")
+            take_screenshot()
+        else:
+            print("[INFO] Streamlit não está rodando na porta 8501. Screenshot não será capturado.")
+        sys.exit(1)
 
     size_arg = _as_none_if_zero(args.size)
     funds_arg = _as_none_if_zero(args.funds)
