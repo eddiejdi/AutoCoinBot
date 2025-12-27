@@ -212,8 +212,6 @@ def fazer_login():
                 top_loader.empty()
             except Exception:
                 pass
-    else:
-        st.error("render_bot_control não encontrado em ui.py")
 
 if __name__ == "__main__":
     main()
