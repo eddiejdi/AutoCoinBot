@@ -656,7 +656,11 @@ def get_accounts_raw() -> List[Dict[str, Any]]:
     endpoint = "/api/v1/accounts"
     headers = _build_headers("GET", endpoint, "")
     rate_limit()
+    print("[DEBUG KuCoin get_accounts_raw()] URL:", KUCOIN_BASE + endpoint, flush=True)
+    print("[DEBUG KuCoin get_accounts_raw()] HEADERS:", headers, flush=True)
     r = requests.get(KUCOIN_BASE + endpoint, headers=headers, timeout=15)
+    print("[DEBUG KuCoin get_accounts_raw()] STATUS:", r.status_code, flush=True)
+    print("[DEBUG KuCoin get_accounts_raw()] RAW RESPONSE:", r.text, flush=True)
     if r.status_code != 200:
         raise RuntimeError(f"❌ API accounts error: {r.status_code} - {r.text}")
     logger.info("✅ Successfully fetched accounts")
