@@ -17,10 +17,11 @@
       ]
     }
   },
-  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
-  "postAttachCommand": {
-    "server": "streamlit run streamlit_app.py --server.enableCORS false --server.enableXsrfProtection false"
-  },
+  "postCreateCommand": "\nif [ -f packages.txt ]; then\n  sudo apt update && sudo apt upgrade -y\n  sudo xargs apt install -y < packages.txt\nfi\nif [ -f requirements.txt ]; then\n  pip install -r requirements.txt\nfi\npip install streamlit\necho '✅ Packages installed and Requirements met'\n",
+  "postAttachCommand": "echo 'Lembre-se de configurar o arquivo .env para variáveis sensíveis.'",
+  "mounts": [
+    "source=${localWorkspaceFolder}/trades.db,target=/workspace/trades.db,type=bind"
+  ],
   "portsAttributes": {
     "8501": {
       "label": "Application",

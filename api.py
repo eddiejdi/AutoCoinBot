@@ -660,7 +660,9 @@ def get_accounts_raw() -> List[Dict[str, Any]]:
     if r.status_code != 200:
         raise RuntimeError(f"❌ API accounts error: {r.status_code} - {r.text}")
     logger.info("✅ Successfully fetched accounts")
-    return r.json().get("data", [])
+    data = r.json().get("data", [])
+    print("[DEBUG KuCoin get_accounts_raw()] Retorno:", data, flush=True)
+    return data
 
 
 def get_accounts_raw_fast(timeout: float = 4.0) -> List[Dict[str, Any]]:
