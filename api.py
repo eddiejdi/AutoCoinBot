@@ -56,17 +56,23 @@ def _get_secret(key, default=""):
     # Then try streamlit secrets
     try:
         import streamlit as st
-        # Prioriza seção [secrets] se existir (Streamlit Cloud padrão)
+        # 1. Busca no root (Streamlit Cloud expande para root)
+        if key in st.secrets:
+            return st.secrets[key]
+        # 2. Busca na seção [secrets] se existir
         if 'secrets' in st.secrets and isinstance(st.secrets['secrets'], dict):
             if key in st.secrets['secrets']:
                 return st.secrets['secrets'][key]
-        # Busca flat (legacy)
-        if key in st.secrets:
-            return st.secrets[key]
-        # Busca em outras seções
+        # 3. Busca em outras seções
         for section in st.secrets:
             if isinstance(st.secrets[section], dict) and key in st.secrets[section]:
                 return st.secrets[section][key]
+        # 4. Se não encontrou, loga as chaves disponíveis para debug
+        try:
+            available = list(st.secrets.keys())
+            print(f"[DEBUG] Chave '{key}' não encontrada em st.secrets. Disponíveis: {available}")
+        except Exception:
+            pass
         return default
     except (ImportError, AttributeError):
         return default
