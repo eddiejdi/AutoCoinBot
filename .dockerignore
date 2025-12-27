@@ -1,3 +1,5 @@
+nohup.out
+.fly/
 venv
 .venv_app
 __pycache__
