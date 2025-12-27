@@ -27,6 +27,29 @@ if load_dotenv:
         load_dotenv(dotenv_path=ENV_PATH)
     except Exception:
         pass
+
+# Fallback to .streamlit/secrets.toml if variables not set
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        tomllib = None
+
+if tomllib:
+    secrets_path = Path(__file__).resolve().parent / '.streamlit' / 'secrets.toml'
+    if secrets_path.exists():
+        try:
+            with open(secrets_path, 'rb') as f:
+                data = tomllib.load(f)
+            if 'secrets' in data:
+                for key, value in data['secrets'].items():
+                    if key not in os.environ:
+                        os.environ[key] = str(value)
+        except Exception:
+            pass
+
 # Allow overriding via environment: APP_ENV=dev|hom and HOM_URL
 # Configurações
 LOCAL_URL = os.environ.get('LOCAL_URL', "http://localhost:8501")
