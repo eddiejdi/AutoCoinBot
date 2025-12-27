@@ -1,10 +1,19 @@
 
-import os
-import sys
-import traceback
-import streamlit as st
-import hashlib
-import logging
+
+# Captura erros críticos de import/configuração e salva em log
+try:
+    import streamlit as st
+    import os
+    import sys
+    import traceback
+    import hashlib
+    import logging
+except Exception as exc:
+    with open("fatal_error.log", "w") as f:
+        import traceback as tb
+        f.write("Erro fatal no import do streamlit_app.py:\n")
+        f.write("".join(tb.format_exception(type(exc), exc, exc.__traceback__)))
+    raise
 
 # Importa página de exceção global
 from exception_page import render_exception_page
