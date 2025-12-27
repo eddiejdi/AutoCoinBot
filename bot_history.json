@@ -74085,5 +74085,104 @@
     "executed_trades": [],
     "total_profit": 0,
     "dry_run": true
+  },
+  {
+    "id": "test_ok",
+    "symbol": "BTC-USDT",
+    "entry_price": 30000.0,
+    "mode": "mixed",
+    "start_ts": 1766846184.0050764,
+    "end_ts": 1766846459.7662764,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "test_ok",
+    "symbol": "BTC-USDT",
+    "entry_price": 30000.0,
+    "mode": "mixed",
+    "start_ts": 1766846459.8875868,
+    "end_ts": 1766846475.0086386,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "test_eternal",
+    "symbol": "BTC-USDT",
+    "entry_price": 30000.0,
+    "mode": "mixed",
+    "start_ts": 1766846584.7066863,
+    "end_ts": 1766846758.030415,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "test_eternal",
+    "symbol": "BTC-USDT",
+    "entry_price": 30873.19,
+    "mode": "mixed",
+    "start_ts": 1766846763.1489902,
+    "end_ts": 1766847044.927768,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "test_eternal",
+    "symbol": "BTC-USDT",
+    "entry_price": 32356.04,
+    "mode": "mixed",
+    "start_ts": 1766847050.0400896,
+    "end_ts": 1766847052.0176587,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "test_screen",
+    "symbol": "BTC-USDT",
+    "entry_price": 30000.0,
+    "mode": "mixed",
+    "start_ts": 1766847160.498598,
+    "end_ts": 1766848171.81245,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "test_screen",
+    "symbol": "BTC-USDT",
+    "entry_price": 30000.0,
+    "mode": "mixed",
+    "start_ts": 1766848171.8920913,
+    "end_ts": 1766848211.725133,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "test_screen",
+    "symbol": "BTC-USDT",
+    "entry_price": 30000.0,
+    "mode": "mixed",
+    "start_ts": 1766848220.9098287,
+    "end_ts": 1766848246.4878123,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "test_screen",
+    "symbol": "BTC-USDT",
+    "entry_price": 30000.0,
+    "mode": "mixed",
+    "start_ts": 1766848246.5776563,
+    "end_ts": 1766848285.0806158,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
   }
 ]

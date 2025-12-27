@@ -54,11 +54,11 @@ python -u bot_core.py --bot-id test_dry_1 --symbol BTC-USDT --entry 30000 --targ
 - Avoid adding prints; prefer `DatabaseLogger` for runtime data you want surfaced to the UI.
 
 7) Useful file references
-- UI entry: [streamlit_app.py](streamlit_app.py#L1)
-- UI components + lifecycle: [ui.py](ui.py#L1)
-- Bot execution: [bot_controller.py](bot_controller.py#L1) and [bot_core.py](bot_core.py#L1)
-- DB helpers: [database.py](database.py#L1)
-- Terminal API: [terminal_component.py](terminal_component.py#L1)
+- UI entry: [streamlit_app.py](../../streamlit_app.py)
+- UI components + lifecycle: [ui.py](../../ui.py)
+- Bot execution: [bot_controller.py](../../bot_controller.py) and [bot_core.py](../../bot_core.py)
+- DB helpers: [database.py](../../database.py)
+- Terminal API: [terminal_component.py](../../terminal_component.py)
 
 If anything here is unclear or you want more detail (DB schemas, specific CLI flags, or testing steps), tell me which area to expand and I'll iterate.
 
@@ -90,13 +90,13 @@ Concise, actionable guidance for AI agents contributing to this repo.
 ## Big Picture & Architecture
 - **Purpose:** Streamlit dashboard to manage trading bot subprocesses, store logs/trades in SQLite (`trades.db`), and expose a local HTTP API for live terminal widgets.
 - **Major components:**
-  - [streamlit_app.py](streamlit_app.py#L1): App entry, login gating (persists `.login_status`).
-  - [ui.py](ui.py#L1): UI rendering, bot lifecycle, server-side coordination (kill-on-start, multi-tab guards, uses `st.cache_resource`).
-  - [bot_controller.py](bot_controller.py#L1): Spawns/stops bot subprocesses via `sys.executable` calling [bot_core.py](bot_core.py#L1).
-  - [bot_core.py](bot_core.py#L1) / [bot.py](bot.py#L1): Bot logic, uses `DatabaseLogger` for `bot_logs`/`trades`.
-  - [terminal_component.py](terminal_component.py#L1): Starts local HTTP API (default port ~8765) for terminal widget.
-  - [database.py](database.py#L1): DB schema + helpers (`insert_bot_session`, `get_active_bots`, `add_bot_log`, `get_bot_logs`, `insert_trade`).
-  - [api.py](api.py#L1): KuCoin integration, reads secrets from env or `st.secrets` via `_get_secret()`.
+  - [streamlit_app.py](../../streamlit_app.py): App entry, login gating (persists `.login_status`).
+  - [ui.py](../../ui.py): UI rendering, bot lifecycle, server-side coordination (kill-on-start, multi-tab guards, uses `st.cache_resource`).
+  - [bot_controller.py](../../bot_controller.py): Spawns/stops bot subprocesses via `sys.executable` calling [bot_core.py](../../bot_core.py).
+  - [bot_core.py](../../bot_core.py) / [bot.py](../../bot.py): Bot logic, uses `DatabaseLogger` for `bot_logs`/`trades`.
+  - [terminal_component.py](../../terminal_component.py): Starts local HTTP API (default port ~8765) for terminal widget.
+  - [database.py](../../database.py): DB schema + helpers (`insert_bot_session`, `get_active_bots`, `add_bot_log`, `get_bot_logs`, `insert_trade`).
+  - [api.py](../../api.py): KuCoin integration, reads secrets from env or `st.secrets` via `_get_secret()`.
 
 ## Developer Workflows
 - **Run Streamlit and bots in separate terminals** for clear logs/debugging:
@@ -105,7 +105,7 @@ Concise, actionable guidance for AI agents contributing to this repo.
 - **Setup:**
   - `python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`
 - **Testing:**
-  - Use `pytest` (see [test_bot_start.py](test_bot_start.py#L1), [test_interface.py](test_interface.py#L1), [test_visual_validation.py](test_visual_validation.py#L1)).
+  - Use `pytest` (see [test_bot_start.py](../../test_bot_start.py), [test_interface.py](../../test_interface.py), [test_visual_validation.py](../../test_visual_validation.py)).
   - Always run tests from the project venv. Use `./run_tests.sh` (defaults to `APP_ENV=dev`). Example: `APP_ENV=hom ./run_tests.sh` for homologation.
   - Selenium visual tests: require Chrome + chromedriver. Run with `./run_tests.sh --selenium` or `RUN_SELENIUM=1 ./run_tests.sh`.
 - **Syntax check:** `python -m py_compile <file>.py`
@@ -113,33 +113,33 @@ Concise, actionable guidance for AI agents contributing to this repo.
 - **Start/stop helpers:** `./start_streamlit.sh`, `./control_app.sh restart|stop`
 
 ## Project Conventions & Patterns
-- **No ad-hoc `print()` in committed code** — use `DatabaseLogger`/`logging` (see [bot_core.py](bot_core.py#L1)).
-- **Bot lifecycle:** `BotController.start_bot()` builds a `sys.executable -u bot_core.py ...` command and records session in `bot_sessions` (PID recorded). If you change CLI args, update both [bot_core.py](bot_core.py#L1) and [bot_controller.py](bot_controller.py#L1).
-- **UI multi-tab:** [ui.py](ui.py#L1) implements `_get_kill_on_start_guard()` and a resource to avoid duplicate/conflicting runs. Prefer DB/state updates over in-memory globals.
-- **Terminal API:** [terminal_component.py](terminal_component.py#L1) returns JSON arrays from `DatabaseManager.get_bot_logs()`. Preserve CORS headers if changing handlers.
+- **No ad-hoc `print()` in committed code** — use `DatabaseLogger`/`logging` (see [bot_core.py](../../bot_core.py)).
+- **Bot lifecycle:** `BotController.start_bot()` builds a `sys.executable -u bot_core.py ...` command and records session in `bot_sessions` (PID recorded). If you change CLI args, update both [bot_core.py](../../bot_core.py) and [bot_controller.py](../../bot_controller.py).
+- **UI multi-tab:** [ui.py](../../ui.py) implements `_get_kill_on_start_guard()` and a resource to avoid duplicate/conflicting runs. Prefer DB/state updates over in-memory globals.
+- **Terminal API:** [terminal_component.py](../../terminal_component.py) returns JSON arrays from `DatabaseManager.get_bot_logs()`. Preserve CORS headers if changing handlers.
 - **Login state:** `.login_status` file persists login between runs.
 
 ## Integration Points & Environment
-- **DB:** `trades.db` at repo root (see [database.py](database.py#L1)). If you add columns, update [database.py](database.py#L1) and all callers.
+- **DB:** `trades.db` at repo root (see [database.py](../../database.py)). If you add columns, update [database.py](../../database.py) and all callers.
 - **Local API port:** Default ~8765. UI polls `/api/logs?bot=<bot_id>`.
 - **Env/secrets:** Prefer `.env` for local dev or `st.secrets` in Streamlit. Keys: `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `API_KEY_VERSION`, `KUCOIN_BASE`, `TRADES_DB`.
 - **App environment:** Set `APP_ENV=dev` (uses `LOCAL_URL`) or `APP_ENV=hom` (uses `HOM_URL`). `.env.example` shows usage.
 
 ## Editing & Safe-Change Checklist
-1. If modifying bot CLI/lifecycle: update both [bot_core.py](bot_core.py#L1) and [bot_controller.py](bot_controller.py#L1).
-2. If changing DB schema: update [database.py](database.py#L1) and all code that reads/writes affected columns (search for `bot_sessions`, `trades`, `bot_logs`).
-3. If touching terminal API/UI endpoints: preserve JSON shape and CORS headers in [terminal_component.py](terminal_component.py#L1).
+1. If modifying bot CLI/lifecycle: update both [bot_core.py](../../bot_core.py) and [bot_controller.py](../../bot_controller.py).
+2. If changing DB schema: update [database.py](../../database.py) and all code that reads/writes affected columns (search for `bot_sessions`, `trades`, `bot_logs`).
+3. If touching terminal API/UI endpoints: preserve JSON shape and CORS headers in [terminal_component.py](../../terminal_component.py).
 4. Avoid `print()`; use `DatabaseLogger` or `logging`.
 
 ## Examples & Validation
 - **Bot command:** `python -u bot_core.py --bot-id <id> --symbol BTC-USDT --entry 30000 --targets "2:0.3,5:0.4" --interval 5 --size 0.1 --funds 0 --dry`
-- **Scrapers/headless validation:** [agent0_scraper.py](agent0_scraper.py#L1) (Selenium-based, needs Chrome + chromedriver); [run_dry_validate.py](run_dry_validate.py#L1) exercises dry-run bots and the scraper.
+- **Scrapers/headless validation:** [agent0_scraper.py](../../agent0_scraper.py) (Selenium-based, needs Chrome + chromedriver); [run_dry_validate.py](../../run_dry_validate.py) exercises dry-run bots and the scraper.
 
 ## Deployment Notes
-- For production, prefer systemd (see [deploy/streamlit.service.template](deploy/streamlit.service.template#L1)) or Docker Compose ([deploy/docker-compose.yml](deploy/docker-compose.yml#L1)).
+- For production, prefer systemd (see [deploy/streamlit.service.template](../../deploy/streamlit.service.template)) or Docker Compose ([deploy/docker-compose.yml](../../deploy/docker-compose.yml)).
 - When using Docker, mount the project directory for persistent DB storage (default SQLite DB is ephemeral in containers/cloud).
-- [start_streamlit.sh](start_streamlit.sh#L1) supports `--foreground` for systemd and background mode by default.
-- See [deploy/README.md](deploy/README.md#L1) for deployment steps.
+- [start_streamlit.sh](../../start_streamlit.sh) supports `--foreground` for systemd and background mode by default.
+- See [deploy/README.md](../../deploy/README.md) for deployment steps.
 
 ---
 If anything critical is missing or you want DB schemas, specify which table(s) to append.
