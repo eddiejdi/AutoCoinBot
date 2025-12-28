@@ -11,11 +11,24 @@ from typing import Optional
 import urllib.parse
 from database import DatabaseManager
 import json
+# terminal_component.py
+import streamlit.components.v1 as components
+import json
+import base64
+import threading
+import socket
+import http.server
+import socketserver
+from pathlib import Path
+from typing import Optional
+import urllib.parse
+from database import DatabaseManager
 
 try:
     from log_colorizer import LogColorizer
 except ImportError:
     LogColorizer = None
+
 
 # server state
 _LOG_SERVER = {
@@ -28,17 +41,20 @@ _LOG_SERVER = {
 
 def render_terminal(log_content: str = "", height: int = 600, bot_id: str = None, poll_ms: int = 2000):
     """
-    Terminal HTML simples para logs do bot. Mantém auto-scroll e colorização básica.
-    Se `bot_id` for informado, faz polling da API local; caso contrário, usa conteúdo estático.
+    Simple terminal for logs. If `bot_id` is provided, will attempt to start
+    the local API server and poll `/api/logs`. Otherwise, renders static
+    content passed in `log_content`.
     """
-
-    safe_logs_b64 = base64.b64encode(log_content.encode("utf-8")).decode("ascii")
+    safe_logs_b64 = base64.b64encode((log_content or "").encode("utf-8")).decode("ascii")
 
     port = None
     if bot_id:
         port = _LOG_SERVER.get("port") if _LOG_SERVER.get("mode") == "api" else None
         if port is None:
             port = start_api_server(8765)
+
+    bot_id_json = json.dumps(bot_id) if bot_id else "null"
+    port_value = port if port else "null"
 
     html = """
     <!DOCTYPE html>
@@ -47,7 +63,7 @@ def render_terminal(log_content: str = "", height: int = 600, bot_id: str = None
         <meta charset="UTF-8">
         <style>
             body {{ margin:0; padding:0; background:#0d1117; font-family: Consolas, monospace; }}
-            .terminal {{ display:flex; flex-direction:column; height:{{height}}px; background:#161b22; border-radius:8px; overflow:hidden; border:1px solid #30363d; }}
+            .terminal {{ display:flex; flex-direction:column; height:{height}px; background:#161b22; border-radius:8px; overflow:hidden; border:1px solid #30363d; }}
             .header {{ background:#21262d; padding:10px; color:#8b949e; font-size:12px; flex-shrink:0; border-bottom:1px solid #30363d; }}
             .content {{ padding:12px; overflow-y:auto; color:#c9d1d9; font-size:12px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word; flex:1; }}
             .line {{ margin:0; padding:2px 0; }}
@@ -68,54 +84,55 @@ def render_terminal(log_content: str = "", height: int = 600, bot_id: str = None
 
         <script>
             const container = document.getElementById("log");
-            const botId = {{bot_id_json}};
-            const port = {{port_value}};
-            const apiUrl = (botId && port)
-                ? `http://$ {{window.location.hostname}}:$ {{port}}/api/logs?bot=$ {{encodeURIComponent(botId)}}&limit=30`
-                : null;
+            const botId = {bot_id_json};
+            const port = {port_value};
+            const apiUrl = (botId && port) ? `http://${{window.location.hostname}}:${{port}}/api/logs?bot=${{encodeURIComponent(botId)}}&limit=30` : null;
             let lastText = null;
 
             function getLineColor(line) {{
                 const lower = line.toLowerCase();
-                if (/(lucro|profit):\\s**([\\s*d.]+)%/i.test(line)) {{
-                    const match = /(lucro|profit):\\s**([\\s*d.]+)%/i.exec(line);
+                if (/(lucro|profit):\s*([\d.]+)%/i.test(line)) {{
+                    const match = /(lucro|profit):\s*([\d.]+)%/i.exec(line);
                     if (match && parseFloat(match[2]) > 0) return "line-profit";
                 }}
-                if (/prejudizo|loss|unrealized.*-|profit.*-/i.test(line) || /-([\\s*d.]+)%/.test(line)) return "line-loss";
+                if (/preju[ií]zo|loss|unrealized.*-|profit.*-/i.test(line) || /-([\d.]+)%/.test(line)) return "line-loss";
                 if (/❌|erro|error|failed/.test(line)) return "line-error";
-                if (/✅|sucesso|success|concluído/.test(line)) return "line-success";
+                if (/✅|sucesso|success|conclu[ií]do/.test(line)) return "line-success";
                 if (/compra|buy|venda|sell|order/.test(line)) return "line-info";
                 if (/⚠️|aviso|warning/.test(line)) return "line-warning";
                 return "line-neutral";
             }}
 
-            function renderLogs(text) {
-                if (!text || text === lastText) return;
+            function renderLogs(text) {{
+                if (text === null || text === undefined) return;
+                if (text === lastText) return;
                 lastText = text;
                 container.innerHTML = "";
-                text.split("\\s*n").forEach(line => {
+                text.split("\n").forEach(line => {{
                     if (!line.trim()) return;
                     const div = document.createElement("div");
                     div.className = "line " + getLineColor(line);
                     div.textContent = line;
                     container.appendChild(div);
-                });
+                }});
                 container.scrollTop = container.scrollHeight;
-            }
+            }}
 
             function initialRender() {{
-                const initialLogs = atob("{{safe_logs_b64}}");
-                renderLogs(initialLogs);
+                try {{
+                    const initialLogs = atob("{safe_logs_b64}");
+                    renderLogs(initialLogs);
+                }} catch (e) {{}}
             }}
 
             async function pollApi() {{
                 if (!apiUrl) return;
                 try {{
                     const r = await fetch(apiUrl, {{ cache: "no-store" }});
-                        if (!r.ok) return;
-                        const logs = await r.json();
-                        if (!Array.isArray(logs) || logs.length === 0) return;
-                    const text = logs.map(l => `[${{l.level}}] ${{l.message}}`).join("\\s*n");
+                    if (!r.ok) return;
+                    const logs = await r.json();
+                    if (!Array.isArray(logs) || logs.length === 0) return;
+                    const text = logs.map(l => `[${{l.level}}] ${{l.message}}`).join("\n");
                     renderLogs(text);
                 }} catch (e) {{
                     // ignore fetch errors
@@ -130,66 +147,60 @@ def render_terminal(log_content: str = "", height: int = 600, bot_id: str = None
         </script>
     </body>
     </html>
-    """.format(height=height, bot_id_json=json.dumps(bot_id) if bot_id else 'null', port_value=port if port else 'null', safe_logs_b64=base64.b64encode(logs.encode('utf-8')).decode('utf-8') if logs else '' )
+    """.format(height=height, safe_logs_b64=safe_logs_b64, poll_ms=poll_ms)
 
     components.html(html, height=height, scrolling=True)
 
 
 def render_terminal_live(filename: str, height: int = 600, poll_ms: int = 1500, server_port: int = 8765):
-        """
-        Render a terminal that polls a local HTTP server for the given `filename`.
-        The server must serve the `bot_logs` directory on the provided `server_port`.
-        """
-        safe_filename = json.dumps(filename)
-        html = f"""
-        <!doctype html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <style>
-                body {{ margin:0; background:#0d1117; font-family: Consolas, monospace; }}
-                .terminal {{ height:{{height}}px; background:#161b22; border-radius:8px; overflow:hidden; }}
-                .header {{ background:#21262d; padding:10px; color:#8b949e; font-size:13px; }}
-                .content {{ padding:12px; overflow-y:auto; color:#c9d1d9; font-size:13px; line-height:1.6; white-space:pre-wrap; }}
-                .line {{ padding:1px 0; }}
-            </style>
-        </head>
-        <body>
-            <div class="terminal">
-                <div class="header">🤖 KuCoin Trading Bot — Terminal</div>
-                <div class="content" id="log"></div>
-            </div>
-            <script>
-                const filename = {safe_filename};
-                const url = `http://localhost:{server_port}/${{filename}}`;
-                const container = document.getElementById("log");
-                const botId = {{bot_id_json}};
-                const port = {{port_value}};
-                const apiUrl = (botId && port)
-                    ? `${window.location.protocol}//${window.location.hostname}:${port}/api/logs?bot=${encodeURIComponent(botId)}&limit=30`
-                    : null;
-                let lastText = null;
-                let lastText = null;
-                        if (!r.ok) return;
-                        const text = await r.text();
-                        if (text === lastText) return;
-                        lastText = text;
-                        container.textContent = text;
-                        container.scrollTop = container.scrollHeight;
-                    }} catch (e) {{
-                        // ignore network errors
-                    }}
-                }}
+    """
+    Render a terminal that fetches a static file served by a local HTTP server.
+    """
+    safe_filename = json.dumps(filename)
+    html = """
+    <!doctype html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{ margin:0; background:#0d1117; font-family: Consolas, monospace; }}
+            .terminal {{ height:{height}px; background:#161b22; border-radius:8px; overflow:hidden; }}
+            .header {{ background:#21262d; padding:10px; color:#8b949e; font-size:13px; }}
+            .content {{ padding:12px; overflow-y:auto; color:#c9d1d9; font-size:13px; line-height:1.6; white-space:pre-wrap; }}
+            .line {{ padding:1px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="terminal">
+            <div class="header">🤖 KuCoin Trading Bot — Terminal</div>
+            <div class="content" id="log"></div>
+        </div>
+        <script>
+            const filename = {safe_filename};
+            const url = `http://localhost:{server_port}/${{JSON.parse(filename)}}`;
+            const container = document.getElementById("log");
+            let lastText = null;
 
-                // initial
-                fetchAndUpdate();
-                setInterval(fetchAndUpdate, {poll_ms});
-            </script>
-        </body>
-        </html>
-        """
+            async function fetchAndUpdate() {{
+                try {{
+                    const r = await fetch(url, {{ cache: "no-store" }});
+                    if (!r.ok) return;
+                    const text = await r.text();
+                    if (text === lastText) return;
+                    lastText = text;
+                    container.textContent = text;
+                    container.scrollTop = container.scrollHeight;
+                }} catch (e) {{}}
+            }}
 
-        components.html(html, height=height, scrolling=True)
+            fetchAndUpdate();
+            setInterval(fetchAndUpdate, {poll_ms});
+        </script>
+    </body>
+    </html>
+    """.format(height=height, server_port=server_port, poll_ms=poll_ms, safe_filename=safe_filename)
+
+    components.html(html, height=height, scrolling=True)
 
 
 def _find_free_port(preferred: int = 8765, max_tries: int = 20) -> Optional[int]:
@@ -204,22 +215,13 @@ def _find_free_port(preferred: int = 8765, max_tries: int = 20) -> Optional[int]
 
 
 def start_log_server(directory: str | Path, preferred_port: int = 8765) -> Optional[int]:
-    """Start a simple Threading HTTP server serving `directory` on localhost.
-
-    Returns the port number if successful, otherwise None.
-    Safe to call multiple times; will reuse existing server.
-    """
+    """Start a simple Threading HTTP server serving `directory` on localhost."""
     global _LOG_SERVER
 
     if _LOG_SERVER.get("port"):
-        # If an API server is running, do not override it
-        if _LOG_SERVER.get("mode") == "api":
-            return _LOG_SERVER["port"]
-        if _LOG_SERVER.get("mode") == "static":
-            return _LOG_SERVER["port"]
+        return _LOG_SERVER.get("port")
 
     dir_path = str(directory)
-
     port = _find_free_port(preferred_port)
     if port is None:
         return None
@@ -246,11 +248,7 @@ def start_log_server(directory: str | Path, preferred_port: int = 8765) -> Optio
         thread = threading.Thread(target=serve, daemon=True, name="log-server")
         thread.start()
 
-        _LOG_SERVER["thread"] = thread
-        _LOG_SERVER["port"] = port
-        _LOG_SERVER["httpd"] = httpd
-        _LOG_SERVER["mode"] = "static"
-
+        _LOG_SERVER.update({"thread": thread, "port": port, "httpd": httpd, "mode": "static"})
         return port
     except Exception:
         return None
@@ -264,10 +262,10 @@ def start_api_server(preferred_port: int = 8765) -> Optional[int]:
     """
     global _LOG_SERVER
 
-    # Reuse only if an API server is already running; otherwise start a new API server
     if _LOG_SERVER.get("port") and _LOG_SERVER.get("mode") == "api":
         return _LOG_SERVER["port"]
-    # If a static server is running, shut it down to free the port space
+
+    # If a static server is running, shut it down first
     if _LOG_SERVER.get("httpd") and _LOG_SERVER.get("mode") == "static":
         try:
             _LOG_SERVER["httpd"].shutdown()
@@ -296,7 +294,10 @@ def start_api_server(preferred_port: int = 8765) -> Optional[int]:
 
             params = urllib.parse.parse_qs(parsed.query)
             bot_id = params.get('bot', [None])[0]
-            limit = max(1, min(int(params.get('limit', [30])[0]), 30))
+            try:
+                limit = max(1, min(int(params.get('limit', [30])[0]), 30))
+            except Exception:
+                limit = 30
 
             if not bot_id:
                 self.send_response(400)
@@ -307,7 +308,6 @@ def start_api_server(preferred_port: int = 8765) -> Optional[int]:
             try:
                 db = DatabaseManager()
                 logs = db.get_bot_logs(bot_id, limit=limit)
-                # convert sqlite Row/dicts to plain objects
                 payload = json.dumps(logs, default=str)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
@@ -331,41 +331,31 @@ def start_api_server(preferred_port: int = 8765) -> Optional[int]:
         thread = threading.Thread(target=serve, daemon=True, name="log-api-server")
         thread.start()
 
-        _LOG_SERVER["thread"] = thread
-        _LOG_SERVER["port"] = port
-        _LOG_SERVER["httpd"] = httpd
-        _LOG_SERVER["mode"] = "api"
-
+        _LOG_SERVER.update({"thread": thread, "port": port, "httpd": httpd, "mode": "api"})
         return port
     except Exception:
         return None
 
 
 def render_terminal_live_api(bot_id: str, height: int = 600, poll_ms: int = 1500, server_port: int = 8765):
-    """Render a terminal that polls the local API server for logs.
-
-    The API server must be started with `start_api_server()`; this helper
-    will attempt to start it automatically on `server_port`.
-    """
-    # Ensure we only reuse the port when an API server is actually running
+    """Render a terminal that polls the local API server for logs."""
     if _LOG_SERVER.get('port') and _LOG_SERVER.get('mode') == 'api':
         port = _LOG_SERVER['port']
     else:
         port = start_api_server(server_port)
     if not port:
-        # fallback to static render
         render_terminal('')
         return
 
     safe_bot = json.dumps(bot_id)
-    html = f"""
+    html = """
     <!doctype html>
     <html>
     <head>
         <meta charset="utf-8">
         <style>
             body {{ margin:0; background:#0d1117; font-family: Consolas, monospace; }}
-            .terminal {{ height:{{height}}px; background:#161b22; border-radius:8px; overflow:hidden; display:flex; flex-direction:column }}
+            .terminal {{ height:{height}px; background:#161b22; border-radius:8px; overflow:hidden; display:flex; flex-direction:column }}
             .header {{ background:#21262d; padding:10px; color:#8b949e; font-size:13px; flex-shrink:0 }}
             .content {{ padding:12px; overflow-y:auto; color:#c9d1d9; font-size:13px; line-height:1.6; white-space:pre-wrap; flex:1 }}
             .line {{ padding:1px 0; }}
@@ -378,20 +368,20 @@ def render_terminal_live_api(bot_id: str, height: int = 600, poll_ms: int = 1500
         </div>
         <script>
             const bot = {safe_bot};
-            const url = `${window.location.protocol}//${window.location.hostname}:{port}/api/logs?bot=${encodeURIComponent(bot)}&limit=30`;
+            const url = `${{window.location.protocol}}//${{window.location.hostname}}:{port}/api/logs?bot=${{encodeURIComponent(bot)}}&limit=30`;
             const container = document.getElementById('log');
-            let lastLen = 0;
+            let lastText = null;
 
             async function fetchAndRender() {{
                 try {{
                     const r = await fetch(url, {{cache:'no-store'}});
                     if (!r.ok) return;
                     const logs = await r.json();
-                    const text = logs.map(l => `[${{l.level}}] ${{l.message}}`).join("\\s*n");
-                    if (text === lastLen) return;
-                    lastLen = text;
+                    const text = logs.map(l => `[${{l.level}}] ${{l.message}}`).join("\n");
+                    if (text === lastText) return;
+                    lastText = text;
                     container.innerHTML = '';
-                    text.split('\\s*n').forEach(line => {{ if(line.trim()) {{ const d = document.createElement('div'); d.className='line'; d.textContent=line; container.appendChild(d); }} }});
+                    text.split('\n').forEach(line => {{ if(line.trim()) {{ const d = document.createElement('div'); d.className='line'; d.textContent=line; container.appendChild(d); }} }});
                     container.scrollTop = container.scrollHeight;
                 }} catch(e) {{
                     // ignore
@@ -403,6 +393,7 @@ def render_terminal_live_api(bot_id: str, height: int = 600, poll_ms: int = 1500
         </script>
     </body>
     </html>
-    """
+    """.format(height=height, port=port, poll_ms=poll_ms, safe_bot=safe_bot)
 
     components.html(html, height=height, scrolling=True)
+            }}
