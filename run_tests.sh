@@ -39,8 +39,12 @@ if [ "${RUN_SELENIUM:-0}" != "0" ] || [ "${RUN_SELENIUM_ENV:-0}" = "1" ] || [ "$
   APP_ENV="$APP_ENV" pytest "${TEST_ARGS[@]}"
 else
   echo "Running tests (excluding heavy Selenium visual tests) with APP_ENV=$APP_ENV"
-  # run all tests but skip visual validation marker/file unless user requested it
-  APP_ENV="$APP_ENV" pytest -k "not visual_validation" "${TEST_ARGS[@]}"
+    # first run a compile-time import check to catch SyntaxError/IndentationError
+    echo "Running python compile check (compileall) to catch import-time errors..."
+    python -m compileall -q .
+
+    # run all tests but skip visual validation marker/file unless user requested it
+    APP_ENV="$APP_ENV" pytest -k "not visual_validation" "${TEST_ARGS[@]}"
 fi
 
 deactivate || true
