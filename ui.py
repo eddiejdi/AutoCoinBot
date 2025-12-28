@@ -1453,7 +1453,7 @@ def render_top_nav_bar(theme: dict, current_view: str, selected_bot: str | None 
 
     # Botão de logout no topo direito
     col_logout = st.columns([10, 1])[1]
-    if col_logout.button("🚪 Logout", key="logout_btn"):
+    if col_logout.button("🚪 Logout", key=f"logout_btn_{view}_{int(time.time()*1000)}"):
         # Limpar estado de sessão
         set_logged_in(False)
         for key in list(st.session_state.keys()):
@@ -2573,7 +2573,7 @@ def inject_global_css():
     st.markdown(css, unsafe_allow_html=True)
 
 
-def render_theme_selector(ui=None):
+def render_theme_selector(ui=None, key_suffix=""):
     """Renderiza seletor de tema.
 
     A sidebar é escondida globalmente; por padrão este seletor renderiza no
@@ -2601,7 +2601,7 @@ def render_theme_selector(ui=None):
             "Selecionar tema",
             options=theme_keys,
             index=idx,
-            key="theme_selector",
+            key=f"theme_selector{key_suffix}",
         )
 
         if selected_theme != current_theme:
@@ -4867,10 +4867,10 @@ def _render_full_ui(controller=None):
     # Theme selector: render inside Streamlit sidebar menu (expander)
     try:
         exp = st.sidebar.expander("🎨 Tema do Terminal", expanded=False)
-        render_theme_selector(ui=exp)
+        render_theme_selector(ui=exp, key_suffix="_dashboard")
     except Exception:
         try:
-            render_theme_selector(ui=st.sidebar)
+            render_theme_selector(ui=st.sidebar, key_suffix="_sidebar")
         except Exception:
             pass
 

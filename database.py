@@ -96,6 +96,121 @@ class DatabaseManager:
             return []
         finally:
             conn.close()
+
+    def choose_bandit_param(self, symbol: str, param_name: str, candidates: list, epsilon: float = 0.1) -> float:
+        """
+        Escolhe um parâmetro usando estratégia epsilon-greedy baseada em histórico de recompensas.
+        
+        Args:
+            symbol: Símbolo do ativo (ex: 'BTCUSDT')
+            param_name: Nome do parâmetro (ex: 'take_profit_trailing_pct')
+            candidates: Lista de valores candidatos para o parâmetro
+            epsilon: Probabilidade de exploração (0.0 = sempre greedy, 1.0 = sempre random)
+        
+        Returns:
+            Valor do parâmetro escolhido
+        """
+        import random
+        
+        conn = self.get_connection()
+        cur = conn.cursor()
+        
+        try:
+            # Busca estatísticas atuais para os candidatos
+            placeholders = ','.join(['?'] * len(candidates))
+            cur.execute(f"""
+                SELECT param_value, mean_reward, n
+                FROM learning_stats
+                WHERE symbol = ? AND param_name = ? AND param_value IN ({placeholders})
+                ORDER BY mean_reward DESC
+            """, [symbol, param_name] + candidates)
+            
+            stats = {row['param_value']: {'mean_reward': row['mean_reward'], 'n': row['n']} 
+                    for row in cur.fetchall()}
+            
+            # Inicializa estatísticas para todos os candidatos (padrão: recompensa 0, n=0)
+            candidate_stats = {}
+            for candidate in candidates:
+                if candidate in stats:
+                    candidate_stats[candidate] = stats[candidate]
+                else:
+                    candidate_stats[candidate] = {'mean_reward': 0.0, 'n': 0}
+            
+            # Epsilon-greedy: exploração vs exploração
+            if random.random() < epsilon:
+                # Exploração: escolhe aleatoriamente
+                return random.choice(candidates)
+            else:
+                # Greedy: escolhe o com maior recompensa média
+                best_value = max(candidate_stats.keys(), key=lambda x: candidate_stats[x]['mean_reward'])
+                return best_value
+                
+        except Exception as e:
+            logger.error(f"Erro ao escolher parâmetro bandit: {e}")
+            return random.choice(candidates)
+        finally:
+            conn.close()
+
+    def update_bandit_reward(self, symbol: str, param_name: str, param_value: float, reward: float) -> bool:
+        """
+        Atualiza as recompensas do bandit learning após um trade.
+        
+        Args:
+            symbol: Símbolo do ativo
+            param_name: Nome do parâmetro
+            param_value: Valor do parâmetro usado
+            reward: Recompensa obtida (ex: profit_pct)
+        
+        Returns:
+            True se atualizado com sucesso
+        """
+        conn = self.get_connection()
+        cur = conn.cursor()
+        
+        try:
+            # Insere no histórico
+            cur.execute("""
+                INSERT INTO learning_history (symbol, param_name, param_value, reward, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+            """, (symbol, param_name, param_value, reward, time.time()))
+            
+            # Atualiza ou insere estatísticas
+            cur.execute("""
+                SELECT mean_reward, n FROM learning_stats
+                WHERE symbol = ? AND param_name = ? AND param_value = ?
+            """, (symbol, param_name, param_value))
+            
+            row = cur.fetchone()
+            if row:
+                # Atualiza média incremental
+                old_mean = row['mean_reward']
+                old_n = row['n']
+                new_n = old_n + 1
+                new_mean = ((old_mean * old_n) + reward) / new_n
+                
+                cur.execute("""
+                    UPDATE learning_stats
+                    SET mean_reward = ?, n = ?
+                    WHERE symbol = ? AND param_name = ? AND param_value = ?
+                """, (new_mean, new_n, symbol, param_name, param_value))
+            else:
+                # Insere novo registro
+                cur.execute("""
+                    INSERT INTO learning_stats (symbol, param_name, param_value, mean_reward, n)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (symbol, param_name, param_value, reward, 1))
+            
+            conn.commit()
+            logger.info(f"Bandit reward updated: {symbol} {param_name}={param_value} reward={reward}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erro ao atualizar bandit reward: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+
     """Gerencia todas as operações do banco de dados"""
 
     def __init__(self, db_path: Path = DB_PATH):
@@ -216,12 +331,39 @@ class DatabaseManager:
             )
         ''')
         
+        # Tabela Learning stats (estatísticas de aprendizado por parâmetro)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS learning_stats (
+                symbol TEXT NOT NULL,
+                param_name TEXT NOT NULL,
+                param_value REAL NOT NULL,
+                mean_reward REAL NOT NULL,
+                n INTEGER NOT NULL,
+                PRIMARY KEY (symbol, param_name, param_value)
+            )
+        ''')
+        
+        # Tabela Learning history (histórico de recompensas)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS learning_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                param_name TEXT NOT NULL,
+                param_value REAL NOT NULL,
+                reward REAL NOT NULL,
+                timestamp REAL NOT NULL
+            )
+        ''')
+        
         # Cria índices
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_trades_timestamp ON trades(timestamp)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_bot_sessions_status ON bot_sessions(status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_bot_logs_bot_id ON bot_logs(bot_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_equity_timestamp ON equity_snapshots(timestamp)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_learning_history_symbol_param ON learning_history(symbol, param_name)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_learning_history_timestamp ON learning_history(timestamp)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_learning_stats_symbol_param ON learning_stats(symbol, param_name)')       
         
         conn.commit()
         conn.close()
@@ -804,6 +946,30 @@ def _drop_and_create_tables():
         )
     """)
 
+    # --- Learning Stats ---
+    cur.execute("""
+        CREATE TABLE learning_stats (
+            symbol TEXT NOT NULL,
+            param_name TEXT NOT NULL,
+            param_value REAL NOT NULL,
+            mean_reward REAL NOT NULL,
+            n INTEGER NOT NULL,
+            PRIMARY KEY (symbol, param_name, param_value)
+        )
+    """)
+
+    # --- Learning History ---
+    cur.execute("""
+        CREATE TABLE learning_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            param_name TEXT NOT NULL,
+            param_value REAL NOT NULL,
+            reward REAL NOT NULL,
+            timestamp REAL NOT NULL
+        )
+    """)
+
     # ==========================
     # INDEXES (performance)
     # ==========================
@@ -811,6 +977,9 @@ def _drop_and_create_tables():
     cur.execute("CREATE INDEX idx_equity_bot ON equity_snapshots(bot_id)")
     cur.execute("CREATE INDEX idx_trades_bot ON trades(bot_id)")
     cur.execute("CREATE INDEX idx_logs_bot ON bot_logs(bot_id)")
+    cur.execute("CREATE INDEX idx_learning_history_symbol_param ON learning_history(symbol, param_name)")
+    cur.execute("CREATE INDEX idx_learning_history_timestamp ON learning_history(timestamp)")
+    cur.execute("CREATE INDEX idx_learning_stats_symbol_param ON learning_stats(symbol, param_name)")
 
     conn.commit()
     conn.close()
