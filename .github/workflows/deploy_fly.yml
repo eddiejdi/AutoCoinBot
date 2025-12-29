@@ -30,15 +30,21 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN || github.token }}
 
       - name: Check Fly and GHCR tokens
+        id: check_tokens
         run: |
           echo "Checking required secrets..."
-          if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
-            echo "ERROR: FLY_API_TOKEN is not set. Please add it as a repository secret." >&2
-            exit 1
-          fi
+          ok=0
           if [ -z "${{ secrets.GHCR_TOKEN }}" ] && [ -z "${{ github.token }}" ]; then
             echo "ERROR: Neither GHCR_TOKEN nor GITHUB_TOKEN is available. Please ensure one is configured." >&2
             exit 1
+          else
+            ok=1
+          fi
+          if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
+            echo "WARNING: FLY_API_TOKEN is not set. Deploy to Fly will be skipped in this run. Add it as a repository secret to enable deployment." >&2
+            echo "fly_present=false" >> $GITHUB_OUTPUT
+          else
+            echo "fly_present=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push Docker image to GHCR
@@ -52,6 +58,7 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@v1
 
       - name: Deploy to Fly using built image
+        if: ${{ steps.check_tokens.outputs.fly_present == 'true' }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
