@@ -142,10 +142,18 @@ def main():
                         webbrowser.open_new_tab(home_url)
                     except Exception:
                         pass
+                    try:
+                        top_loader.empty()
+                    except Exception:
+                        pass
                     return
                 except Exception:
                     try:
                         render_exception_page(e, context="Erro ao importar módulos (fallback)")
+                    except Exception:
+                        pass
+                    try:
+                        top_loader.empty()
                     except Exception:
                         pass
                     return
