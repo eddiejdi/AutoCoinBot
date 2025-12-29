@@ -1,9 +1,6 @@
 app = "autocoinbot"
 primary_region = "gru"
 
-[build]
-  image = "python:3.12"
-
 [env]
   PORT = "8501"
 

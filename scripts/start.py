@@ -64,7 +64,7 @@ def pip_install(requirements: str = "requirements.txt"):
 
 def start_streamlit(detach: bool = True):
     vpy = get_venv_python()
-    cmd = [vpy, "-m", "streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.headless=true"]
+    cmd = [vpy, "-m", "streamlit", "run", "streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
 
     # Redirect outputs to streamlit.log
     logf = open(STREAMLIT_LOG, "a", buffering=1)
