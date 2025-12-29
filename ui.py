@@ -10,6 +10,19 @@ except Exception:
                 return str(s)
 
     html = _HTMLShim()
+import logging
+# Setup lightweight UI debug logger writing into workspace so container user can inspect
+try:
+    ui_logger = logging.getLogger("autocoin_ui_debug")
+    if not ui_logger.handlers:
+        fh = logging.FileHandler("/workspace/ui_debug.log")
+        fh.setLevel(logging.DEBUG)
+        fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+        fh.setFormatter(fmt)
+        ui_logger.addHandler(fh)
+    ui_logger.setLevel(logging.DEBUG)
+except Exception:
+    ui_logger = None
 import os
 import shlex
 import signal
@@ -70,6 +83,10 @@ try:
     from terminal_component import render_terminal_live_api
 except Exception:
     render_terminal_live_api = None
+try:
+    from terminal_component import start_api_server
+except Exception:
+    start_api_server = None
 def render_strategy_semaphore(snapshot: dict, theme: dict) -> str:
         if not snapshot:
                 return ""
@@ -1453,7 +1470,7 @@ def render_top_nav_bar(theme: dict, current_view: str, selected_bot: str | None 
 
     # Botão de logout no topo direito
     col_logout = st.columns([10, 1])[1]
-    if col_logout.button("🚪 Logout", key="logout_btn"):
+    if col_logout.button("🚪 Logout", key=f"logout_btn_{view}_{int(time.time()*1000)}"):
         # Limpar estado de sessão
         set_logged_in(False)
         for key in list(st.session_state.keys()):
@@ -2573,7 +2590,7 @@ def inject_global_css():
     st.markdown(css, unsafe_allow_html=True)
 
 
-def render_theme_selector(ui=None):
+def render_theme_selector(ui=None, key_suffix=""):
     """Renderiza seletor de tema.
 
     A sidebar é escondida globalmente; por padrão este seletor renderiza no
@@ -2601,7 +2618,7 @@ def render_theme_selector(ui=None):
             "Selecionar tema",
             options=theme_keys,
             index=idx,
-            key="theme_selector",
+            key=f"theme_selector{key_suffix}",
         )
 
         if selected_theme != current_theme:
@@ -4461,6 +4478,11 @@ def render_bot_control():
                 st.warning("Você precisa estar autenticado para acessar o dashboard.")
                 st.stop()
     except Exception:
+        try:
+            if ui_logger:
+                ui_logger.exception("Erro ao verificar autenticação no render_bot_control")
+        except Exception:
+            pass
         st.error("Erro ao verificar autenticação. Acesso negado.")
         st.stop()
 
@@ -4468,10 +4490,31 @@ def render_bot_control():
     try:
         controller = None
         try:
+            if ui_logger:
+                ui_logger.debug("render_bot_control: antes de get_global_controller")
             controller = get_global_controller()
+            if ui_logger:
+                ui_logger.debug("render_bot_control: get_global_controller retornou")
         except Exception:
+            if ui_logger:
+                try:
+                    ui_logger.exception("Erro em get_global_controller")
+                except Exception:
+                    pass
             controller = None
-        _render_full_ui(controller)
+        try:
+            if ui_logger:
+                ui_logger.debug("render_bot_control: invocando _render_full_ui")
+            _render_full_ui(controller)
+            if ui_logger:
+                ui_logger.debug("render_bot_control: _render_full_ui concluiu")
+        except Exception as e:
+            if ui_logger:
+                try:
+                    ui_logger.exception("Erro em _render_full_ui")
+                except Exception:
+                    pass
+            raise
     except Exception as e:
         try:
             st.error(f"Erro ao renderizar UI: {e}")
@@ -4481,6 +4524,11 @@ def render_bot_control():
 
 
 def _render_full_ui(controller=None):
+    try:
+        if ui_logger:
+            ui_logger.debug("_render_full_ui: entrada")
+    except Exception:
+        pass
     # =====================================================
     # PAGE CONFIG & TEMA GLOBAL
     # =====================================================
@@ -4563,6 +4611,11 @@ def _render_full_ui(controller=None):
                             st.session_state["_api_port"] = int(p)
                     except Exception:
                         pass
+            try:
+                if ui_logger:
+                    ui_logger.debug("_render_full_ui: agendado start_api_server, _api_port=%s", st.session_state.get("_api_port"))
+            except Exception:
+                pass
     except Exception:
         pass
     # ----------------------------------------------------------------
@@ -4867,10 +4920,10 @@ def _render_full_ui(controller=None):
     # Theme selector: render inside Streamlit sidebar menu (expander)
     try:
         exp = st.sidebar.expander("🎨 Tema do Terminal", expanded=False)
-        render_theme_selector(ui=exp)
+        render_theme_selector(ui=exp, key_suffix="_dashboard")
     except Exception:
         try:
-            render_theme_selector(ui=st.sidebar)
+            render_theme_selector(ui=st.sidebar, key_suffix="_sidebar")
         except Exception:
             pass
 

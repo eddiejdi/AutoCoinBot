@@ -615,12 +615,12 @@ class SidebarController:
         col1, col2 = sidebar.columns(2)
         
         with col1:
-            start_real = st.button("▶️ START (REAL)", type="primary", key="start_real")
+            start_real = st.button("▶️ START (REAL)", type="primary", key="sidebar_start_real")
         
         with col2:
-            kill_bot = st.button("🛑 KILL BOT", type="secondary", key="kill_bot")
+            kill_bot = st.button("🛑 KILL BOT", type="secondary", key="sidebar_kill_bot")
 
-        start_dry = sidebar.button("🧪 START (DRY-RUN)", key="start_dry")
+        start_dry = sidebar.button("🧪 START (DRY-RUN)", key="sidebar_start_dry")
 
         # Safe read of session_state to tolerate mocks during tests
         num_bots = 1

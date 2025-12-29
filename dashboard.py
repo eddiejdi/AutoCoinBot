@@ -146,7 +146,7 @@ def render_dashboard():
     start_real, start_dry, kill_bot = sidebar_controller.render()
 
     # Adicionar seletor de tema no sidebar
-    render_theme_selector()
+    render_theme_selector(key_suffix="_dashboard")
 
     # =====================================================
     # TRATAMENTO DOS BOTÕES

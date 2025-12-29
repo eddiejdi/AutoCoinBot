@@ -2,6 +2,7 @@
   "name": "Python 3",
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "remoteUser": "vscode",
   "customizations": {
     "codespaces": {
       "openFiles": [
@@ -13,11 +14,12 @@
       "settings": {},
       "extensions": [
         "ms-python.python",
-        "ms-python.vscode-pylance"
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker"
       ]
     }
   },
-  "postCreateCommand": "\nif [ -f packages.txt ]; then\n  sudo apt update && sudo apt upgrade -y\n  sudo xargs apt install -y < packages.txt\nfi\nif [ -f requirements.txt ]; then\n  pip install -r requirements.txt\nfi\npip install streamlit\necho '✅ Packages installed and Requirements met'\n",
+  "postCreateCommand": "bash -lc '\nset -e\nif [ -s packages.txt ]; then\n  apt-get update && apt-get upgrade -y\n  xargs -a packages.txt apt-get install -y\nfi\nif [ -f requirements.txt ]; then\n  python3 -m pip install --upgrade pip\n  python3 -m pip install -r requirements.txt\nfi\npython3 -m pip install streamlit || true\necho \"✅ Packages installed and Requirements met\"\n'",
   "postAttachCommand": "echo 'Lembre-se de configurar o arquivo .env para variáveis sensíveis.'",
   "mounts": [
     "source=${localWorkspaceFolder}/trades.db,target=/workspace/trades.db,type=bind"
@@ -28,7 +30,5 @@
       "onAutoForward": "openPreview"
     }
   },
-  "forwardPorts": [
-    8501
-  ]
+  "forwardPorts": [8501]
 }
