@@ -1,4 +1,7 @@
-import streamlit.components.v1 as components
+try:
+    import streamlit.components.v1 as components
+except Exception:
+    components = None
 import json
 import base64
 import threading
@@ -42,7 +45,7 @@ def render_terminal(log_content: str = "", height: int = 600, bot_id: str = None
     bot_id_json = json.dumps(bot_id) if bot_id else "null"
     port_value = port if port else "null"
 
-    html = """
+    html = r"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -143,7 +146,7 @@ def render_terminal_live(filename: str, height: int = 600, poll_ms: int = 1500, 
     Render a terminal that fetches a static file served by a local HTTP server.
     """
     safe_filename = json.dumps(filename)
-    html = """
+    html = r"""
     <!doctype html>
     <html>
     <head>
@@ -190,13 +193,27 @@ def render_terminal_live(filename: str, height: int = 600, poll_ms: int = 1500, 
 
 
 def _find_free_port(preferred: int = 8765, max_tries: int = 20) -> Optional[int]:
+    # Try to find a free port. First prefer loopback bind (127.0.0.1)
+    # but if that fails, fall back to binding on 0.0.0.0 so containers
+    # or other network namespaces can accept connections when appropriate.
     for p in range(preferred, preferred + max_tries):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
+        # try loopback first
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.bind(("127.0.0.1", p))
                 return p
-            except OSError:
-                continue
+        except OSError:
+            pass
+
+        # try all interfaces
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                s.bind(("0.0.0.0", p))
+                return p
+        except OSError:
+            continue
     return None
 
 
@@ -318,8 +335,39 @@ def start_api_server(preferred_port: int = 8765) -> Optional[int]:
         thread.start()
 
         _LOG_SERVER.update({"thread": thread, "port": port, "httpd": httpd, "mode": "api"})
+        try:
+            portfile = Path.cwd() / "logs" / "api_port.txt"
+            portfile.parent.mkdir(parents=True, exist_ok=True)
+            with open(portfile, "w", encoding="utf-8") as pf:
+                pf.write(str(port))
+        except Exception:
+            pass
+        # write debug success to workspace logs if possible
+        try:
+            logpath = Path.cwd() / "logs" / "terminal_component_debug.log"
+            logpath.parent.mkdir(parents=True, exist_ok=True)
+            with open(logpath, "a", encoding="utf-8") as fh:
+                fh.write(f"[start_api_server] started on port {port}\n")
+        except Exception:
+            pass
         return port
-    except Exception:
+    except Exception as e:
+        try:
+            import traceback
+            logpath = Path.cwd() / "logs" / "terminal_component_debug.log"
+            logpath.parent.mkdir(parents=True, exist_ok=True)
+            with open(logpath, "a", encoding="utf-8") as fh:
+                fh.write("[start_api_server] exception:\n")
+                fh.write(traceback.format_exc())
+                fh.write("\n---\n")
+        except Exception:
+            pass
+        try:
+            portfile = Path.cwd() / "logs" / "api_port.txt"
+            if portfile.exists():
+                portfile.unlink()
+        except Exception:
+            pass
         return None
 
 
@@ -329,12 +377,26 @@ def render_terminal_live_api(bot_id: str, height: int = 600, poll_ms: int = 1500
         port = _LOG_SERVER['port']
     else:
         port = start_api_server(server_port)
+
     if not port:
-        render_terminal('')
+        # API not available — render a friendly static message instead of empty terminal
+        html = r"""
+        <div style="background:#161b22;color:#c9d1d9;padding:16px;border-radius:8px;">
+            <h3 style="margin:0 0 8px 0;">Terminal (offline)</h3>
+            <p style="margin:0">O serviço local de terminal (API) não está disponível. Verifique logs em <code>logs/terminal_component_debug.log</code> e execute o serviço via `scripts/run_service.sh api start --no-docker`.</p>
+        </div>
+        """
+        if components:
+            components.html(html, height=height, scrolling=True)
+        else:
+            try:
+                print(html)
+            except Exception:
+                pass
         return
 
     safe_bot = json.dumps(bot_id)
-    html = """
+    html = r"""
     <!doctype html>
     <html>
     <head>
@@ -440,7 +502,7 @@ def render_terminal(log_content: str = "", height: int = 600, bot_id: str = None
     bot_id_json = json.dumps(bot_id) if bot_id else "null"
     port_value = port if port else "null"
 
-    html = """
+    html = r"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -541,7 +603,7 @@ def render_terminal_live(filename: str, height: int = 600, poll_ms: int = 1500, 
     Render a terminal that fetches a static file served by a local HTTP server.
     """
     safe_filename = json.dumps(filename)
-    html = """
+    html = r"""
     <!doctype html>
     <html>
     <head>
@@ -732,7 +794,7 @@ def render_terminal_live_api(bot_id: str, height: int = 600, poll_ms: int = 1500
         return
 
     safe_bot = json.dumps(bot_id)
-    html = """
+    html = r"""
     <!doctype html>
     <html>
     <head>

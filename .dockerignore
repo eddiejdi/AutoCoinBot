@@ -13,3 +13,35 @@ build/
 dist/
 *.egg-info
 */.venv_app
+
+# Databases and large artifacts
+trades.db
+trades.db*
+bot_data.db
+*.db
+trades.db.dirbak/
+
+# Logs and streamlit state
+logs/
+*.log
+streamlit_bg.log
+terminal_api.pid
+streamlit_bg.pid
+
+# Data, screenshots and outputs
+data/
+selenium_screenshots/
+selenium_output.txt
+selenium_report.py
+
+# Node / build artifacts
+node_modules/
+*.tar
+*.zip
+.DS_Store
+
+# Optional: ignore large folders not needed in image
+tests/
+trades/
+reports/
+
