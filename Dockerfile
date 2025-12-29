@@ -14,5 +14,5 @@ COPY . .
 EXPOSE 8501
 
 # Run the Streamlit app (headless)
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.headless=true"]
+CMD ["streamlit", "run", "streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
 # Use an official Python runtime as a parent image
