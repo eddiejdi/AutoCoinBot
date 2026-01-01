@@ -1240,20 +1240,116 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
     else:
         st.caption("Nenhum trade encontrado para este bot ainda.")
 
-    # Recent logs
-    st.subheader("Logs recentes")
+    # Recent logs - Terminal estilo com cores por evento
+    st.subheader("📟 Terminal de Logs (tempo real)")
+    
+    # Auto-refresh toggle
+    auto_refresh = st.checkbox("🔄 Auto-refresh (5s)", value=True, key=f"log_autorefresh_{selected_bot}")
+    
     if recent_logs:
-        # Show newest first; keep compact for readability
-        for row in recent_logs[:25]:
+        # Criar HTML do terminal com cores por tipo de evento
+        log_lines = []
+        for row in recent_logs[:50]:  # últimos 50 logs
             try:
                 ts = _fmt_ts(row.get("timestamp"))
-                lvl = str(row.get("level") or "INFO")
+                lvl = str(row.get("level") or "INFO").upper()
                 msg = str(row.get("message") or "")
-                st.code(f"{ts} [{lvl}] {msg}", language="json")
+                
+                # Determinar cor baseado no conteúdo/level
+                color = "#33ff33"  # verde padrão
+                icon = "📝"
+                
+                msg_lower = msg.lower()
+                if lvl == "ERROR" or "error" in msg_lower or "❌" in msg:
+                    color = "#ff3333"  # vermelho
+                    icon = "❌"
+                elif lvl == "WARNING" or "warning" in msg_lower or "⚠️" in msg:
+                    color = "#ffaa00"  # amarelo/laranja
+                    icon = "⚠️"
+                elif "buy" in msg_lower or "compra" in msg_lower or "bought" in msg_lower:
+                    color = "#00ff00"  # verde brilhante
+                    icon = "🟢"
+                elif "sell" in msg_lower or "venda" in msg_lower or "sold" in msg_lower:
+                    color = "#ff6666"  # vermelho claro
+                    icon = "🔴"
+                elif "profit" in msg_lower or "lucro" in msg_lower:
+                    color = "#00ffff"  # ciano
+                    icon = "💰"
+                elif "cycle" in msg_lower or "ciclo" in msg_lower:
+                    color = "#aaaaaa"  # cinza
+                    icon = "🔄"
+                elif "start" in msg_lower or "iniciado" in msg_lower:
+                    color = "#66ff66"  # verde claro
+                    icon = "🚀"
+                elif "stop" in msg_lower or "encerrado" in msg_lower:
+                    color = "#ff9999"  # rosa
+                    icon = "🛑"
+                elif "price" in msg_lower or "preço" in msg_lower:
+                    color = "#99ccff"  # azul claro
+                    icon = "📊"
+                
+                # Escapar HTML no msg
+                import html as html_module
+                msg_escaped = html_module.escape(msg)
+                
+                log_lines.append(
+                    f'<div style="color: {color}; font-family: monospace; padding: 2px 0; border-bottom: 1px solid #333;">'
+                    f'{icon} <span style="color: #888;">{ts}</span> '
+                    f'<span style="color: {color}; font-weight: bold;">[{lvl}]</span> '
+                    f'{msg_escaped}</div>'
+                )
             except Exception:
                 continue
+        
+        # Montar terminal HTML
+        terminal_html = f'''
+        <div id="log-terminal" style="
+            background: #0a0a0a;
+            border: 2px solid {theme.get('border', '#33ff33')};
+            border-radius: 8px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            box-shadow: 0 0 20px {theme.get('glow', 'rgba(51, 255, 51, 0.3)')};
+        ">
+            <div style="color: {theme.get('accent', '#00ffff')}; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid {theme.get('border', '#33ff33')}; padding-bottom: 5px;">
+                🖥️ Bot: {selected_bot[:12]}... | Logs: {len(recent_logs)}
+            </div>
+            {''.join(log_lines)}
+        </div>
+        <script>
+            // Auto-scroll para o final
+            var terminal = document.getElementById('log-terminal');
+            if (terminal) terminal.scrollTop = terminal.scrollHeight;
+        </script>
+        '''
+        
+        st.markdown(terminal_html, unsafe_allow_html=True)
+        
+        # Legenda de cores
+        with st.expander("🎨 Legenda de Cores"):
+            leg_cols = st.columns(4)
+            leg_cols[0].markdown("🟢 **Compra** (verde)")
+            leg_cols[1].markdown("🔴 **Venda** (vermelho)")
+            leg_cols[2].markdown("💰 **Lucro** (ciano)")
+            leg_cols[3].markdown("⚠️ **Warning** (amarelo)")
+        
+        # Auto-refresh com JavaScript
+        if auto_refresh:
+            st.markdown(
+                '''
+                <script>
+                    setTimeout(function() {
+                        window.parent.postMessage({type: 'streamlit:rerun'}, '*');
+                    }, 5000);
+                </script>
+                ''',
+                unsafe_allow_html=True
+            )
     else:
-        st.caption("Nenhum log recente encontrado para este bot.")
+        st.info("📭 Nenhum log recente encontrado para este bot.")
 
 # render_top_nav_bar movido para ui_components.navigation
 
@@ -3705,13 +3801,17 @@ def _render_full_ui(controller=None):
             st.subheader(f"🤖 Bots Ativos ({len(active_bots)})")
 
             # Header row
-            header_cols = st.columns([2.5, 3.0, 2.0, 1.5])
-            header_cols[0].markdown("**🆔 Bot ID**")
-            header_cols[1].markdown("**📝 Último Evento**")
-            header_cols[2].markdown("**📜 Log**")
-            header_cols[3].markdown("**🛑 Kill**")
+            header_cols = st.columns([0.5, 2.5, 3.5, 1.5])
+            header_cols[0].markdown("**☑️**")
+            header_cols[1].markdown("**🆔 Bot ID**")
+            header_cols[2].markdown("**📝 Último Evento**")
+            header_cols[3].markdown("**📜 Log**")
 
             db_for_logs = DatabaseManager()
+            
+            # Initialize selected bots in session state
+            if "kill_selected_bots" not in st.session_state:
+                st.session_state.kill_selected_bots = set()
 
             for bot_id in list(active_bots):
                 sess = db_sessions_by_id.get(str(bot_id))
@@ -3730,38 +3830,65 @@ def _render_full_ui(controller=None):
                 except Exception:
                     pass
 
-                row = st.columns([2.5, 3.0, 2.0, 1.5])
+                row = st.columns([0.5, 2.5, 3.5, 1.5])
+                
+                # Checkbox para seleção
+                is_selected = row[0].checkbox(
+                    "sel",
+                    key=f"sel_{bot_id}",
+                    value=bot_id in st.session_state.kill_selected_bots,
+                    label_visibility="collapsed"
+                )
+                if is_selected:
+                    st.session_state.kill_selected_bots.add(bot_id)
+                else:
+                    st.session_state.kill_selected_bots.discard(bot_id)
                 
                 # Bot ID
-                row[0].code(str(bot_id)[:12])
+                row[1].code(str(bot_id)[:12])
                 
                 # Último Evento
-                row[1].caption(last_event)
+                row[2].caption(last_event)
                 
-                # Abrir Log button
-                api_port = st.session_state.get("_api_port", 8765)
-                log_url = f"http://127.0.0.1:{api_port}/monitor?bot={bot_id}"
+                # Abrir Log button - abre a view monitor do Streamlit
+                log_url = f"/?view=monitor&bot={bot_id}"
                 if hasattr(st, "link_button"):
-                    row[2].link_button("📜 Abrir Log", log_url, use_container_width=True)
+                    row[3].link_button("📜 Log", log_url, use_container_width=True)
                 else:
-                    row[2].markdown(f'<a href="{log_url}" target="_blank">📜 Abrir Log</a>', unsafe_allow_html=True)
+                    row[3].markdown(f'<a href="{log_url}" target="_blank">📜 Log</a>', unsafe_allow_html=True)
+
+            # Botão Kill único para os selecionados
+            st.markdown("---")
+            kill_cols = st.columns([3, 1])
+            selected_count = len(st.session_state.kill_selected_bots)
+            kill_cols[0].caption(f"🎯 {selected_count} bot(s) selecionado(s)")
+            
+            if kill_cols[1].button(
+                f"🛑 Kill Selecionados",
+                disabled=selected_count == 0,
+                type="primary" if selected_count > 0 else "secondary",
+                use_container_width=True
+            ):
+                killed = []
+                for bot_id in list(st.session_state.kill_selected_bots):
+                    try:
+                        sess = db_sessions_by_id.get(str(bot_id))
+                        pid = sess.get("pid") if sess else None
+                        if pid:
+                            _kill_pid_sigkill_only(int(pid))
+                        controller.stop_bot(str(bot_id))
+                        DatabaseManager().update_bot_session(bot_id, {"status": "stopped", "end_ts": time.time()})
+                        st.session_state.active_bots = [b for b in st.session_state.active_bots if b != bot_id]
+                        killed.append(str(bot_id)[:8])
+                    except Exception as e:
+                        st.error(f"Erro ao encerrar {str(bot_id)[:8]}: {e}")
                 
-                # Kill checkbox + button
-                with row[3]:
-                    if st.button(f"🛑 Kill", key=f"kill_{bot_id}", use_container_width=True):
-                        try:
-                            pid = sess.get("pid") if sess else None
-                            if pid:
-                                _kill_pid_sigkill_only(int(pid))
-                            controller.stop_bot(str(bot_id))
-                            DatabaseManager().update_bot_session(bot_id, {"status": "stopped", "end_ts": time.time()})
-                            st.session_state.active_bots = [b for b in st.session_state.active_bots if b != bot_id]
-                            st.success(f"Bot {str(bot_id)[:8]} encerrado.")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erro: {e}")
-            else:
-                st.info("🚦 Nenhum bot ativo. Use os controles à esquerda para iniciar um novo bot.")
+                if killed:
+                    st.session_state.kill_selected_bots.clear()
+                    st.success(f"✅ Bots encerrados: {', '.join(killed)}")
+                    st.rerun()
+        else:
+            st.info("🚦 Nenhum bot ativo. Use os controles à esquerda para iniciar um novo bot.")
 
         with _safe_container(border=True):
             # Bots encerrados hoje (sessões com end_ts dentro do dia atual)
