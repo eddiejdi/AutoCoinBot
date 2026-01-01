@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    image: autocoinbot:local
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./trades.db:/app/trades.db
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    restart: unless-stopped

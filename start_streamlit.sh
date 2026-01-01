@@ -19,10 +19,16 @@ fi
 #   and does not daemonize.
 
 MODE_FOREGROUND=false
-DOCKER_MODE=false
+# Por padrão usamos Docker/Compose. Passe --no-docker para forçar execução local.
+DOCKER_MODE="${DOCKER_MODE:-true}"
 
 if [ "${1:-}" = "--foreground" ]; then
   MODE_FOREGROUND=true
+  shift || true
+fi
+
+if [ "${1:-}" = "--no-docker" ]; then
+  DOCKER_MODE=false
   shift || true
 fi
 
@@ -52,6 +58,11 @@ activate_venv() {
 }
 
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/docker-compose.yml}"
+
+# Root and log directory (logs go inside repo so agent can read them)
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LOGDIR="${LOGDIR:-$ROOT_DIR/logs}"
+mkdir -p "${LOGDIR}"
 
 docker_available() {
   command -v docker >/dev/null 2>&1
@@ -87,12 +98,14 @@ echo "[start_streamlit] activating virtualenv (if present)"
 activate_venv || true
 
 if [ "$MODE_FOREGROUND" = true ]; then
-  echo "[start_streamlit] running in foreground on port ${PORT} (LOG_LEVEL=${LOG_LEVEL})"
+  LOGFILE="${LOGDIR}/streamlit_${PORT}.log"
+  echo "[start_streamlit] running in foreground on port ${PORT} (LOG_LEVEL=${LOG_LEVEL}), logs -> ${LOGFILE}"
+  # run in foreground but tee output to log file so logs are available in repo
   exec env STREAMLIT_LOG_LEVEL="${LOG_LEVEL}" PYTHONFAULTHANDLER=1 \
-    python3 -m streamlit run streamlit_app.py --server.port ${PORT} --server.address 0.0.0.0 --server.headless true --logger.level ${LOG_LEVEL}
+    python3 -m streamlit run streamlit_app.py --server.port ${PORT} --server.address 0.0.0.0 --server.headless true --logger.level ${LOG_LEVEL} 2>&1 | tee -a "${LOGFILE}"
 else
-  LOGFILE="/tmp/streamlit_${PORT}.log"
-  PIDFILE="/tmp/streamlit_${PORT}.pid"
+  LOGFILE="${LOGDIR}/streamlit_${PORT}.log"
+  PIDFILE="${LOGDIR}/streamlit_${PORT}.pid"
 
   echo "[start_streamlit] starting Streamlit on port ${PORT} (logs -> ${LOGFILE})"
   nohup setsid bash -c "export STREAMLIT_LOG_LEVEL=${LOG_LEVEL} PYTHONFAULTHANDLER=1; exec python3 -m streamlit run streamlit_app.py --server.port ${PORT} --server.address 0.0.0.0 --server.headless true --logger.level ${LOG_LEVEL}" >"${LOGFILE}" 2>&1 &

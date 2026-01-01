@@ -34,6 +34,17 @@ Sempre ative a venv antes de rodar qualquer comando:
 source venv/bin/activate
 ```
 
+Se estiver no Windows, prefira usar o WSL (Ubuntu). Verifique que você está no WSL e com a `venv` ativada antes de executar os scripts. Exemplo de checagens rápidas:
+
+```bash
+# confirmar WSL
+grep -qi microsoft /proc/version && echo "Estou no WSL" || echo "Não parece ser WSL"
+
+# ativar venv
+source venv/bin/activate
+echo "VENV: $VIRTUAL_ENV"
+```
+
 Para rodar scripts, utilize sempre `python3` (ou o caminho do python da venv):
 
 ```bash

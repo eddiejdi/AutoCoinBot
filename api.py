@@ -22,13 +22,49 @@ from urllib.parse import urlencode
 LOG_DIR = Path(__file__).resolve().parent / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+# Prefer LOG_DIR but fallback to a user-writable path if not writable (avoids root-owned log files)
+def _prepare_log_handler():
+    handlers = [logging.StreamHandler()]
+    target = LOG_DIR / 'kucoin_api.log'
+    try:
+        # attempt to create the file if it doesn't exist and set permisssions
+        if not target.exists():
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with open(target, 'a'):
+                    pass
+                try:
+                    target.chmod(0o644)
+                except Exception:
+                    pass
+            except PermissionError:
+                raise
+        handlers.insert(0, logging.FileHandler(target))
+        return handlers
+    except PermissionError:
+        # fallback to user home dir logs
+        home_logs = Path.home() / '.autocoinbot' / 'logs'
+        home_logs.mkdir(parents=True, exist_ok=True)
+        fallback = home_logs / 'kucoin_api.log'
+        try:
+            if not fallback.exists():
+                with open(fallback, 'a'):
+                    pass
+                try:
+                    fallback.chmod(0o644)
+                except Exception:
+                    pass
+            handlers.insert(0, logging.FileHandler(fallback))
+            print(f"[WARN] no permission to write {target}, using {fallback}")
+        except Exception:
+            # give up and just use StreamHandler
+            pass
+        return handlers
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_DIR / 'kucoin_api.log'),
-        logging.StreamHandler()
-    ]
+    handlers=_prepare_log_handler()
 )
 logger = logging.getLogger(__name__)
 
@@ -67,7 +103,7 @@ def _get_secret(key, default=""):
         # 4. Se não encontrou, loga as chaves disponíveis para debug
         try:
             available = list(st.secrets.keys())
-            print(f"[DEBUG] Chave '{key}' não encontrada em st.secrets. Disponíveis: {available}")
+            logger.debug("[DEBUG] Chave '%s' não encontrada em st.secrets. Disponíveis: %s", key, available)
         except Exception:
             pass
         return default
@@ -135,6 +171,28 @@ def _base_url() -> str:
 def _has_keys() -> bool:
     """Verifica se credenciais estão configuradas"""
     return bool(API_KEY and API_SECRET and API_PASSPHRASE)
+
+
+def _mask_headers_for_log(h: dict) -> dict:
+    """Return a copy of headers with sensitive values masked for safe logging."""
+    out = {}
+    try:
+        for k, v in (h or {}).items():
+            if not isinstance(k, str):
+                out[k] = v
+                continue
+            kl = k.upper()
+            if kl in ("KC-API-KEY", "KC-API-PASSPHRASE", "KC-API-SIGN"):
+                try:
+                    s = str(v)
+                    out[k] = s[:6] + "..." if len(s) > 6 else "***"
+                except Exception:
+                    out[k] = "***"
+            else:
+                out[k] = v
+    except Exception:
+        return h
+    return out
 
 def validate_credentials():
     """Valida credenciais da API"""
@@ -713,16 +771,24 @@ def get_accounts_raw() -> List[Dict[str, Any]]:
     endpoint = "/api/v1/accounts"
     headers = _build_headers("GET", endpoint, "")
     rate_limit()
-    print("[DEBUG KuCoin get_accounts_raw()] URL:", KUCOIN_BASE + endpoint, flush=True)
-    print("[DEBUG KuCoin get_accounts_raw()] HEADERS:", headers, flush=True)
+    try:
+        logger.debug("[DEBUG KuCoin get_accounts_raw()] URL: %s", KUCOIN_BASE + endpoint)
+        logger.debug("[DEBUG KuCoin get_accounts_raw()] HEADERS: %s", _mask_headers_for_log(headers))
+    except Exception:
+        pass
     r = requests.get(KUCOIN_BASE + endpoint, headers=headers, timeout=15)
-    print("[DEBUG KuCoin get_accounts_raw()] STATUS:", r.status_code, flush=True)
-    print("[DEBUG KuCoin get_accounts_raw()] RAW RESPONSE:", r.text, flush=True)
+    try:
+        logger.debug("[DEBUG KuCoin get_accounts_raw()] STATUS: %s", r.status_code)
+        # Log a truncated payload (avoid leaking secrets in unexpected places)
+        txt = (r.text or "")
+        logger.debug("[DEBUG KuCoin get_accounts_raw()] RAW RESPONSE (truncated %d chars): %s", len(txt), txt[:1024])
+    except Exception:
+        pass
     if r.status_code != 200:
         raise RuntimeError(f"❌ API accounts error: {r.status_code} - {r.text}")
     logger.info("✅ Successfully fetched accounts")
     data = r.json().get("data", [])
-    print("[DEBUG KuCoin get_accounts_raw()] Retorno:", data, flush=True)
+    logger.debug("[DEBUG KuCoin get_accounts_raw()] Retorno: %s", data)
     return data
 
 
