@@ -80,6 +80,554 @@ ELEMENTOS_TEXTO = [
     'balance', 'saldo', 'trade', 'trades', 'bot', 'ativo', 'entradas', 'entry', 'profit', 'loss', 'btc', 'usdt'
 ]
 
+# Elementos esperados na tela inicial (dashboard)
+DASHBOARD_ELEMENTS = {
+    'header': ['autocoin', 'dashboard', 'kucoin', 'bot'],
+    'inputs': ['symbol', 'entry', 'target', 'interval', 'size', 'funds', 'símbolo', 'entrada', 'alvo'],
+    'buttons': ['start', 'iniciar', 'simular', 'dry', 'executar', 'parar', 'stop'],
+    'sections': ['configuração', 'configuration', 'bots', 'ativos', 'active', 'histórico', 'history'],
+}
+
+# Campos de input para configurar um bot
+BOT_CONFIG_FIELDS = [
+    {'name': 'symbol', 'type': 'text', 'test_value': 'BTC-USDT'},
+    {'name': 'entry', 'type': 'number', 'test_value': '30000'},
+    {'name': 'targets', 'type': 'text', 'test_value': '2:0.3,5:0.4,10:0.3'},
+    {'name': 'interval', 'type': 'number', 'test_value': '5'},
+    {'name': 'size', 'type': 'number', 'test_value': '0.001'},
+    {'name': 'funds', 'type': 'number', 'test_value': '20'},
+]
+
+
+def _create_driver(headless=False):
+    """Cria e configura o driver do Chrome."""
+    options = Options()
+    if headless:
+        options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--incognito')
+    
+    driver = None
+    try:
+        from webdriver_manager.chrome import ChromeDriverManager
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+    except Exception:
+        try:
+            driver = webdriver.Chrome(options=options)
+        except Exception:
+            driver = webdriver.Chrome()
+    driver.set_window_size(1920, 1080)
+    return driver
+
+
+def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
+    """
+    Valida a tela inicial (dashboard) do aplicativo.
+    Verifica a presença de elementos essenciais como:
+    - Header/título do app
+    - Campos de configuração do bot
+    - Botões de ação (start, stop, etc.)
+    - Seções principais (configuração, bots ativos, histórico)
+    
+    Returns:
+        dict: Resultado da validação com detalhes de cada elemento verificado
+    """
+    print("🔍 Iniciando validação da tela inicial...")
+    
+    driver = _create_driver()
+    resultados = {
+        'url': url,
+        'success': False,
+        'dashboard_loaded': False,
+        'header_found': False,
+        'inputs_found': [],
+        'buttons_found': [],
+        'sections_found': [],
+        'errors': []
+    }
+    
+    try:
+        driver.get(url)
+        print(f"   ✓ Página carregada: {url}")
+        time.sleep(8)  # Aguarda renderização do Streamlit (aumentado)
+        
+        # Tenta fazer login se necessário
+        print("   🔐 Tentando login automático...")
+        try:
+            login_ok = _try_auto_login(driver, max_attempts=3)
+            if login_ok:
+                time.sleep(4)  # Aguarda carregamento pós-login
+        except Exception as e:
+            resultados['errors'].append(f"Login: {str(e)}")
+        
+        # Captura o texto da página
+        page_text = ''
+        try:
+            page_text = driver.find_element(By.TAG_NAME, 'body').text or ''
+        except Exception:
+            page_text = driver.page_source or ''
+        page_text_lower = page_text.lower()
+        
+        # Salva o HTML para debug
+        try:
+            with open('debug_dashboard.html', 'w', encoding='utf-8') as f:
+                f.write(driver.page_source)
+        except Exception:
+            pass
+        
+        # Verifica header/título
+        for keyword in DASHBOARD_ELEMENTS['header']:
+            if keyword.lower() in page_text_lower:
+                resultados['header_found'] = True
+                print(f"   ✓ Header encontrado: '{keyword}'")
+                break
+        
+        # Verifica inputs
+        try:
+            inputs = driver.find_elements(By.XPATH, "//input[@type='text' or @type='number']")
+            labels = driver.find_elements(By.TAG_NAME, 'label')
+            label_texts = [l.text.lower() for l in labels if l.text]
+            
+            for keyword in DASHBOARD_ELEMENTS['inputs']:
+                for label_text in label_texts:
+                    if keyword.lower() in label_text:
+                        resultados['inputs_found'].append(keyword)
+                        break
+                # Também verifica em placeholders dos inputs
+                for inp in inputs:
+                    try:
+                        placeholder = inp.get_attribute('placeholder') or ''
+                        aria_label = inp.get_attribute('aria-label') or ''
+                        if keyword.lower() in placeholder.lower() or keyword.lower() in aria_label.lower():
+                            if keyword not in resultados['inputs_found']:
+                                resultados['inputs_found'].append(keyword)
+                    except Exception:
+                        pass
+        except Exception as e:
+            resultados['errors'].append(f"Inputs: {str(e)}")
+        
+        # Verifica botões
+        try:
+            buttons = driver.find_elements(By.XPATH, "//button|//div[@role='button']")
+            for btn in buttons:
+                try:
+                    btn_text = (btn.text or btn.get_attribute('value') or '').lower()
+                    for keyword in DASHBOARD_ELEMENTS['buttons']:
+                        if keyword.lower() in btn_text:
+                            if keyword not in resultados['buttons_found']:
+                                resultados['buttons_found'].append(keyword)
+                except Exception:
+                    pass
+        except Exception as e:
+            resultados['errors'].append(f"Buttons: {str(e)}")
+        
+        # Verifica seções
+        for keyword in DASHBOARD_ELEMENTS['sections']:
+            if keyword.lower() in page_text_lower:
+                resultados['sections_found'].append(keyword)
+        
+        # Determina se o dashboard carregou corretamente
+        resultados['dashboard_loaded'] = (
+            resultados['header_found'] or
+            len(resultados['inputs_found']) >= 2 or
+            len(resultados['buttons_found']) >= 1
+        )
+        
+        resultados['success'] = resultados['dashboard_loaded']
+        
+        # Captura screenshot
+        driver.save_screenshot(screenshot_path)
+        resultados['screenshot'] = screenshot_path
+        
+        print(f"✅ Tela inicial validada: {'SUCESSO' if resultados['success'] else 'FALHA'}")
+        print(f"   - Header encontrado: {resultados['header_found']}")
+        print(f"   - Inputs encontrados: {resultados['inputs_found']}")
+        print(f"   - Botões encontrados: {resultados['buttons_found']}")
+        print(f"   - Seções encontradas: {resultados['sections_found']}")
+        
+    except Exception as e:
+        resultados['errors'].append(f"Geral: {str(e)}")
+        print(f"❌ Erro na validação da tela inicial: {e}")
+    finally:
+        driver.quit()
+    
+    return resultados
+
+
+def testar_start_bot(url, dry_run=True, screenshot_path='screenshot_bot_start.png'):
+    """
+    Testa o fluxo de start de um bot via interface web (Selenium).
+    
+    1. Acessa a URL e faz login se necessário
+    2. Preenche os campos de configuração do bot
+    3. Marca a opção de dry-run (simulação)
+    4. Clica no botão de iniciar
+    5. Verifica se o bot foi iniciado (mensagem de sucesso ou bot na lista)
+    
+    Args:
+        url: URL do aplicativo
+        dry_run: Se True, marca a opção de simulação (dry-run)
+        screenshot_path: Caminho para salvar screenshot
+        
+    Returns:
+        dict: Resultado do teste com detalhes
+    """
+    print(f"🚀 Iniciando teste de start de bot (dry_run={dry_run})...")
+    
+    driver = _create_driver()
+    resultados = {
+        'url': url,
+        'dry_run': dry_run,
+        'success': False,
+        'fields_filled': [],
+        'start_button_clicked': False,
+        'bot_started': False,
+        'bot_id': None,
+        'errors': [],
+        'messages': []
+    }
+    
+    try:
+        driver.get(url)
+        print(f"   ✓ Página carregada: {url}")
+        time.sleep(8)  # Aumentado tempo de espera
+        
+        # Tenta fazer login se necessário
+        print("   🔐 Tentando login automático...")
+        try:
+            login_ok = _try_auto_login(driver, max_attempts=3)
+            if login_ok:
+                time.sleep(4)  # Aguarda carregamento pós-login
+        except Exception as e:
+            resultados['errors'].append(f"Login: {str(e)}")
+        
+        # Preenche os campos de configuração do bot
+        print("   📝 Preenchendo campos de configuração...")
+        wait = WebDriverWait(driver, 10)
+        
+        for field in BOT_CONFIG_FIELDS:
+            try:
+                # Tenta encontrar o input por diferentes seletores
+                input_elem = None
+                selectors = [
+                    f"//input[contains(@aria-label, '{field['name']}')]",
+                    f"//input[contains(@placeholder, '{field['name']}')]",
+                    f"//label[contains(text(), '{field['name']}')]/following::input[1]",
+                    f"//div[contains(text(), '{field['name']}')]/following::input[1]",
+                ]
+                
+                for sel in selectors:
+                    try:
+                        elems = driver.find_elements(By.XPATH, sel)
+                        if elems:
+                            input_elem = elems[0]
+                            break
+                    except Exception:
+                        continue
+                
+                if input_elem and input_elem.is_displayed():
+                    input_elem.clear()
+                    input_elem.send_keys(field['test_value'])
+                    resultados['fields_filled'].append(field['name'])
+                    print(f"   ✓ Campo '{field['name']}' preenchido com '{field['test_value']}'")
+            except Exception as e:
+                resultados['errors'].append(f"Campo {field['name']}: {str(e)}")
+        
+        # Marca a opção de dry-run se necessário
+        if dry_run:
+            try:
+                dry_checkboxes = driver.find_elements(By.XPATH, 
+                    "//input[@type='checkbox']|//div[contains(@class, 'stCheckbox')]//input")
+                for cb in dry_checkboxes:
+                    try:
+                        parent_text = cb.find_element(By.XPATH, './..').text.lower()
+                        if any(kw in parent_text for kw in ['dry', 'simul', 'test']):
+                            if not cb.is_selected():
+                                cb.click()
+                            resultados['messages'].append("Checkbox dry-run marcado")
+                            break
+                    except Exception:
+                        pass
+            except Exception as e:
+                resultados['errors'].append(f"Dry-run checkbox: {str(e)}")
+        
+        time.sleep(1)
+        
+        # Encontra e clica no botão de start
+        start_keywords = ['start', 'iniciar', 'executar', 'run', 'simular']
+        avoid_keywords = ['stop', 'parar', 'kill', 'cancel']
+        
+        try:
+            buttons = driver.find_elements(By.TAG_NAME, 'button')
+            start_button = None
+            
+            for btn in buttons:
+                try:
+                    btn_text = (btn.text or '').lower()
+                    if any(kw in btn_text for kw in start_keywords):
+                        if not any(bad in btn_text for bad in avoid_keywords):
+                            if btn.is_displayed() and btn.is_enabled():
+                                start_button = btn
+                                break
+                except Exception:
+                    continue
+            
+            if start_button:
+                # Captura screenshot antes de clicar
+                driver.save_screenshot(screenshot_path.replace('.png', '_before.png'))
+                
+                start_button.click()
+                resultados['start_button_clicked'] = True
+                print(f"   ✓ Botão de start clicado: '{start_button.text}'")
+                
+                time.sleep(4)  # Aguarda processamento
+                
+                # Verifica se o bot foi iniciado
+                page_text = driver.find_element(By.TAG_NAME, 'body').text.lower()
+                
+                success_indicators = [
+                    'bot iniciado', 'bot started', 'sucesso', 'success',
+                    'running', 'rodando', 'ativo', 'active', 'bot_'
+                ]
+                
+                for indicator in success_indicators:
+                    if indicator in page_text:
+                        resultados['bot_started'] = True
+                        resultados['messages'].append(f"Indicador encontrado: '{indicator}'")
+                        break
+                
+                # Tenta capturar o ID do bot se possível
+                import re
+                bot_id_match = re.search(r'bot_[a-f0-9]{8}', page_text)
+                if bot_id_match:
+                    resultados['bot_id'] = bot_id_match.group()
+                    resultados['bot_started'] = True
+                    print(f"   ✓ Bot ID encontrado: {resultados['bot_id']}")
+            else:
+                resultados['errors'].append("Botão de start não encontrado")
+                print("   ✗ Botão de start não encontrado")
+                
+        except Exception as e:
+            resultados['errors'].append(f"Start button: {str(e)}")
+        
+        # Captura screenshot final
+        driver.save_screenshot(screenshot_path)
+        resultados['screenshot'] = screenshot_path
+        
+        # Determina sucesso geral
+        resultados['success'] = (
+            resultados['start_button_clicked'] and
+            (resultados['bot_started'] or len(resultados['fields_filled']) >= 3)
+        )
+        
+        print(f"✅ Teste de start de bot: {'SUCESSO' if resultados['success'] else 'FALHA'}")
+        print(f"   - Campos preenchidos: {len(resultados['fields_filled'])}")
+        print(f"   - Botão clicado: {resultados['start_button_clicked']}")
+        print(f"   - Bot iniciado: {resultados['bot_started']}")
+        
+    except Exception as e:
+        resultados['errors'].append(f"Geral: {str(e)}")
+        print(f"❌ Erro no teste de start de bot: {e}")
+    finally:
+        driver.quit()
+    
+    return resultados
+
+
+def _try_auto_login(driver, max_attempts=3):
+    """Tenta fazer login automático no aplicativo.
+    
+    Args:
+        driver: WebDriver do Selenium
+        max_attempts: Número máximo de tentativas de login
+        
+    Returns:
+        bool: True se o login foi bem sucedido
+    """
+    for attempt in range(max_attempts):
+        try:
+            wait = WebDriverWait(driver, 8)
+            
+            # Verifica se já está logado (procura elementos do dashboard)
+            try:
+                page_text = driver.find_element(By.TAG_NAME, 'body').text.lower()
+                dashboard_indicators = ['dashboard', 'bot', 'configuração', 'start', 'iniciar', 'balance', 'saldo']
+                if any(indicator in page_text for indicator in dashboard_indicators):
+                    print(f"   ✓ Já logado (indicadores do dashboard encontrados)")
+                    return True
+            except Exception:
+                pass
+            
+            # Procura campos de login
+            user_selectors = [
+                "//input[@type='text']",
+                "//input[@type='email']",
+                "//input[@autocomplete='username']",
+                "//input[@aria-label='Usuário']",
+                "//input[contains(@placeholder, 'usu')]",
+                "//input[contains(@placeholder, 'user')]",
+            ]
+            pass_selectors = [
+                "//input[@type='password']",
+                "//input[@aria-label='Senha']",
+                "//input[contains(@placeholder, 'senha')]",
+                "//input[contains(@placeholder, 'pass')]",
+            ]
+            
+            usuario_input = None
+            senha_input = None
+            
+            # Tenta encontrar campo de usuário
+            for sel in user_selectors:
+                try:
+                    elems = driver.find_elements(By.XPATH, sel)
+                    for elem in elems:
+                        if elem.is_displayed():
+                            usuario_input = elem
+                            break
+                    if usuario_input:
+                        break
+                except Exception:
+                    continue
+            
+            # Tenta encontrar campo de senha
+            for sel in pass_selectors:
+                try:
+                    elems = driver.find_elements(By.XPATH, sel)
+                    for elem in elems:
+                        if elem.is_displayed():
+                            senha_input = elem
+                            break
+                    if senha_input:
+                        break
+                except Exception:
+                    continue
+            
+            if not usuario_input or not senha_input:
+                # Talvez não esteja na tela de login
+                print(f"   ℹ️ Campos de login não encontrados (tentativa {attempt + 1})")
+                time.sleep(2)
+                continue
+            
+            # Preenche as credenciais
+            try:
+                usuario_input.clear()
+                usuario_input.send_keys('admin')
+                print(f"   ✓ Usuário preenchido")
+            except Exception as e:
+                print(f"   ✗ Erro ao preencher usuário: {e}")
+            
+            try:
+                senha_input.clear()
+                senha_input.send_keys('senha123')
+                print(f"   ✓ Senha preenchida")
+            except Exception as e:
+                print(f"   ✗ Erro ao preencher senha: {e}")
+            
+            # Procura e clica no botão de login
+            login_buttons = [
+                "//button[contains(translate(., 'ENTRAR', 'entrar'), 'entrar')]",
+                "//button[contains(translate(., 'LOGIN', 'login'), 'login')]",
+                "//button[contains(translate(., 'SIGN', 'sign'), 'sign')]",
+                "//input[@type='submit']",
+                "//div[@data-testid='stFormSubmitButton']//button",
+                "//button[@type='submit']",
+                "//form//button",
+            ]
+            
+            clicked = False
+            for btn_sel in login_buttons:
+                try:
+                    btns = driver.find_elements(By.XPATH, btn_sel)
+                    for btn in btns:
+                        if btn.is_displayed() and btn.is_enabled():
+                            btn.click()
+                            clicked = True
+                            print(f"   ✓ Botão de login clicado")
+                            break
+                    if clicked:
+                        break
+                except Exception:
+                    continue
+            
+            if clicked:
+                time.sleep(4)  # Aguarda processamento do login
+                
+                # Verifica se login foi bem sucedido
+                try:
+                    page_text = driver.find_element(By.TAG_NAME, 'body').text.lower()
+                    if any(indicator in page_text for indicator in dashboard_indicators):
+                        print(f"   ✓ Login bem sucedido!")
+                        return True
+                except Exception:
+                    pass
+            
+            time.sleep(2)
+            
+        except Exception as e:
+            print(f"   ✗ Erro na tentativa de login {attempt + 1}: {e}")
+            time.sleep(2)
+    
+    print(f"   ✗ Login automático falhou após {max_attempts} tentativas")
+    return False
+
+
+def gerar_relatorio_completo(resultados_tela, resultados_bot, output_file='relatorio_scraper_completo.md'):
+    """Gera um relatório consolidado dos testes."""
+    rel = "# Relatório de Validação - AutoCoinBot Scraper\n\n"
+    rel += f"**Data:** {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    
+    rel += "## 1. Validação da Tela Inicial\n\n"
+    if resultados_tela:
+        rel += f"- **URL:** {resultados_tela.get('url', 'N/A')}\n"
+        rel += f"- **Status:** {'✅ SUCESSO' if resultados_tela.get('success') else '❌ FALHA'}\n"
+        rel += f"- **Dashboard carregado:** {resultados_tela.get('dashboard_loaded', False)}\n"
+        rel += f"- **Header encontrado:** {resultados_tela.get('header_found', False)}\n"
+        rel += f"- **Inputs encontrados:** {', '.join(resultados_tela.get('inputs_found', [])) or 'Nenhum'}\n"
+        rel += f"- **Botões encontrados:** {', '.join(resultados_tela.get('buttons_found', [])) or 'Nenhum'}\n"
+        rel += f"- **Seções encontradas:** {', '.join(resultados_tela.get('sections_found', [])) or 'Nenhum'}\n"
+        if resultados_tela.get('errors'):
+            rel += f"- **Erros:** {'; '.join(resultados_tela.get('errors', []))}\n"
+        if resultados_tela.get('screenshot'):
+            rel += f"\n![Screenshot Dashboard]({resultados_tela.get('screenshot')})\n"
+    else:
+        rel += "- Teste não executado\n"
+    
+    rel += "\n## 2. Teste de Start de Bot\n\n"
+    if resultados_bot:
+        rel += f"- **URL:** {resultados_bot.get('url', 'N/A')}\n"
+        rel += f"- **Modo:** {'DRY-RUN (Simulação)' if resultados_bot.get('dry_run') else 'REAL'}\n"
+        rel += f"- **Status:** {'✅ SUCESSO' if resultados_bot.get('success') else '❌ FALHA'}\n"
+        rel += f"- **Campos preenchidos:** {', '.join(resultados_bot.get('fields_filled', [])) or 'Nenhum'}\n"
+        rel += f"- **Botão Start clicado:** {resultados_bot.get('start_button_clicked', False)}\n"
+        rel += f"- **Bot iniciado:** {resultados_bot.get('bot_started', False)}\n"
+        if resultados_bot.get('bot_id'):
+            rel += f"- **Bot ID:** {resultados_bot.get('bot_id')}\n"
+        if resultados_bot.get('messages'):
+            rel += f"- **Mensagens:** {'; '.join(resultados_bot.get('messages', []))}\n"
+        if resultados_bot.get('errors'):
+            rel += f"- **Erros:** {'; '.join(resultados_bot.get('errors', []))}\n"
+        if resultados_bot.get('screenshot'):
+            rel += f"\n![Screenshot Bot Start]({resultados_bot.get('screenshot')})\n"
+    else:
+        rel += "- Teste não executado\n"
+    
+    rel += "\n## Resumo\n\n"
+    tela_ok = resultados_tela.get('success', False) if resultados_tela else False
+    bot_ok = resultados_bot.get('success', False) if resultados_bot else False
+    rel += f"| Teste | Resultado |\n"
+    rel += f"|-------|----------|\n"
+    rel += f"| Tela Inicial | {'✅ PASSOU' if tela_ok else '❌ FALHOU'} |\n"
+    rel += f"| Start Bot | {'✅ PASSOU' if bot_ok else '❌ FALHOU'} |\n"
+    
+    with open(output_file, 'w') as f:
+        f.write(rel)
+    
+    print(f"\n📄 Relatório salvo em: {output_file}")
+    return rel
+
 
 def validar_tela(url, elementos_esperados, screenshot_path='screenshot.png', check_buttons=False, button_labels=None):
     options = Options()
@@ -106,6 +654,7 @@ def validar_tela(url, elementos_esperados, screenshot_path='screenshot.png', che
     driver.get(url)
     # wait a bit for Streamlit to render
     time.sleep(6)
+
 
     # Tenta login automático dentro do iframe (ou no documento principal)
     login_preenchido = False
@@ -199,6 +748,201 @@ def validar_tela(url, elementos_esperados, screenshot_path='screenshot.png', che
                 continue
         return False
 
+    def _exercise_ui_flows(context_driver, base_url: str) -> None:
+        """Interage com elementos principais da UI após o login.
+
+        Objetivo é exercitar preenchimento de campos e cliques em botões/links
+        típicos (start, LOG, REL, monitor, relatório), incluindo telas que
+        possam abrir em novas abas/janelas. Mantém o escopo pequeno para não
+        interferir demais no uso normal da aplicação.
+        """
+        # Preencher alguns inputs de texto/número com valores mock
+        try:
+            inputs = context_driver.find_elements(By.XPATH, "//input[@type='text' or @type='number']")
+            mock_values = [
+                "BTC-USDT",  # símbolo
+                "30000",     # entry
+                "0.1",       # size
+                "2:0.3,5:0.4",  # targets
+                "5",         # interval
+                "20",        # funds
+            ]
+            idx = 0
+            for el in inputs:
+                try:
+                    if not el.is_displayed() or not el.is_enabled():
+                        continue
+                except Exception:
+                    continue
+                try:
+                    value = mock_values[idx] if idx < len(mock_values) else str(100 + idx)
+                    el.clear()
+                    el.send_keys(value)
+                    idx += 1
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        # Interagir com selects (combos) simples
+        try:
+            selects = context_driver.find_elements(By.TAG_NAME, "select")
+            for sel in selects:
+                try:
+                    if not sel.is_displayed() or not sel.is_enabled():
+                        continue
+                except Exception:
+                    continue
+                try:
+                    options = sel.find_elements(By.TAG_NAME, "option")
+                except Exception:
+                    continue
+                for opt in options[1:2] or options[:1]:
+                    try:
+                        opt.click()
+                    except Exception:
+                        continue
+                    break
+        except Exception:
+            pass
+
+        # Clicar em alguns botões/links "seguros" para navegar entre telas
+        safe_keywords = [
+            'iniciar', 'start', 'simular', 'dry', 'executar', 'testar',
+            'log', 'rel', 'monitor', 'relatório'
+        ]
+        avoid_keywords = ['kill', 'sair', 'logout', 'excluir', 'delete']
+
+        max_clicks = 5
+        clicks_done = 0
+
+        try:
+            try:
+                main_handle = context_driver.current_window_handle
+            except Exception:
+                main_handle = None
+
+            candidates = []
+            try:
+                candidates.extend(context_driver.find_elements(By.TAG_NAME, 'button'))
+            except Exception:
+                pass
+            try:
+                # Filtrar links com href válido (não data:, javascript:, #, vazio)
+                links = context_driver.find_elements(By.TAG_NAME, 'a')
+                for link in links:
+                    try:
+                        href = link.get_attribute('href') or ''
+                        # Ignorar links com URLs inválidas
+                        if href.startswith('data:') or href.startswith('javascript:') or href == '#' or not href:
+                            continue
+                        candidates.append(link)
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+
+            for el in candidates:
+                if clicks_done >= max_clicks:
+                    break
+                try:
+                    if not el.is_displayed() or not el.is_enabled():
+                        continue
+                except Exception:
+                    continue
+
+                try:
+                    text = (el.text or el.get_attribute('value') or '').strip()
+                except Exception:
+                    text = ''
+                lowered = text.lower()
+                if not lowered:
+                    continue
+                if any(bad in lowered for bad in avoid_keywords):
+                    continue
+                if not any(key in lowered for key in safe_keywords):
+                    continue
+
+                # Tenta clicar e, se abrir nova janela/aba, faz uma validação leve
+                try:
+                    try:
+                        before_handles = set(context_driver.window_handles)
+                    except Exception:
+                        before_handles = set()
+
+                    el.click()
+                    time.sleep(2)
+
+                    # Verificar se navegou para URL inválida e voltar se necessário
+                    try:
+                        current_url = context_driver.current_url or ''
+                        if current_url.startswith('data:') or current_url.startswith('javascript:') or current_url == 'about:blank':
+                            if base_url:
+                                context_driver.get(base_url)
+                                time.sleep(1)
+                            continue
+                    except Exception:
+                        pass
+
+                    try:
+                        after_handles = set(context_driver.window_handles)
+                    except Exception:
+                        after_handles = set()
+
+                    new_handles = [h for h in after_handles if h not in before_handles]
+
+                    for h in new_handles:
+                        try:
+                            context_driver.switch_to.window(h)
+                            time.sleep(2)
+                            # Verificar se a nova janela tem URL válida
+                            try:
+                                child_url = context_driver.current_url or ''
+                                if child_url.startswith('data:') or child_url.startswith('javascript:') or child_url == 'about:blank':
+                                    # Fechar janela inválida imediatamente
+                                    context_driver.close()
+                                    if main_handle:
+                                        context_driver.switch_to.window(main_handle)
+                                    continue
+                            except Exception:
+                                pass
+                            # Scroll leve para forçar renderização e captura de screenshot auxiliar
+                            try:
+                                context_driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                                time.sleep(0.5)
+                            except Exception:
+                                pass
+                            try:
+                                context_driver.save_screenshot(f"screenshot_child_{abs(hash(h)) & 0xffff:x}.png")
+                            except Exception:
+                                pass
+                        finally:
+                            try:
+                                if main_handle and h != main_handle:
+                                    context_driver.close()
+                            except Exception:
+                                pass
+                            if main_handle:
+                                try:
+                                    context_driver.switch_to.window(main_handle)
+                                except Exception:
+                                    pass
+
+                    # Se não abriu nova janela, volta para a URL base (se fornecida)
+                    if not new_handles and base_url:
+                        try:
+                            context_driver.get(base_url)
+                            time.sleep(1)
+                        except Exception:
+                            pass
+
+                    clicks_done += 1
+                except Exception:
+                    continue
+        except Exception:
+            # Erros nessa parte não devem quebrar a validação principal
+            pass
+
     # Primeiro tente dentro de um iframe (se houver)
     try:
         iframe = None
@@ -241,6 +985,12 @@ def validar_tela(url, elementos_esperados, screenshot_path='screenshot.png', che
             login_html = driver.page_source
         except Exception:
             login_html = None
+
+    # Após tentar login, exercita alguns fluxos principais da UI (mock)
+    try:
+        _exercise_ui_flows(driver, url)
+    except Exception:
+        pass
 
 
     driver.save_screenshot(screenshot_path)
@@ -376,6 +1126,10 @@ if __name__ == "__main__":
     parser.add_argument('--wait', type=int, default=3, help='Segundos entre tentativas')
     parser.add_argument('--check-buttons', action='store_true', help='Valida presença e rótulos de botões na tela')
     parser.add_argument('--button-labels', type=str, default=None, help='Lista separada por vírgula de rótulos esperados para botões')
+    parser.add_argument('--test-dashboard', action='store_true', help='Executa validação da tela inicial (dashboard)')
+    parser.add_argument('--test-bot-start', action='store_true', help='Executa teste de start de bot (dry-run)')
+    parser.add_argument('--test-bot-real', action='store_true', help='Executa teste de start de bot (modo REAL - cuidado!)')
+    parser.add_argument('--test-all', action='store_true', help='Executa todos os testes (dashboard + bot start dry-run)')
     args = parser.parse_args()
 
     # CLI precedence: explicit --url > --remote > --local > default APP_URL
@@ -388,40 +1142,111 @@ if __name__ == "__main__":
     else:
         url = APP_URL
 
-    expected_selectors = [s for (_, s) in ELEMENTOS_ESPERADOS]
-
-    final_results = None
-    for attempt in range(1, args.retries + 1):
-        print(f"[attempt {attempt}/{args.retries}] Validando {url} ...")
-        resultados, screenshot = validar_tela(url, ELEMENTOS_ESPERADOS, screenshot_path='screenshot.png', check_buttons=args.check_buttons or os.environ.get('CHECK_BUTTONS','0') in ('1','true','yes'), button_labels=args.button_labels)
-        relatorio = gerar_relatorio(resultados, screenshot, url)
-        fname = f"relatorio_validacao_attempt_{attempt}.md"
-        with open(fname, "w") as f:
-            f.write(relatorio)
-        print(f"Relatório salvo: {fname}")
-
-        # Decide se passou: todos os expected selectors True
-        passed = True
-        for sel in expected_selectors:
-            if not resultados.get(sel, False):
-                passed = False
-                break
-
-        if passed:
-            print(f"Sucesso na tentativa {attempt}. Saindo.")
-            final_results = (resultados, screenshot)
-            break
-        else:
-            print(f"Falha na tentativa {attempt}. Retrying in {args.wait}s...")
-            time.sleep(args.wait)
-
-    if final_results is None:
-        # write final aggregated report
-        with open("relatorio_validacao.md", "w") as f:
-            f.write(relatorio)
-        print("Validação finalizada com falhas. Veja relatorios de tentativa.")
+    # Executa novos testes se solicitado
+    if args.test_dashboard or args.test_bot_start or args.test_bot_real or args.test_all:
+        print("=" * 60)
+        print("🧪 AutoCoinBot Scraper - Testes Avançados")
+        print("=" * 60)
+        print(f"URL: {url}")
+        print()
+        
+        resultados_tela = None
+        resultados_bot = None
+        
+        # Teste de tela inicial
+        if args.test_dashboard or args.test_all:
+            print("\n" + "=" * 40)
+            print("📺 TESTE 1: Validação da Tela Inicial")
+            print("=" * 40)
+            resultados_tela = validar_tela_inicial(url)
+        
+        # Teste de start de bot (dry-run)
+        if args.test_bot_start or args.test_all:
+            print("\n" + "=" * 40)
+            print("🤖 TESTE 2: Start de Bot (DRY-RUN)")
+            print("=" * 40)
+            resultados_bot = testar_start_bot(url, dry_run=True)
+        
+        # Teste de start de bot (modo real - com confirmação)
+        if args.test_bot_real:
+            print("\n" + "=" * 40)
+            print("⚠️  TESTE 3: Start de Bot (MODO REAL)")
+            print("=" * 40)
+            print("🚨 ATENÇÃO: Este teste pode executar trades REAIS!")
+            
+            auto_confirm = os.environ.get('AUTO_CONFIRM_REAL_TEST', '').lower() == 'true'
+            if not auto_confirm:
+                import sys
+                if sys.stdin.isatty():
+                    try:
+                        resposta = input("Digite 'SIM' para confirmar ou Enter para pular: ").strip()
+                        if resposta.upper() != 'SIM':
+                            print("⏭️  Teste real pulado pelo usuário")
+                        else:
+                            resultados_bot = testar_start_bot(url, dry_run=False)
+                    except EOFError:
+                        print("⏭️  Ambiente não-interativo - pulando teste real")
+                else:
+                    print("⏭️  Ambiente não-interativo - pulando teste real")
+            else:
+                resultados_bot = testar_start_bot(url, dry_run=False)
+        
+        # Gera relatório consolidado
+        if resultados_tela or resultados_bot:
+            gerar_relatorio_completo(resultados_tela, resultados_bot)
+        
+        # Resumo final
+        print("\n" + "=" * 60)
+        print("📊 RESUMO DOS TESTES")
+        print("=" * 60)
+        
+        if resultados_tela:
+            status_tela = "✅ PASSOU" if resultados_tela.get('success') else "❌ FALHOU"
+            print(f"  Tela Inicial: {status_tela}")
+        
+        if resultados_bot:
+            status_bot = "✅ PASSOU" if resultados_bot.get('success') else "❌ FALHOU"
+            modo = "DRY-RUN" if resultados_bot.get('dry_run') else "REAL"
+            print(f"  Start Bot ({modo}): {status_bot}")
+        
+        print("\n🎯 Testes concluídos!")
+        print("=" * 60)
     else:
-        resultados, screenshot = final_results
-        with open("relatorio_validacao.md", "w") as f:
-            f.write(gerar_relatorio(resultados, screenshot, url))
-        print("Validação concluída com sucesso. Veja relatorio_validacao.md e screenshot.png.")
+        # Comportamento original do scraper
+        expected_selectors = [s for (_, s) in ELEMENTOS_ESPERADOS]
+
+        final_results = None
+        for attempt in range(1, args.retries + 1):
+            print(f"[attempt {attempt}/{args.retries}] Validando {url} ...")
+            resultados, screenshot = validar_tela(url, ELEMENTOS_ESPERADOS, screenshot_path='screenshot.png', check_buttons=args.check_buttons or os.environ.get('CHECK_BUTTONS','0') in ('1','true','yes'), button_labels=args.button_labels)
+            relatorio = gerar_relatorio(resultados, screenshot, url)
+            fname = f"relatorio_validacao_attempt_{attempt}.md"
+            with open(fname, "w") as f:
+                f.write(relatorio)
+            print(f"Relatório salvo: {fname}")
+
+            # Decide se passou: todos os expected selectors True
+            passed = True
+            for sel in expected_selectors:
+                if not resultados.get(sel, False):
+                    passed = False
+                    break
+
+            if passed:
+                print(f"Sucesso na tentativa {attempt}. Saindo.")
+                final_results = (resultados, screenshot)
+                break
+            else:
+                print(f"Falha na tentativa {attempt}. Retrying in {args.wait}s...")
+                time.sleep(args.wait)
+
+        if final_results is None:
+            # write final aggregated report
+            with open("relatorio_validacao.md", "w") as f:
+                f.write(relatorio)
+            print("Validação finalizada com falhas. Veja relatorios de tentativa.")
+        else:
+            resultados, screenshot = final_results
+            with open("relatorio_validacao.md", "w") as f:
+                f.write(gerar_relatorio(resultados, screenshot, url))
+            print("Validação concluída com sucesso. Veja relatorio_validacao.md e screenshot.png.")

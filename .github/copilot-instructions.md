@@ -1,5 +1,8 @@
 # Copilot Instructions — KuCoin App (AutoCoinBot)
 
+> **🤖 Default Agent: `dev-senior`** — Ver [agents.json](agents.json) para configuração de agentes.  
+> **📚 Manual de Treinamento:** [AGENTE_TREINAMENTO.md](../AGENTE_TREINAMENTO.md)
+
 Quick, actionable notes to help an AI contributor be immediately productive in this repo.
 
 1) Environment & quickstart
@@ -58,111 +61,49 @@ python -u bot_core.py --bot-id test_dry_1 --symbol BTC-USDT --entry 30000 --targ
 - UI components + lifecycle: [ui.py](../../ui.py)
 - Bot execution: [bot_controller.py](../../bot_controller.py) and [bot_core.py](../../bot_core.py)
 - DB helpers: [database.py](../../database.py)
-- Terminal API: [terminal_component.py](../../terminal_component.py)
+## Copilot Instructions — AutoCoinBot (resumo prático)
 
-If anything here is unclear or you want more detail (DB schemas, specific CLI flags, or testing steps), tell me which area to expand and I'll iterate.
+Objetivo breve: Streamlit UI controla subprocessos de bots que escrevem logs e trades em `trades.db`. A UI consome um terminal HTTP local para render de logs em tempo real.
 
+- Ambiente & quickstart:
+  - Ative venv: `source venv/bin/activate` e `pip install -r requirements.txt`.
+  - Inicie a UI: `python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true`.
+  - Inicie um bot (dry-run recomendado):
+    `python -u bot_core.py --bot-id test_dry_1 --symbol BTC-USDT --entry 30000 --targets "2:0.3" --interval 5 --size 0.1 --funds 0 --dry`
 
-# Copilot Instructions — KuCoin App (AutoCoinBot)
+- Arquitetura (arquivos-chave):
+  - [streamlit_app.py](streamlit_app.py): entrada da app + persistência `.login_status`.
+  - [ui.py](ui.py): lógica de UI, guardas multi-tab/kill-on-start, e render do terminal.
+  - [bot_controller.py](bot_controller.py): compõe o comando do subprocess e grava `bot_sessions`.
+  - [bot_core.py](bot_core.py) / [bot.py](bot.py): lógica do bot; usa `DatabaseLogger`/[database.py](database.py).
+  - [terminal_component.py](terminal_component.py): API HTTP local (padrão ~8765) que serve os logs para o widget.
+  - [database.py](database.py): schema + helpers (tabelas: `bot_sessions`, `bot_logs`, `trades`).
 
-**Always activate the venv before running any command:**
+- Convenções importantes (não alterar sem checar):
+  - Evite `print()` em código comprometido; use `DatabaseLogger` ou `logging` (vários usos em `bot_core.py`).
+  - Se alterar flags/args da CLI do bot, atualize simultaneamente `bot_core.py` e `bot_controller.py` (síncrono: builder vs actor).
+  - Se mudar o schema, atualize `database.py` e todos os callers que tocam as colunas modificadas.
+  - Preserve o formato JSON e os headers CORS em `terminal_component.py` (a UI depende da shape).
+  - Multi-tab/kill-on-start: implementado via `ui.py` + flags no DB (prefira persistência DB a estados em memória).
 
-```bash
-source venv/bin/activate
-```
+- Integrações e pontos exteriores:
+  - DB SQLite: `trades.db` na raiz (ver `database.py`).
+  - Terminal API: `http://localhost:8765/api/logs?bot=<bot_id>` usado pela UI.
+  - Segredos: `.env` local ou `st.secrets` para `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `TRADES_DB`.
 
-Use `python3` (or the venv python path) for all scripts:
+- Comandos úteis e testes:
+  - Ver sintaxe: `python -m py_compile <file>.py`.
+  - Testes: `./run_tests.sh` (APP_ENV=dev por padrão) ou `pytest`.
+  - Selenium/E2E: requer Chrome + chromedriver; use `RUN_SELENIUM=1 ./run_tests.sh`.
+  - Inspeção de DB: `scripts/db_inspect.py`.
 
-```bash
-python3 agent0_scraper.py --local --check-buttons
-```
+- Checklist rápido antes de PRs:
+  - Alterou CLI do bot? testar dry-run e validar `bot_sessions`/`bot_logs` no DB.
+  - Alterou schema? adicionar migração/nota e atualizar `database.py` callers.
+  - Alterou terminal API/UI? validar widget e headers CORS.
+  - Evite prints; prefira `DatabaseLogger`.
 
-Install dependencies with:
+Referências rápidas: [AGENTE_TREINAMENTO.md](AGENTE_TREINAMENTO.md), [agents.json](agents.json), testes em `tests/`, scripts em `scripts/`.
 
-```bash
-pip install -r requirements.txt
-```
-
-If `python` is not available, always use `python3`.
-
-Concise, actionable guidance for AI agents contributing to this repo.
-
-## Big Picture & Architecture
-- **Purpose:** Streamlit dashboard to manage trading bot subprocesses, store logs/trades in SQLite (`trades.db`), and expose a local HTTP API for live terminal widgets.
-- **Major components:**
-  - [streamlit_app.py](../../streamlit_app.py): App entry, login gating (persists `.login_status`).
-  - [ui.py](../../ui.py): UI rendering, bot lifecycle, server-side coordination (kill-on-start, multi-tab guards, uses `st.cache_resource`).
-  - [bot_controller.py](../../bot_controller.py): Spawns/stops bot subprocesses via `sys.executable` calling [bot_core.py](../../bot_core.py).
-  - [bot_core.py](../../bot_core.py) / [bot.py](../../bot.py): Bot logic, uses `DatabaseLogger` for `bot_logs`/`trades`.
-  - [terminal_component.py](../../terminal_component.py): Starts local HTTP API (default port ~8765) for terminal widget.
-  - [database.py](../../database.py): DB schema + helpers (`insert_bot_session`, `get_active_bots`, `add_bot_log`, `get_bot_logs`, `insert_trade`).
-  - [api.py](../../api.py): KuCoin integration, reads secrets from env or `st.secrets` via `_get_secret()`.
-
-## Developer Workflows
-- **Run Streamlit and bots in separate terminals** for clear logs/debugging:
-  1. Terminal 1: `python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true`
-  2. Terminal 2: `python -u bot_core.py --bot-id <id> --symbol BTC-USDT --entry 30000 --targets "2:0.3,5:0.4" --interval 5 --size 0.1 --funds 0 --dry`
-- **Setup:**
+Se quiser, eu posso expandir seções específicas (ex.: schema das tabelas, exemplos de logs em `bot_logs`, ou o fluxo de `bot_controller.start_bot()`).
   - `python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`
-- **Testing:**
-  - Use `pytest` (see [test_bot_start.py](../../test_bot_start.py), [test_interface.py](../../test_interface.py), [test_visual_validation.py](../../test_visual_validation.py)).
-  - Always run tests from the project venv. Use `./run_tests.sh` (defaults to `APP_ENV=dev`). Example: `APP_ENV=hom ./run_tests.sh` for homologation.
-  - Selenium visual tests: require Chrome + chromedriver. Run with `./run_tests.sh --selenium` or `RUN_SELENIUM=1 ./run_tests.sh`.
-- **Syntax check:** `python -m py_compile <file>.py`
-- **DB inspection:** `scripts/db_inspect.py` (make executable: `chmod +x scripts/db_inspect.py`)
-- **Start/stop helpers:** `./start_streamlit.sh`, `./control_app.sh restart|stop`
-
-## Project Conventions & Patterns
-- **No ad-hoc `print()` in committed code** — use `DatabaseLogger`/`logging` (see [bot_core.py](../../bot_core.py)).
-- **Bot lifecycle:** `BotController.start_bot()` builds a `sys.executable -u bot_core.py ...` command and records session in `bot_sessions` (PID recorded). If you change CLI args, update both [bot_core.py](../../bot_core.py) and [bot_controller.py](../../bot_controller.py).
-- **UI multi-tab:** [ui.py](../../ui.py) implements `_get_kill_on_start_guard()` and a resource to avoid duplicate/conflicting runs. Prefer DB/state updates over in-memory globals.
-- **Terminal API:** [terminal_component.py](../../terminal_component.py) returns JSON arrays from `DatabaseManager.get_bot_logs()`. Preserve CORS headers if changing handlers.
-- **Login state:** `.login_status` file persists login between runs.
-
-## Integration Points & Environment
-- **DB:** `trades.db` at repo root (see [database.py](../../database.py)). If you add columns, update [database.py](../../database.py) and all callers.
-- **Local API port:** Default ~8765. UI polls `/api/logs?bot=<bot_id>`.
-- **Env/secrets:** Prefer `.env` for local dev or `st.secrets` in Streamlit. Keys: `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `API_KEY_VERSION`, `KUCOIN_BASE`, `TRADES_DB`.
-- **App environment:** Set `APP_ENV=dev` (uses `LOCAL_URL`) or `APP_ENV=hom` (uses `HOM_URL`). `.env.example` shows usage.
-
-## Editing & Safe-Change Checklist
-1. If modifying bot CLI/lifecycle: update both [bot_core.py](../../bot_core.py) and [bot_controller.py](../../bot_controller.py).
-2. If changing DB schema: update [database.py](../../database.py) and all code that reads/writes affected columns (search for `bot_sessions`, `trades`, `bot_logs`).
-3. If touching terminal API/UI endpoints: preserve JSON shape and CORS headers in [terminal_component.py](../../terminal_component.py).
-4. Avoid `print()`; use `DatabaseLogger` or `logging`.
-
-## Examples & Validation
-- **Bot command:** `python -u bot_core.py --bot-id <id> --symbol BTC-USDT --entry 30000 --targets "2:0.3,5:0.4" --interval 5 --size 0.1 --funds 0 --dry`
-- **Scrapers/headless validation:** [agent0_scraper.py](../../agent0_scraper.py) (Selenium-based, needs Chrome + chromedriver); [run_dry_validate.py](../../run_dry_validate.py) exercises dry-run bots and the scraper.
-
-## Deployment Notes
-- For production, prefer systemd (see [deploy/streamlit.service.template](../../deploy/streamlit.service.template)) or Docker Compose ([deploy/docker-compose.yml](../../deploy/docker-compose.yml)).
-- When using Docker, mount the project directory for persistent DB storage (default SQLite DB is ephemeral in containers/cloud).
-- [start_streamlit.sh](../../start_streamlit.sh) supports `--foreground` for systemd and background mode by default.
-- See [deploy/README.md](../../deploy/README.md) for deployment steps.
-
----
-If anything critical is missing or you want DB schemas, specify which table(s) to append.
-
-## Recent Fixes & Notes (Dec 2025)
-- **Files changed:** `ui.py`, `wallet_releases_rss.py`, `streamlit_app.py` (local fixes branch: `fix/ui-html-wallet-releases-20251226`).
-- **Bug fixes applied:** added missing imports (`time` in `ui.py`, `html` in `wallet_releases_rss.py`), defensive shim for `html` in `ui.py`, fixed an indentation error causing login to loop.
-- **LOG button behavior:** restored inline LOG action that sets `st.session_state.selected_bot` and calls `render_terminal_live_api(bot_id)` so logs open in-page for started bots. Alternative UX (open `/monitor` in new tab) was explored but reverted per preference.
-- **Runtime notes:** a root-owned Streamlit process may block port `8501`; start Streamlit as the local user or use another port. Example:
-
-```bash
-source venv/bin/activate
-python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true
-```
-
-- **E2E validation:** to verify live terminal rendering, run a dry-run bot and then click LOG in the UI:
-
-```bash
-# in one terminal: start streamlit (see above)
-# in another terminal: start a dry-run bot that writes DB logs
-python -u bot_core.py --bot-id test_dry_1 --symbol BTC-USDT --entry 30000 --targets "2:0.3" --interval 5 --size 0.1 --funds 0 --dry
-```
-
-- **PR created:** branch `fix/ui-html-wallet-releases-20251226` pushed and PR opened: https://github.com/eddiejdi/AutoCoinBot/pull/19
-- **Testing & checks:** run `python -m py_compile <file>.py` for syntax checks; run `./run_tests.sh` or `pytest` from the venv for tests. Selenium tests require Chrome + chromedriver.
-- **When editing:** If you change the bot CLI args or DB schema, update `bot_controller.py`/`bot_core.py` and `database.py` respectively (see Editing & Safe-Change Checklist above).

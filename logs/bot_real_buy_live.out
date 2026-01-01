@@ -1,8 +1,0 @@
-nohup: ignorando entrada
-2025-12-22 20:38:16,093 | INFO | api | ✅ Loaded .env from /home/edenilson/Downloads/kucoin_app/.env
-usage: bot_core.py [-h] --bot-id BOT_ID --symbol SYMBOL --entry ENTRY
-                   [--mode {sell,buy,mixed}] --targets TARGETS
-                   [--interval INTERVAL] [--size SIZE] [--funds FUNDS] [--dry]
-                   [--reserve-pct RESERVE_PCT]
-                   [--target-profit-pct TARGET_PROFIT_PCT] [--eternal]
-bot_core.py: error: argument --targets: expected one argument

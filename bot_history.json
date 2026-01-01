@@ -74256,5 +74256,60 @@
     ],
     "total_profit": 1.82,
     "dry_run": true
+  },
+  {
+    "id": "bot_4a3abf02",
+    "symbol": "BTC-USDT",
+    "entry_price": 0.0,
+    "mode": "sell",
+    "start_ts": 1767240589.1909037,
+    "end_ts": 1767240589.2661066,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_39782131",
+    "symbol": "BTC-USDT",
+    "entry_price": 0.0,
+    "mode": "sell",
+    "start_ts": 1767273348.0130086,
+    "end_ts": 1767273348.0241716,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_7d2688f5",
+    "symbol": "BTC-USDT",
+    "entry_price": 0.0,
+    "mode": "sell",
+    "start_ts": 1767273470.516828,
+    "end_ts": 1767273470.5195048,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_93763297",
+    "symbol": "BTC-USDT",
+    "entry_price": 0.0,
+    "mode": "sell",
+    "start_ts": 1767273532.3216202,
+    "end_ts": 1767273532.325466,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_9bcb9010",
+    "symbol": "BTC-USDT",
+    "entry_price": 87991.5,
+    "mode": "flow",
+    "start_ts": 1767273909.920834,
+    "end_ts": 1767273946.5155227,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": false
   }
 ]

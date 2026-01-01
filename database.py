@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any
 from datetime import datetime
+import sqlite3
 
 # Load .env if available to allow configuring DATABASE_URL in env file
 try:
@@ -22,17 +23,14 @@ except Exception:
 # Enforce Postgres-only backend. DATABASE_URL must be set.
 PG_CONN_INFO = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
 
-# Enforce Postgres-only backend. Fail fast if not configured.
-if not PG_CONN_INFO:
-    raise RuntimeError("DATABASE_URL is required; Postgres backend only. Set DATABASE_URL environment variable.")
-
 try:
     import psycopg2
     import psycopg2.extras
-except Exception as e:
-    raise RuntimeError(f"psycopg2 is required but failed to import: {e}")
+except Exception:
+    psycopg2 = None  # type: ignore
 
-USE_PG = True
+# Backend: Postgres only when URL + psycopg2 are disponíveis
+USE_PG = bool(PG_CONN_INFO) and psycopg2 is not None
 
 logger = logging.getLogger(__name__)
 
@@ -213,24 +211,26 @@ class DatabaseManager:
     """Gerencia todas as operações do banco de dados"""
 
     def __init__(self):
-        # Postgres DSN is in PG_CONN_INFO. If USE_PG is False we skip initialization
-        # so the module can be imported in local/dev environments without a DB.
+        # Caminho opcional para SQLite (usado em testes ou modo local)
+        # Pode ser sobrescrito externamente (ex.: db.db_path = temp_db_path em testes).
+        self.db_path: str | None = os.environ.get("TRADES_DB")
+
+        # Postgres DSN é mantido para ambientes que usam PG.
         self._enabled = USE_PG
         self._initialized = False
-        if not self._enabled:
-            return
 
-        # Initialize database schema in background to avoid blocking UI startup.
-        try:
-            import threading
-            threading.Thread(target=self._init_database_background, daemon=True).start()
-        except Exception:
-            # Fallback: try synchronously (rare)
+        # Se estivermos em modo Postgres, inicializa o esquema em background.
+        if self._enabled:
             try:
-                self.init_database()
-                self._initialized = True
+                import threading
+                threading.Thread(target=self._init_database_background, daemon=True).start()
             except Exception:
-                logger.exception("Erro ao inicializar o DB sincronamente")
+                # Fallback: inicialização síncrona (raro)
+                try:
+                    self.init_database()
+                    self._initialized = True
+                except Exception:
+                    logger.exception("Erro ao inicializar o DB sincronamente")
 
     def _init_database_background(self):
         try:
@@ -240,9 +240,21 @@ class DatabaseManager:
             logger.exception("Erro na inicialização do DB em background")
     
     def get_connection(self):
-        """Obtém uma conexão PostgreSQL. Retorna um objeto com .cursor(), .commit(), .close()."""
+        """Obtém uma conexão com o banco.
+
+        - Se ``self.db_path`` estiver setado, usa SQLite (útil para testes e modo local).
+        - Caso contrário, usa PostgreSQL conforme configurado em ``DATABASE_URL``.
+        """
+
+        # Preferência explícita por SQLite quando db_path é definido (ex.: em testes).
+        if getattr(self, "db_path", None):
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            return conn
+
         if not USE_PG or psycopg2 is None:
             raise RuntimeError("DATABASE_URL não configurado; operação de banco indisponível em modo local.")
+
         # Use a short connect timeout so UI doesn't hang if DB is unreachable.
         try:
             conn = psycopg2.connect(PG_CONN_INFO, connect_timeout=2)

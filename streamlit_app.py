@@ -111,6 +111,14 @@ def main():
             fazer_login()
             return
 
+        # Usuário já está logado: remove o indicador de carregamento
+        # antes de renderizar a UI principal, para evitar a impressão de
+        # "carregamento infinito" caso a UI chame st.stop()/st.rerun.
+        try:
+            top_loader.empty()
+        except Exception:
+            pass
+
         # Usuário logado - importar UI
         ui_mod = None
         here = os.path.dirname(__file__)
@@ -164,13 +172,9 @@ def main():
                         pass
 
         if hasattr(ui_mod, "render_bot_control"):
-            try:
-                ui_mod.render_bot_control()
-            finally:
-                try:
-                    top_loader.empty()
-                except Exception:
-                    pass
+            # A UI pode chamar st.stop()/st.rerun; o loader já foi
+            # limpo acima para não ficar preso na tela.
+            ui_mod.render_bot_control()
         else:
             st.error("render_bot_control não encontrado em ui.py")
 
