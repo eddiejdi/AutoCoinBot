@@ -16,15 +16,12 @@ except Exception:
     load_dotenv = None
 
 # Load .env if present
-ENV_PATH = Path(__file__).resolve().parent / '.env'
+
+# Padronizar: sempre carregar .env da raiz do projeto
+ROOT_ENV = Path(__file__).resolve().parent.parent / '.env'
 if load_dotenv:
-    # load .env from repo root first, then module dir
     try:
-        load_dotenv(dotenv_path=Path.cwd() / '.env')
-    except Exception:
-        pass
-    try:
-        load_dotenv(dotenv_path=ENV_PATH)
+        load_dotenv(dotenv_path=ROOT_ENV)
     except Exception:
         pass
 
@@ -53,7 +50,7 @@ if tomllib:
 # Allow overriding via environment: APP_ENV=dev|hom and HOM_URL
 # Configurações
 LOCAL_URL = os.environ.get('LOCAL_URL', "http://localhost:8501")
-REMOTE_URL = os.environ.get('HOM_URL', "https://autocoinbot-hom.streamlit.app/")
+REMOTE_URL = os.environ.get('HOM_URL', "https://autocoinbot.fly.dev/")
 # APP_ENV: 'dev' uses LOCAL_URL, 'hom' uses REMOTE_URL, default 'dev'
 APP_ENV = os.environ.get('APP_ENV', os.environ.get('ENV', 'dev')).lower()
 if APP_ENV == 'hom' or APP_ENV == 'homologation' or APP_ENV == 'prod_hom':
