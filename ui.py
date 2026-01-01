@@ -15,7 +15,7 @@ import logging
 try:
     ui_logger = logging.getLogger("autocoin_ui_debug")
     if not ui_logger.handlers:
-        fh = logging.FileHandler("ui_debug.log")
+        fh = logging.FileHandler("/workspace/ui_debug.log")
         fh.setLevel(logging.DEBUG)
         fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
         fh.setFormatter(fmt)
@@ -32,7 +32,6 @@ import streamlit as st
 from pathlib import Path
 import threading
 import urllib.parse
-import hashlib
 
 # How many consecutive checks are required to consider a PID dead
 # and avoid aggressive cleanup when multiple Streamlit instances run.
@@ -206,47 +205,11 @@ def _confirm_pid_dead(pid: int | None, checks: int = None, delay_s: float = None
                 return False
         except Exception:
             return False
-        # Avoid blocking the main render loop with sleeps; perform immediate rechecks.
-        # Previously we waited `delay_s` between checks, but in a UI render path
-        # this can cause perceptible hangs. Keeping the fast consecutive checks
-        # still reduces false-positives for transient PIDs without sleeping.
         try:
-            # quick no-op to keep structure similar; do not sleep here
-            _ = None
+            time.sleep(float(delay_s))
         except Exception:
             pass
     return not _pid_alive(pid_i)
-
-
-# Lightweight cached `ps` scanner to avoid calling `subprocess.run` on every render.
-# Returns list of lines (like `ps` output). Cache is refreshed in background if stale.
-_ps_cache = {"ts": 0.0, "out": []}
-
-def _update_ps_cache():
-    try:
-        r = subprocess.run(["ps", "-eo", "pid,args"], capture_output=True, text=True, check=False, timeout=2)
-        out = (r.stdout or "").splitlines()
-    except Exception:
-        out = []
-    _ps_cache["out"] = out
-    _ps_cache["ts"] = time.time()
-
-def _ps_scan_cached(max_age: float = 2.0):
-    try:
-        now = time.time()
-        if now - _ps_cache.get("ts", 0.0) > float(max_age):
-            try:
-                threading.Thread(target=_update_ps_cache, daemon=True).start()
-            except Exception:
-                # fallback: attempt synchronous with very short timeout
-                try:
-                    r = subprocess.run(["ps", "-eo", "pid,args"], capture_output=True, text=True, check=False, timeout=1)
-                    return (r.stdout or "").splitlines()
-                except Exception:
-                    return _ps_cache.get("out", [])
-        return _ps_cache.get("out", [])
-    except Exception:
-        return []
 
 
 def _kill_pid_best_effort(pid: int, timeout_s: float = 0.4) -> bool:
@@ -411,9 +374,10 @@ def _kill_active_bot_sessions_on_start(controller: BotController | None = None):
     except Exception:
         db = None
 
-    # 2) ps scan for bots (cached, non-blocking)
+    # 2) ps scan for bots
     try:
-        out = _ps_scan_cached()
+        r = subprocess.run(["ps", "-eo", "pid,args"], capture_output=True, text=True, check=False)
+        out = (r.stdout or "").splitlines()
         for line in out[1:]:
             line = line.strip()
             if not line:
@@ -703,10 +667,7 @@ def _maybe_start_background_equity_snapshot():
                 from equity import snapshot_equity
                 snapshot_equity()
             except Exception as e:
-                if ui_logger:
-                    ui_logger.error(f"Erro no snapshot equity: {e}")
-                else:
-                    pass  # Fallback: no logging available
+                print(f"Erro no snapshot equity: {e}")
             time.sleep(300)  # every 5 minutes
 
     # Schedule immediate snapshot on start in a background thread (non-blocking)
@@ -717,10 +678,7 @@ def _maybe_start_background_equity_snapshot():
             try:
                 snapshot_equity()
             except Exception as e:
-                if ui_logger:
-                    ui_logger.error(f"Erro no snapshot inicial: {e}")
-                else:
-                    pass
+                print(f"Erro no snapshot inicial: {e}")
 
         try:
             threading.Thread(target=_run_once_snapshot, name="equity_snapshot_once", daemon=True).start()
@@ -729,15 +687,9 @@ def _maybe_start_background_equity_snapshot():
             try:
                 snapshot_equity()
             except Exception as e:
-                if ui_logger:
-                    ui_logger.error(f"Erro no snapshot inicial (fallback): {e}")
-                else:
-                    pass
+                print(f"Erro no snapshot inicial (fallback): {e}")
     except Exception as e:
-        if ui_logger:
-            ui_logger.error(f"Erro ao importar snapshot_equity: {e}")
-        else:
-            pass
+        print(f"Erro ao importar snapshot_equity: {e}")
 
     try:
         t = threading.Thread(target=_worker, name="equity_snapshot", daemon=True)
@@ -761,7 +713,7 @@ def render_trade_report_page():
         <div style="text-align:center; padding: 10px 0 16px 0;">
             <div style="display:inline-block; border: 1px solid {theme['border']}; border-radius: 8px; padding: 12px 16px; background:{theme['bg2']};">
                 <div style="font-family: 'Courier New', monospace; font-weight: 700; color:{theme['accent']};">📑 RELATÓRIO</div>
-                <div style="font-family: 'Courier New', monospace; color:{theme['text2']}; font-size: 12px;">Histórico de Trades</div>
+                <div style="font-family: 'Courier New', monospace; color:{theme['text2']}; font-size: 12px;">Histórico de Trades (SQLite)</div>
             </div>
         </div>
         """,
@@ -1165,9 +1117,6 @@ def _set_view(view: str, bot_id: str | None = None, clear_bot: bool = False):
         # clear legacy modes
         "window": None,
         "report": None,
-        # ensure old navigation flags don't persist
-        "home": None,
-        "start": None,
     }
     if clear_bot:
         updates["bot"] = None
@@ -1272,7 +1221,6 @@ def _extract_latest_price_from_logs(log_rows: list[dict]) -> float | None:
 
 def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
     """Streamlit-native monitor: multi-bot overview + per-bot performance."""
-    st.title("KuCoin PRO — Trading Terminal")
     st.header("Monitor — Painel de Performance")
     st.caption("Acompanhe rendimento, trades, status e logs dos bots (múltiplos).")
 
@@ -1458,8 +1406,13 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
     if pd is not None:
         df_over = pd.DataFrame(overview_rows)
         st.subheader("Bots (visão geral)")
-        # use module-level `_pid_alive` (defined at top of file)
         import os
+        def _pid_alive(pid):
+            try:
+                os.kill(int(pid), 0)
+                return True
+            except Exception:
+                return False
 
         db = DatabaseManager()
         active_bots_db = db.get_active_bots()
@@ -1517,7 +1470,7 @@ def render_top_nav_bar(theme: dict, current_view: str, selected_bot: str | None 
 
     # Botão de logout no topo direito
     col_logout = st.columns([10, 1])[1]
-    if col_logout.button("🚪 Logout", key=f"logout_btn_{view}"):
+    if col_logout.button("🚪 Logout", key=f"logout_btn_{view}_{int(time.time()*1000)}"):
         # Limpar estado de sessão
         set_logged_in(False)
         for key in list(st.session_state.keys()):
@@ -2650,34 +2603,36 @@ def render_theme_selector(ui=None, key_suffix=""):
     if ui is None and not st.session_state.get("_allow_inline_theme_selector", False):
         return
 
-    def render_bot_control():
-        # Defensive: require login per session before rendering any UI
+    def _render_body():
+        st.markdown("---")
+        st.markdown("### 🎨 Tema do Terminal")
+
+        current_theme = st.session_state.get("terminal_theme", "COBOL Verde")
+        theme_keys = list(THEMES.keys())
         try:
-            if not bool(st.session_state.get("logado", False)):
-                # Bypass login for dev environment for testing
-                if os.environ.get('APP_ENV') == 'dev':
-                    st.session_state["logado"] = True
-                else:
-                    st.title("🔐 Login obrigatório")
-                    st.warning("Você precisa estar autenticado para acessar o dashboard.")
-                    st.stop()
+            idx = theme_keys.index(current_theme)
         except Exception:
+            idx = 0
+
+        selected_theme = st.selectbox(
+            "Selecionar tema",
+            options=theme_keys,
+            index=idx,
+            key=f"theme_selector{key_suffix}",
+        )
+
+        if selected_theme != current_theme:
+            st.session_state.terminal_theme = selected_theme
             try:
-                if ui_logger:
-                    ui_logger.exception("Erro ao verificar autenticação no render_bot_control")
+                _save_theme(selected_theme)
             except Exception:
                 pass
-            st.error("Erro ao verificar autenticação. Acesso negado.")
-            st.stop()
+            _merge_query_params({"theme": selected_theme})
+            st.rerun()
 
-        # --- NOVO LAYOUT DASHBOARD PRINCIPAL ---
-        try:
-            import dashboard
-            dashboard.render_dashboard()
-            return
-        except Exception as e:
-            st.error(f"Erro ao renderizar dashboard: {e}")
-            st.stop()
+        if get_current_theme().get("name") == "Super Mario World":
+            st.caption("Monitor: fundo SMW aleatório a cada reload")
+
     if ui is None:
         _render_body()
         return
@@ -4513,23 +4468,59 @@ def colorize_logs_html(log_text: str) -> str:
 
 def render_bot_control():
     # Defensive: require login per session before rendering any UI
-    if not bool(st.session_state.get("logado", False)):
-        # Auto-login if a local .login_status file exists (developer convenience)
-        try:
-            if os.path.exists(LOGIN_FILE):
-                st.session_state["logado"] = True
-            elif os.environ.get('APP_ENV') == 'dev':
+    try:
+        if not bool(st.session_state.get("logado", False)):
+            # Bypass login for dev environment for testing
+            if os.environ.get('APP_ENV') == 'dev':
                 st.session_state["logado"] = True
             else:
                 st.title("🔐 Login obrigatório")
                 st.warning("Você precisa estar autenticado para acessar o dashboard.")
                 st.stop()
+    except Exception:
+        try:
+            if ui_logger:
+                ui_logger.exception("Erro ao verificar autenticação no render_bot_control")
         except Exception:
-            st.title("🔐 Login obrigatório")
-            st.warning("Você precisa estar autenticado para acessar o dashboard.")
-            st.stop()
-    # Chama o renderizador principal da UI (igual ao repositório oficial)
-    _render_full_ui()
+            pass
+        st.error("Erro ao verificar autenticação. Acesso negado.")
+        st.stop()
+
+    # Entry point: call the full UI renderer (kept separate so we can recover safely).
+    try:
+        controller = None
+        try:
+            if ui_logger:
+                ui_logger.debug("render_bot_control: antes de get_global_controller")
+            controller = get_global_controller()
+            if ui_logger:
+                ui_logger.debug("render_bot_control: get_global_controller retornou")
+        except Exception:
+            if ui_logger:
+                try:
+                    ui_logger.exception("Erro em get_global_controller")
+                except Exception:
+                    pass
+            controller = None
+        try:
+            if ui_logger:
+                ui_logger.debug("render_bot_control: invocando _render_full_ui")
+            _render_full_ui(controller)
+            if ui_logger:
+                ui_logger.debug("render_bot_control: _render_full_ui concluiu")
+        except Exception as e:
+            if ui_logger:
+                try:
+                    ui_logger.exception("Erro em _render_full_ui")
+                except Exception:
+                    pass
+            raise
+    except Exception as e:
+        try:
+            st.error(f"Erro ao renderizar UI: {e}")
+        except Exception:
+            pass
+    return
 
 
 def _render_full_ui(controller=None):
@@ -4541,7 +4532,7 @@ def _render_full_ui(controller=None):
     # =====================================================
     # PAGE CONFIG & TEMA GLOBAL
     # =====================================================
-    # st.set_page_config(page_title="KuCoin Trading Bot", layout="wide")  # Removido para evitar duplicação
+    st.set_page_config(page_title="KuCoin Trading Bot", layout="wide")
 
     # Injetar CSS do tema terminal
     try:
@@ -4760,23 +4751,8 @@ def _render_full_ui(controller=None):
         st.stop()
 
     # Dashboard header (compact, readable)
-    theme = get_current_theme()
-    st.markdown(f'''
-    <div style="text-align: center; padding: 10px; margin-bottom: 20px;">
-        <pre style="color: {theme["border"]}; font-size: 10px; line-height: 1.2;">
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ██╗  ██╗██╗   ██╗ ██████╗ ██████╗ ██╗███╗   ██╗    ██████╗ ██████╗  ██████╗ ║
-║  ██║ ██╔╝██║   ██║██╔════╝██╔═══██╗██║████╗  ██║    ██╔══██╗██╔══██╗██╔═══██╗║
-║  █████╔╝ ██║   ██║██║     ██║   ██║██║██╔██╗ ██║    ██████╔╝██████╔╝██║   ██║║
-║  ██╔═██╗ ██║   ██║██║     ██║   ██║██║██║╚██╗██║    ██╔═══╝ ██╔══██╗██║   ██║║
-║  ██║  ██╗╚██████╔╝╚██████╗╚██████╔╝██║██║ ╚████║    ██║     ██║  ██║╚██████╔╝║
-║  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝╚═╝  ╚═══╝    ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ║
-║                      T R A D I N G   T E R M I N A L                         ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-        </pre>
-    </div>
-    ''', unsafe_allow_html=True)
-    st.info("👋 Bem-vindo ao KuCoin PRO! Inicie um bot usando os controles à esquerda para começar. Se nenhum bot estiver ativo, esta tela ficará vazia. Para dúvidas, consulte a documentação.")
+    st.header("KuCoin PRO — Trading Terminal")
+    st.caption("Dashboard para iniciar e acompanhar bots. Use a barra no topo para Monitor/Relatório.")
 
     # Se a página for aberta com ?start=1 e parâmetros, iniciar o bot aqui
     q = st.query_params
@@ -4803,6 +4779,7 @@ def _render_full_ui(controller=None):
             if bot_id_started not in st.session_state.active_bots:
                 st.session_state.active_bots.append(bot_id_started)
             st.session_state.selected_bot = bot_id_started
+            time.sleep(0.5)  # Deixa bot subprocess começar a gravar logs
 
             # Mark as done before touching query params to avoid loops.
             st.session_state["_started_from_qs"] = True
@@ -4845,9 +4822,10 @@ def _render_full_ui(controller=None):
     except Exception:
         pass
 
-    # 2) ps scan — cobre casos onde o DB falhou em registrar (cached)
+    # 2) ps scan — cobre casos onde o DB falhou em registrar
     try:
-        out = _ps_scan_cached()
+        r = subprocess.run(["ps", "-eo", "pid,args"], capture_output=True, text=True, check=False)
+        out = (r.stdout or "").splitlines()
         for line in out[1:]:
             line = line.strip()
             if not line:
@@ -5033,9 +5011,10 @@ def _render_full_ui(controller=None):
             except Exception:
                 pass
 
-            # 3) ps scan as a last resort (look for bot_core.py) — use cached scanner
+            # 3) ps scan as a last resort (look for bot_core.py)
             try:
-                out = _ps_scan_cached()
+                r = subprocess.run(["ps", "-eo", "pid,args"], capture_output=True, text=True, check=False)
+                out = (r.stdout or '').splitlines()
                 for line in out[1:]:
                     if 'bot_core.py' in line:
                         try:
@@ -5188,37 +5167,31 @@ def _render_full_ui(controller=None):
                 symbol = (bot_info.get('symbol') if bot_info else None) or (sess.get('symbol') if sess else None) or 'N/A'
                 mode = (bot_info.get('mode') if bot_info else None) or (sess.get('mode') if sess else None) or 'N/A'
 
-                # Compute progress toward target profit based on recent logs (cached)
-                cache_key = f"progress_{bot_id}"
-                if cache_key not in st.session_state or st.session_state.get(f"{cache_key}_time", 0) < time.time() - 5:  # Cache for 5 seconds
-                    progress_value = 0.0
-                    profit_pct_value = 0.0
-                    try:
-                        logs = db_for_progress.get_bot_logs(bot_id, limit=30)
-                        current_price = 0.0
-                        entry_price = 0.0
-                        for log in logs:
-                            msg = (log.get('message') or "")
-                            try:
-                                import json as _json
-                                data = _json.loads(msg)
-                                if 'price' in data and data['price'] is not None:
-                                    current_price = float(data['price'])
-                                if 'entry_price' in data and data['entry_price'] is not None:
-                                    entry_price = float(data['entry_price'])
-                            except Exception:
-                                continue
+                # Compute progress toward target profit based on recent logs
+                progress_value = 0.0
+                profit_pct_value = 0.0
+                try:
+                    logs = db_for_progress.get_bot_logs(bot_id, limit=30)
+                    current_price = 0.0
+                    entry_price = 0.0
+                    for log in logs:
+                        msg = (log.get('message') or "")
+                        try:
+                            import json as _json
+                            data = _json.loads(msg)
+                            if 'price' in data and data['price'] is not None:
+                                current_price = float(data['price'])
+                            if 'entry_price' in data and data['entry_price'] is not None:
+                                entry_price = float(data['entry_price'])
+                        except Exception:
+                            continue
 
-                        if entry_price > 0 and current_price > 0:
-                            profit_pct_value = ((current_price - entry_price) / entry_price) * 100
-                        if target_pct_global and float(target_pct_global) > 0:
-                            progress_value = min(1.0, max(0.0, (profit_pct_value / float(target_pct_global))))
-                    except Exception:
-                        pass
-                    st.session_state[cache_key] = (progress_value, profit_pct_value)
-                    st.session_state[f"{cache_key}_time"] = time.time()
-                else:
-                    progress_value, profit_pct_value = st.session_state[cache_key]
+                    if entry_price > 0 and current_price > 0:
+                        profit_pct_value = ((current_price - entry_price) / entry_price) * 100
+                    if target_pct_global and float(target_pct_global) > 0:
+                        progress_value = min(1.0, max(0.0, (profit_pct_value / float(target_pct_global))))
+                except Exception:
+                    pass
 
                 # Determine if this session/bot is a dry-run to adjust visuals
                 try:
@@ -5561,7 +5534,7 @@ def _render_full_ui(controller=None):
                     )
                     
                     started_bots.append(bot_id_started)
-
+                    
                     # Adiciona à lista de bots ativos
                     if bot_id_started not in st.session_state.active_bots:
                         st.session_state.active_bots.append(bot_id_started)
@@ -5573,7 +5546,8 @@ def _render_full_ui(controller=None):
             if started_bots:
                 st.session_state.selected_bot = started_bots[0]  # Seleciona o primeiro
                 st.session_state.bot_running = True
-                # Não bloquear o render: não usar sleep aqui
+                time.sleep(0.5)
+                
                 # Navegar para o monitor (mesma aba) após iniciar
                 _merge_query_params({"bot": started_bots[0], "view": "monitor"})
                 bot_count = len(started_bots)
