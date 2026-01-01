@@ -60,9 +60,16 @@ def set_logged_in(status):
         if os.path.exists(LOGIN_FILE):
             os.remove(LOGIN_FILE)
 
-from bot_controller import BotController
-from database import DatabaseManager
-from sidebar_controller import SidebarController
+try:
+    # Quando importado como pacote (AutoCoinBot.ui)
+    from .bot_controller import BotController
+    from .database import DatabaseManager
+    from .sidebar_controller import SidebarController
+except Exception:
+    # Fallback para execução direta como módulo/script (import ui)
+    from bot_controller import BotController
+    from database import DatabaseManager
+    from sidebar_controller import SidebarController
 
 # Global singleton controller used across Streamlit sessions/tabs
 _global_controller: BotController | None = None
@@ -1596,11 +1603,11 @@ def render_top_nav_bar(theme: dict, current_view: str, selected_bot: str | None 
         except Exception:
             pass
         _set_view("dashboard", clear_bot=True)
-        st.rerun()
+        # st.rerun()  # Removido para evitar reload desnecessário
 
     if cols[1].button("📑 Relatório", type="primary" if report_active else "secondary", use_container_width=True, key="nav_rep"):
         _set_view("report", bot_id=selected_bot)
-        st.rerun()
+        # st.rerun()  # Removido para evitar reload desnecessário
 
     try:
         bot_txt = (str(selected_bot)[:12] + "…") if selected_bot else "(nenhum bot selecionado)"
@@ -4763,14 +4770,14 @@ def _render_full_ui(controller=None):
     theme = get_current_theme()
     st.markdown(f'''
     <div style="text-align: center; padding: 10px; margin-bottom: 20px;">
-        <pre style="color: {theme["border"]}; font-size: 10px; line-height: 1.2;">
+        <pre style="color: {theme["border"]}; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; white-space: pre;">
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  ██╗  ██╗██╗   ██╗ ██████╗ ██████╗ ██╗███╗   ██╗    ██████╗ ██████╗  ██████╗ ║
 ║  ██║ ██╔╝██║   ██║██╔════╝██╔═══██╗██║████╗  ██║    ██╔══██╗██╔══██╗██╔═══██╗║
 ║  █████╔╝ ██║   ██║██║     ██║   ██║██║██╔██╗ ██║    ██████╔╝██████╔╝██║   ██║║
 ║  ██╔═██╗ ██║   ██║██║     ██║   ██║██║██║╚██╗██║    ██╔═══╝ ██╔══██╗██║   ██║║
 ║  ██║  ██╗╚██████╔╝╚██████╗╚██████╔╝██║██║ ╚████║    ██║     ██║  ██║╚██████╔╝║
-║  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝╚═╝  ╚═══╝    ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ║
+║  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝╚═╝ ╚════╝    ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ║
 ║                      T R A D I N G   T E R M I N A L                         ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
         </pre>
@@ -4810,7 +4817,7 @@ def _render_full_ui(controller=None):
             # substitui a query para exibir ?bot=... evitando reinícios
             # Preserve theme/bg selections in URL
             _merge_query_params({"bot": bot_id_started, "start": None})
-            st.rerun()
+            # st.rerun()  # Removido para evitar reload desnecessário
         except Exception as e:
             # Avoid infinite retries if something goes wrong.
             st.session_state["_started_from_qs"] = True
@@ -5168,7 +5175,7 @@ def _render_full_ui(controller=None):
 
                         if killed_any:
                             st.success(f"Kill -9 aplicado em {len(killed_ids)} bot(s).")
-                            st.rerun()
+                            # st.rerun()  # Removido para evitar reload desnecessário
 
             header_cols = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
             header_cols[0].markdown("**🆔 Bot ID**")
@@ -5578,7 +5585,7 @@ def _render_full_ui(controller=None):
                 _merge_query_params({"bot": started_bots[0], "view": "monitor"})
                 bot_count = len(started_bots)
                 st.success(f"✅ {bot_count} bot{'s' if bot_count > 1 else ''} iniciado{'s' if bot_count > 1 else ''}! Abrindo Monitor na mesma aba.")
-                st.rerun()
+                # st.rerun()  # Removido para evitar reload desnecessário
             else:
                 st.error("Falha ao iniciar todos os bots.")
                 
