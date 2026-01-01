@@ -1,75 +1,98 @@
-try:
-    import html
-except Exception:
-    class _HTMLShim:
-        @staticmethod
-        def escape(s):
-            try:
-                return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            except Exception:
-                return str(s)
-
-    html = _HTMLShim()
+ # ui.py
+import time
+import hashlib
 import os
-import shlex
 import signal
 import subprocess
-import time
-import streamlit as st
-from pathlib import Path
+import shlex
 import threading
+import streamlit as st
+import streamlit.components.v1 as components
 import urllib.parse
+import html
+import json
+from pathlib import Path
+import sys
 
-# How many consecutive checks are required to consider a PID dead
-# and avoid aggressive cleanup when multiple Streamlit instances run.
-_PID_DEATH_CONFIRM_CHECKS = 3
-# Seconds to wait between checks
-_PID_DEATH_CONFIRM_SLEEP = 0.45
+# Ensure current directory is in sys.path for imports
+sys.path.insert(0, os.path.dirname(__file__))
 
-def get_version():
-    try:
-        result = subprocess.run(['git', 'rev-list', '--count', 'HEAD'], capture_output=True, text=True, cwd=os.getcwd())
-        if result.returncode == 0:
-            count = int(result.stdout.strip())
-            return f"v{count}.0"
-        else:
-            return "v1.0"
-    except Exception:
-        return "v1.0"
+# Imports dos módulos UI componentizados
+from ui_components import (
+    set_logged_in,
+    _pid_alive,
+    _kill_pid_best_effort,
+    _kill_pid_sigkill_only,
+    _safe_container,
+    _fmt_ts,
+    _safe_float,
+    _contrast_text_for_bg,
+    THEMES,
+    get_current_theme,
+    inject_global_css,
+    render_theme_selector,
+    render_html_smooth,
+    _load_saved_theme,
+    _save_theme,
+    render_top_nav_bar,
+    _set_view,
+    _qs_get_any,
+    _merge_query_params,
+    _build_relative_url_with_query_updates,
+    _hide_sidebar_for_fullscreen_pages,
+    _hide_sidebar_everywhere,
+)
 
-LOGIN_FILE = ".login_status"
-def set_logged_in(status):
-    if status:
-        with open(LOGIN_FILE, 'w') as f:
-            f.write('logged_in')
-    else:
-        if os.path.exists(LOGIN_FILE):
-            os.remove(LOGIN_FILE)
+# Mantém LOGIN_FILE para compatibilidade
+LOGIN_FILE = os.path.join(os.path.dirname(__file__), '.login_status')
 
 from bot_controller import BotController
 from database import DatabaseManager
 from sidebar_controller import SidebarController
 
-# Global singleton controller used across Streamlit sessions/tabs
-_global_controller: BotController | None = None
-
-def get_global_controller() -> BotController:
-    global _global_controller
-    try:
-        if _global_controller is None:
-            _global_controller = BotController()
-    except Exception:
-        _global_controller = None
-    return _global_controller
-
 try:
     from wallet_releases_rss import render_wallet_releases_widget
 except Exception:
     render_wallet_releases_widget = None
+
 try:
-    from terminal_component import render_terminal_live_api
+    from market import analyze_market_regime_5m
 except Exception:
-    render_terminal_live_api = None
+    analyze_market_regime_5m = None
+
+# =====================================================
+# CONTROLLER GLOBAL
+# =====================================================
+@st.cache_resource
+def get_global_controller():
+    """Retorna uma instância global do BotController (cached)"""
+    return BotController()
+
+# =====================================================
+# UTILITÁRIOS
+# =====================================================
+
+try:
+    from terminal_component import render_terminal as render_terminal
+    from terminal_component import start_api_server as start_api_server
+    HAS_TERMINAL = True
+except Exception:
+    HAS_TERMINAL = False
+
+
+ROOT = Path(__file__).resolve().parent
+
+
+@st.cache_data(ttl=20, show_spinner=False)
+def _get_strategy_snapshot_cached(symbol: str):
+        if not symbol or not analyze_market_regime_5m:
+                return None
+        try:
+                return analyze_market_regime_5m(symbol)
+        except Exception:
+                return None
+
+
 def render_strategy_semaphore(snapshot: dict, theme: dict) -> str:
         if not snapshot:
                 return ""
@@ -148,147 +171,7 @@ def _get_kill_on_start_guard():
     # Fallback: best-effort globals (works within a single script context)
     return {"lock": _KILL_ON_START_LOCK, "done": _KILL_ON_START_DONE}
 
-
-def _pid_alive(pid: int | None) -> bool:
-    if pid is None:
-        return False
-    try:
-        pid_i = int(pid)
-    except Exception:
-        return False
-    if pid_i <= 0:
-        return False
-    try:
-        os.kill(pid_i, 0)
-        return True
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    except Exception:
-        return False
-
-def _confirm_pid_dead(pid: int | None, checks: int = None, delay_s: float = None) -> bool:
-    """Return True only if PID appears dead for `checks` consecutive checks."""
-    if checks is None:
-        checks = _PID_DEATH_CONFIRM_CHECKS
-    if delay_s is None:
-        delay_s = _PID_DEATH_CONFIRM_SLEEP
-    if pid is None:
-        return True
-    try:
-        pid_i = int(pid)
-    except Exception:
-        return True
-    if pid_i <= 0:
-        return True
-    for _ in range(int(checks)):
-        try:
-            if _pid_alive(pid_i):
-                return False
-        except Exception:
-            return False
-        try:
-            time.sleep(float(delay_s))
-        except Exception:
-            pass
-    return not _pid_alive(pid_i)
-
-
-def _kill_pid_best_effort(pid: int, timeout_s: float = 0.4) -> bool:
-    """Try SIGTERM then SIGKILL. Returns True if process appears gone."""
-    try:
-        pid_i = int(pid)
-    except Exception:
-        return False
-    if pid_i <= 0:
-        return False
-    if not _pid_alive(pid_i):
-        return True
-
-    # Prefer killing the whole process group (bot + any children) when it is safe.
-    # This is safe when bots are started with start_new_session=True (separate pgrp).
-    pgrp = None
-    try:
-        pgrp = os.getpgid(pid_i)
-    except Exception:
-        pgrp = None
-
-    # Try SIGTERM to process group first
-    if pgrp and pgrp > 0:
-        try:
-            if pgrp != os.getpgrp():
-                os.killpg(pgrp, signal.SIGTERM)
-        except Exception:
-            pass
-
-    # Fallback: SIGTERM to the process itself
-    try:
-        os.kill(pid_i, signal.SIGTERM)
-    except Exception:
-        pass
-
-    # Wait a bit for graceful shutdown
-    try:
-        time.sleep(timeout_s)
-    except Exception:
-        pass
-
-    if not _pid_alive(pid_i):
-        return True
-
-    # If still alive, escalate to SIGKILL
-    if pgrp and pgrp > 0:
-        try:
-            if pgrp != os.getpgrp():
-                os.killpg(pgrp, signal.SIGKILL)
-        except Exception:
-            pass
-    try:
-        os.kill(pid_i, signal.SIGKILL)
-    except Exception:
-        pass
-
-    try:
-        time.sleep(0.1)
-    except Exception:
-        pass
-    return not _pid_alive(pid_i)
-
-
-def _kill_pid_sigkill_only(pid: int) -> bool:
-    """Hard kill (SIGKILL / kill -9). Returns True if process appears gone."""
-    try:
-        pid_i = int(pid)
-    except Exception:
-        return False
-    if pid_i <= 0:
-        return False
-    if not _pid_alive(pid_i):
-        return True
-
-    pgrp = None
-    try:
-        pgrp = os.getpgid(pid_i)
-    except Exception:
-        pgrp = None
-
-    if pgrp and pgrp > 0:
-        try:
-            if pgrp != os.getpgrp():
-                os.killpg(pgrp, signal.SIGKILL)
-        except Exception:
-            pass
-    try:
-        os.kill(pid_i, signal.SIGKILL)
-    except Exception:
-        pass
-
-    try:
-        time.sleep(0.1)
-    except Exception:
-        pass
-    return not _pid_alive(pid_i)
+# _pid_alive, _kill_pid_best_effort, _kill_pid_sigkill_only movidos para ui_components.utils
 
 
 def _kill_active_bot_sessions_on_start(controller: BotController | None = None):
@@ -413,8 +296,7 @@ def _kill_active_bot_sessions_on_start(controller: BotController | None = None):
 
     # Kill
     for bot_id, pid in list(candidates.items()):
-        # Only mark stopped when PID is confirmed dead across multiple checks
-        if _confirm_pid_dead(pid):
+        if not _pid_alive(pid):
             # mark stopped in DB if it was listed as active
             try:
                 if db is not None and bot_id in db_sessions_by_id:
@@ -428,13 +310,12 @@ def _kill_active_bot_sessions_on_start(controller: BotController | None = None):
                 pass
             continue
 
-        # If PID still appears alive, attempt best-effort graceful kill and then confirm
         ok = _kill_pid_best_effort(pid)
         if ok:
             killed_any = True
-        # best-effort: mark stopped only if confirmed dead
+        # best-effort: mark stopped
         try:
-            if db is not None and _confirm_pid_dead(pid):
+            if db is not None:
                 db.update_bot_session(bot_id, {"status": "stopped", "end_ts": time.time()})
                 # Free quota even if the bot was SIGKILL'ed (avoids orphan allocations)
                 try:
@@ -966,207 +847,8 @@ def render_trade_report_page():
             # Minimal fallback without pandas/plotly
             st.write({"stats": stats, "history": hist[:10] if isinstance(hist, list) else hist})
 
-
-def _qs_get_any(q, key: str, default=None):
-    """Read a query param that may be stored as a scalar or a list."""
-    try:
-        v = q.get(key, None)
-    except Exception:
-        v = None
-    if v is None:
-        return default
-    try:
-        if isinstance(v, (list, tuple)):
-            return v[0] if v else default
-    except Exception:
-        pass
-    return v
-    if v is None:
-        return default
-    try:
-        if isinstance(v, (list, tuple)):
-            return v[0] if v else default
-    except Exception:
-        pass
-    return v
-
-
-def _merge_query_params(updates: dict[str, str | None]):
-    """Merge updates into current Streamlit query params.
-
-    - Keeps existing params unless overwritten.
-    - Removes params when value is None/empty.
-    """
-    try:
-        q = st.query_params
-    except Exception:
-        return
-
-    merged: dict[str, list[str]] = {}
-    try:
-        for k in q.keys():
-            v = q.get(k)
-            if isinstance(v, (list, tuple)):
-                merged[k] = [str(vv) for vv in v]
-            else:
-                merged[k] = [str(v)]
-    except Exception:
-        # best-effort: if query_params isn't iterable, bail
-        return
-
-    for k, v in (updates or {}).items():
-        if v is None or str(v).strip() == "":
-            merged.pop(k, None)
-        else:
-            merged[k] = [str(v)]
-
-    # Streamlit query param APIs vary by version.
-    # Prefer in-place mutation of the existing mapping when available.
-    try:
-        qp = st.query_params
-        if hasattr(qp, "clear") and hasattr(qp, "update"):
-            qp.clear()
-            # Preserve multi-values when present, but prefer scalars for singletons.
-            payload: dict[str, str | list[str]] = {}
-            for k, vs in merged.items():
-                if not vs:
-                    continue
-                payload[str(k)] = str(vs[0]) if len(vs) == 1 else [str(x) for x in vs]
-            qp.update(payload)
-            return
-    except Exception:
-        pass
-
-    # Fallbacks for older versions.
-    try:
-        st.query_params = merged
-        return
-    except Exception:
-        pass
-
-    try:
-        # Legacy API accepts scalars; best-effort collapse to singletons.
-        payload2: dict[str, str] = {}
-        for k, vs in merged.items():
-            if not vs:
-                continue
-            payload2[str(k)] = str(vs[0])
-        st.experimental_set_query_params(**payload2)
-    except Exception:
-        return
-
-
-def _build_relative_url_with_query_updates(updates: dict[str, str | None]) -> str:
-    """Build a relative URL like '?a=1&b=2' merging current query params.
-
-    Useful for links that should open in a new tab (target=_blank) without
-    forcing Streamlit reruns/navigation in the current tab.
-    """
-    try:
-        q = st.query_params
-    except Exception:
-        q = {}
-
-    merged: dict[str, list[str]] = {}
-    try:
-        for k in getattr(q, "keys", lambda: [])():
-            v = q.get(k)
-            if isinstance(v, (list, tuple)):
-                merged[k] = [str(vv) for vv in v]
-            else:
-                merged[k] = [str(v)]
-    except Exception:
-        merged = {}
-
-    for k, v in (updates or {}).items():
-        if v is None or str(v).strip() == "":
-            merged.pop(k, None)
-        else:
-            merged[k] = [str(v)]
-
-    items: list[tuple[str, str]] = []
-    for k, vs in merged.items():
-        for vv in (vs or []):
-            items.append((str(k), str(vv)))
-
-    qs = urllib.parse.urlencode(items, doseq=True)
-    return f"?{qs}" if qs else ""
-
-
-def _set_view(view: str, bot_id: str | None = None, clear_bot: bool = False):
-    """Navigate within the Streamlit app using query params (no new tabs)."""
-    updates: dict[str, str | None] = {
-        "view": str(view or "").strip() or None,
-        # clear legacy modes
-        "window": None,
-        "report": None,
-    }
-    if clear_bot:
-        updates["bot"] = None
-        updates["bot_id"] = None
-    if bot_id is not None:
-        updates["bot"] = str(bot_id)
-    _merge_query_params(updates)
-
-
-def _hide_sidebar_for_fullscreen_pages():
-    st.markdown(
-        """
-        <style>
-            [data-testid="stSidebar"] { display: none !important; }
-            section[data-testid="stSidebar"] { display: none !important; }
-            .stMainBlockContainer { padding-top: 1rem !important; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def _hide_sidebar_everywhere():
-        """Always hide Streamlit sidebar; navigation is top bar + in-page controls."""
-        st.markdown(
-                """
-                <style>
-                    [data-testid="stSidebar"] { display: none !important; }
-                    section[data-testid="stSidebar"] { display: none !important; }
-                </style>
-                """,
-                unsafe_allow_html=True,
-        )
-
-
-def _safe_container(border: bool = False):
-    """Return a container context manager with best-effort border support.
-
-    Streamlit versions differ on whether `st.container(border=...)` exists.
-    This helper keeps the layout stable across versions.
-    """
-    try:
-        return st.container(border=bool(border))
-    except TypeError:
-        return st.container()
-
-
-def _fmt_ts(ts: float | int | None) -> str:
-    try:
-        if ts is None:
-            return ""
-        v = float(ts)
-        if v <= 0:
-            return ""
-        import datetime as _dt
-        return _dt.datetime.fromtimestamp(v).strftime("%Y-%m-%d %H:%M:%S")
-    except Exception:
-        return ""
-
-
-def _safe_float(v) -> float:
-    try:
-        if v is None:
-            return 0.0
-        return float(v)
-    except Exception:
-        return 0.0
+# _qs_get_any, _merge_query_params, _build_relative_url_with_query_updates, _set_view, _hide_sidebar_* movidos para ui_components.navigation
+# _safe_container, _fmt_ts, _safe_float movidos para ui_components.utils
 
 
 def _extract_latest_price_from_logs(log_rows: list[dict]) -> float | None:
@@ -1209,6 +891,7 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
 
     # --- Load summary data (SQL aggregates are fast and UI-friendly)
     db = DatabaseManager()
+    conn = None
     sessions: list[dict] = []
     trade_agg: dict[str, dict] = {}
     log_agg: dict[str, dict] = {}
@@ -1320,12 +1003,8 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
         dry = "DRY" if int(sess.get("dry_run") or 0) == 1 else "REAL"
         return f"{bot_id[:12]}…  {symbol}  {mode}  {dry}  [{status}]"
 
-
-    # Seleção automática do bot mais recente se não houver seleção manual
-    if 'selected_bot' not in st.session_state or st.session_state.selected_bot not in bot_ids:
-        selected_bot = bot_ids[0] if bot_ids else None
-    else:
-        selected_bot = st.session_state.selected_bot
+    # Resolve selection
+    selected_bot = preselected_bot if preselected_bot in bot_ids else (bot_ids[0] if bot_ids else None)
     try:
         idx = bot_ids.index(selected_bot) if selected_bot in bot_ids else 0
     except Exception:
@@ -1389,32 +1068,167 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
     if pd is not None:
         df_over = pd.DataFrame(overview_rows)
         st.subheader("Bots (visão geral)")
-        import os
-        def _pid_alive(pid):
-            try:
-                os.kill(int(pid), 0)
-                return True
-            except Exception:
-                return False
+        st.dataframe(df_over, use_container_width=True, hide_index=True)
 
-        db = DatabaseManager()
-        active_bots_db = db.get_active_bots()
-        real_active_bots = []
-        for bot in active_bots_db:
-            pid = bot.get('pid')
-            if pid and _pid_alive(pid):
-                real_active_bots.append(bot)
-            else:
-                db.update_bot_session(bot['id'], {"status": "stopped", "end_ts": time.time()})
+    # --- Selected bot details
+    sel_sess = next((x for x in sessions if str(x.get("id")) == str(selected_bot)), None) or {}
 
-        count_real = len(real_active_bots)
-        # ...exibição de bots ativos já ocorre na seção principal, evitar duplicidade...
+    # Best-effort live-ish price (from recent logs)
+    recent_logs = []
+    try:
+        # Use the direct DB for >30 logs if needed; default view uses 60.
+        conn = db.get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT * FROM bot_logs WHERE bot_id = ? ORDER BY timestamp DESC LIMIT 60""",
+            (str(selected_bot),)
+        )
+        recent_logs = [dict(r) for r in (cur.fetchall() or [])]
+        conn.close()
+    except Exception:
+        try:
+            recent_logs = db.get_bot_logs(str(selected_bot), limit=30)
+        except Exception:
+            recent_logs = []
+
+    latest_price = _extract_latest_price_from_logs(recent_logs)
+    # Prefer live market price when available; fallback to logs
+    price_source = "logs"
+    live_price = None
+    try:
+        try:
+            from . import api as kucoin_api
+        except Exception:
+            import api as kucoin_api  # type: ignore
+        sym = str(sel_sess.get("symbol") or "").strip()
+        if sym:
+            live_price = kucoin_api.get_price_fast(sym)
+            if live_price and float(live_price) > 0:
+                price_source = "live"
+    except Exception:
+        live_price = None
+
+    if live_price and float(live_price) > 0:
+        preferred_price = float(live_price)
+    elif latest_price:
+        preferred_price = float(latest_price)
+    else:
+        preferred_price = 0.0
+
+    # Keep `latest_price` name for compatibility
+    latest_price = preferred_price
+
+    # Trades (for charts + table)
+    trades = []
+    try:
+        # Pull more than the report default to build time-series.
+        conn = db.get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT timestamp, side, price, size, funds, profit, dry_run, strategy
+            FROM trades
+            WHERE bot_id = ?
+            ORDER BY COALESCE(timestamp,0) ASC
+            LIMIT 4000
+            """,
+            (str(selected_bot),)
+        )
+        rows = cur.fetchall() or []
+        conn.close()
+        for r in rows:
+            trades.append(dict(r))
+    except Exception:
+        trades = []
+
+    total_profit = 0.0
+    try:
+        total_profit = sum(_safe_float(t.get("profit")) for t in trades)
+    except Exception:
+        total_profit = 0.0
+
+    # Equity snapshots (preferred performance series)
+    equity_rows = []
+    try:
+        conn = db.get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT timestamp, balance_usdt
+            FROM equity_snapshots
+            WHERE bot_id = ?
+            ORDER BY COALESCE(timestamp,0) ASC
+            LIMIT 3000
+            """,
+            (str(selected_bot),)
+        )
+        eq = cur.fetchall() or []
+        conn.close()
+        equity_rows = [dict(r) for r in eq]
+    except Exception:
+        equity_rows = []
+
+    st.subheader("Bot selecionado")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Status", str(sel_sess.get("status") or ""))
+    m2.metric("Symbol", str(sel_sess.get("symbol") or ""))
+    # Show a clear badge if this is a DRY run
+    dry_flag = int(sel_sess.get("dry_run") or 0) == 1
+    mode_label = str(sel_sess.get("mode") or "")
+    if dry_flag:
+        m3.metric("Modo (DRY)", mode_label)
+    else:
+        m3.metric("Modo", mode_label)
+    m4.metric("Realizado (USDT)", f"{total_profit:.6f}")
+
+    m5, m6, m7, m8 = st.columns(4)
+    m5.metric("Trades", str(len(trades)))
+    m6.metric("Entry", str(sel_sess.get("entry_price") or ""))
+    m7.metric("Preço (último)", f"{latest_price:.2f}" if latest_price else "")
+    m8.metric("Início", _fmt_ts(sel_sess.get("start_ts")))
+
+    # --- Charts
+    st.subheader("Gráficos de rendimento")
+
+    try:
+        import pandas as pd
+    except Exception:
+        pd = None
+
+    if pd is not None and equity_rows:
+        df_eq = pd.DataFrame(equity_rows)
+        try:
+            df_eq["timestamp"] = df_eq["timestamp"].astype(float)
+            df_eq["datetime"] = df_eq["timestamp"].apply(lambda x: _fmt_ts(x))
+            df_eq["balance_usdt"] = df_eq["balance_usdt"].astype(float)
+        except Exception:
+            pass
+        try:
+            import plotly.express as px
+            fig = px.line(df_eq, x="datetime", y="balance_usdt", title="Equity (balance_usdt)")
+            fig.update_layout(margin=dict(l=10, r=10, t=40, b=10), height=360)
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception:
+            st.line_chart(df_eq.set_index("datetime")["balance_usdt"], height=240)
+    elif pd is not None and trades:
+        # Fallback: cumulative profit from trades
+        df_t = pd.DataFrame(trades)
+        try:
+            df_t["timestamp"] = df_t["timestamp"].astype(float)
+            df_t["datetime"] = df_t["timestamp"].apply(lambda x: _fmt_ts(x))
+            df_t["profit"] = df_t["profit"].apply(_safe_float)
+            df_t["cum_profit"] = df_t["profit"].cumsum()
+            import plotly.express as px
+            fig = px.line(df_t, x="datetime", y="cum_profit", title="Lucro acumulado (fallback)")
+            fig.update_layout(margin=dict(l=10, r=10, t=40, b=10), height=320)
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception:
+            pass
     else:
         st.info("Sem dados suficientes para plotar rendimento (equity/trades).")
 
     # Recent trades
     st.subheader("Trades recentes")
-    trades = locals().get('trades', None)
     if pd is not None and trades:
         df_tr = pd.DataFrame(trades)
         try:
@@ -1428,7 +1242,6 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
 
     # Recent logs
     st.subheader("Logs recentes")
-    recent_logs = locals().get('recent_logs', None)
     if recent_logs:
         # Show newest first; keep compact for readability
         for row in recent_logs[:25]:
@@ -1442,110 +1255,7 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
     else:
         st.caption("Nenhum log recente encontrado para este bot.")
 
-
-
-def render_top_nav_bar(theme: dict, current_view: str, selected_bot: str | None = None):
-    """Top horizontal nav bar shown on all pages."""
-    try:
-        view = str(current_view or "dashboard").strip().lower()
-    except Exception:
-        view = "dashboard"
-
-    # Botão de logout no topo direito
-    col_logout = st.columns([10, 1])[1]
-    if col_logout.button("🚪 Logout", key="logout_btn"):
-        # Limpar estado de sessão
-        set_logged_in(False)
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
-
-    st.markdown(
-        f"""
-        <style>
-          .kc-nav-wrap {{
-            border: 1px solid {theme.get('border')};
-            background: {theme.get('bg2')};
-            border-radius: 10px;
-            padding: 10px 10px;
-            margin: 6px 0 16px 0;
-          }}
-          .kc-nav-title {{
-            font-family: 'Courier New', monospace;
-            font-weight: 800;
-            color: {theme.get('accent')};
-                        font-size: clamp(0.78rem, 0.95vw, 0.95rem);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-          }}
-          .kc-nav-sub {{
-            font-family: 'Courier New', monospace;
-            color: {theme.get('text2')};
-                        font-size: clamp(0.72rem, 0.85vw, 0.9rem);
-          }}
-
-                    /* Link styled like a button (used for opening report in a new tab) */
-                    .kc-link-btn {{
-                        display: inline-flex;
-                        align-items: center;
-                        justify-content: center;
-                        width: 100%;
-                        background: {theme.get('bg2')};
-                        color: {theme.get('text')};
-                        border: 2px solid {theme.get('border')};
-                        border-radius: 8px;
-                        padding: clamp(0.55rem, 0.9vw, 0.7rem) clamp(0.85rem, 1.2vw, 1.05rem);
-                        min-height: 44px;
-                        font-family: 'Courier New', monospace;
-                        font-weight: bold;
-                        text-transform: uppercase;
-                        text-decoration: none;
-                        font-size: clamp(0.78rem, 0.95vw, 0.95rem);
-                    }}
-                    .kc-link-btn:hover {{
-                        filter: brightness(1.05);
-                        text-decoration: none;
-                    }}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    with st.container():
-        st.markdown(
-            f"""
-            <div class="kc-nav-wrap">
-              <div class="kc-nav-title">NAVEGAÇÃO</div>
-              <div class="kc-nav-sub">Dashboard • Relatório</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    cols = st.columns([1.15, 1.15, 4.70])
-    dash_active = (view == "dashboard")
-    report_active = (view == "report")
-
-    if cols[0].button("🏠 Home", type="primary" if dash_active else "secondary", use_container_width=True, key="nav_home"):
-        try:
-            st.session_state.selected_bot = None
-        except Exception:
-            pass
-        _set_view("dashboard", clear_bot=True)
-        st.rerun()
-
-    if cols[1].button("📑 Relatório", type="primary" if report_active else "secondary", use_container_width=True, key="nav_rep"):
-        _set_view("report", bot_id=selected_bot)
-        st.rerun()
-
-    try:
-        bot_txt = (str(selected_bot)[:12] + "…") if selected_bot else "(nenhum bot selecionado)"
-    except Exception:
-        bot_txt = "(nenhum bot selecionado)"
-    cols[2].markdown(
-        f"<div style=\"text-align:right;font-family:'Courier New',monospace;font-size:clamp(0.78rem,0.95vw,0.95rem);color:{theme.get('muted','#8b949e')};padding-top:10px;\">Bot: <b style=\"color:{theme.get('text')};\">{html.escape(bot_txt)}</b></div>",
-        unsafe_allow_html=True,
-    )
+# render_top_nav_bar movido para ui_components.navigation
 
 
 def _list_theme_packs() -> list[str]:
@@ -1636,997 +1346,6 @@ def _list_pack_backgrounds(pack: str) -> list[str]:
         if p.is_file() and p.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
             out.append(p.stem)
     return out
-
-
-# =====================================================
-# FUNÇÃO ANTI-FLICKER PARA COMPONENTS.HTML
-# =====================================================
-def render_html_smooth(html_content: str, height: int, key: str = None):
-    """
-    Renderiza HTML sem piscar usando CSS anti-flicker e placeholder estável.
-    Envolve o conteúdo em um wrapper estável sem animações de entrada.
-    """
-    # Gera uma key ESTÁVEL baseada no hash do conteúdo se não fornecida
-    if key is None:
-        # Usa hash completo do conteúdo para key estável
-        content_hash = hashlib.md5(html_content.encode()).hexdigest()[:12]
-        key = f"html_{content_hash}"
-    
-    # Verifica se o conteúdo mudou desde a última renderização
-    cache_key = f"html_cache_{key}"
-    cached_hash = st.session_state.get(cache_key, "")
-    current_hash = hashlib.md5(html_content.encode()).hexdigest()
-    
-    # Se o conteúdo não mudou, não recria o iframe
-    if cached_hash == current_hash:
-        return
-    
-    # Atualiza o cache
-    st.session_state[cache_key] = current_hash
-    
-    # CSS anti-flicker wrapper SEM animação de fade-in (causa flash)
-    smooth_html = f'''
-    <style>
-        /* Anti-flicker e suavização global */
-        * {{
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }}
-        html, body {{
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: transparent !important;
-        }}
-        
-        /* Container principal ESTÁTICO - sem animação de entrada */
-        .smooth-wrapper {{
-            opacity: 1;
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-        }}
-        
-        /* Previne layout shift e reflow */
-        .content-stable {{
-            contain: layout style paint;
-            min-height: {height - 20}px;
-            position: relative;
-        }}
-        
-        /* Performance para elementos animados - sempre rodando */
-        [class*="smw-"], [style*="animation"] {{
-            will-change: transform, opacity;
-        }}
-        
-        /* Iframe background fix */
-        :root {{
-            color-scheme: dark;
-        }}
-    </style>
-    <div class="smooth-wrapper content-stable" id="wrapper_{key}">
-        {html_content}
-    </div>
-    '''
-    
-    # Use a stable placeholder DeltaGenerator to update HTML in-place (reduces flicker)
-    ph_key = f"placeholder_{key}"
-    placeholder = st.session_state.get(ph_key)
-    try:
-        if placeholder is None:
-            placeholder = st.empty()
-            st.session_state[ph_key] = placeholder
-        # Use the placeholder's html renderer which updates in-place
-        placeholder.html(smooth_html, height=height, scrolling=False)
-    except Exception:
-        # Fallback: direct render
-        try:
-            components.html(smooth_html, height=height, scrolling=False)
-        except Exception:
-            pass
-
-# =====================================================
-# TEMAS COBOL/TERMINAL
-# =====================================================
-THEMES = {
-    "COBOL Verde": {
-        "name": "COBOL Verde",
-        "bg": "#0a0a0a",
-        "bg2": "#050505",
-        "border": "#33ff33",
-        "text": "#33ff33",
-        "text2": "#aaffaa",
-        "accent": "#00ffff",
-        "warning": "#ffaa00",
-        "error": "#ff3333",
-        "success": "#00ff00",
-        "header_bg": "linear-gradient(180deg, #1a3a1a 0%, #0d1f0d 100%)",
-        "glow": "rgba(51, 255, 51, 0.3)",
-    },
-    "Amber CRT": {
-        "name": "Amber CRT",
-        "bg": "#0a0800",
-        "bg2": "#050400",
-        "border": "#ffaa00",
-        "text": "#ffaa00",
-        "text2": "#ffcc66",
-        "accent": "#ffffff",
-        "warning": "#ff6600",
-        "error": "#ff3333",
-        "success": "#ffff00",
-        "header_bg": "linear-gradient(180deg, #3a2a0a 0%, #1f1505 100%)",
-        "glow": "rgba(255, 170, 0, 0.3)",
-    },
-    "IBM Blue": {
-        "name": "IBM Blue",
-        "bg": "#000033",
-        "bg2": "#000022",
-        "border": "#3399ff",
-        "text": "#3399ff",
-        "text2": "#99ccff",
-        "accent": "#ffffff",
-        "warning": "#ffaa00",
-        "error": "#ff6666",
-        "success": "#66ff66",
-        "header_bg": "linear-gradient(180deg, #0a1a3a 0%, #050d1f 100%)",
-        "glow": "rgba(51, 153, 255, 0.3)",
-    },
-    "Matrix": {
-        "name": "Matrix",
-        "bg": "#000000",
-        "bg2": "#001100",
-        "border": "#00ff00",
-        "text": "#00ff00",
-        "text2": "#88ff88",
-        "accent": "#ffffff",
-        "warning": "#ffff00",
-        "error": "#ff0000",
-        "success": "#00ff00",
-        "header_bg": "linear-gradient(180deg, #002200 0%, #001100 100%)",
-        "glow": "rgba(0, 255, 0, 0.5)",
-    },
-    "Cyberpunk": {
-        "name": "Cyberpunk",
-        "bg": "#0d0221",
-        "bg2": "#1a0533",
-        "border": "#ff00ff",
-        "text": "#ff00ff",
-        "text2": "#ff99ff",
-        "accent": "#00ffff",
-        "warning": "#ffff00",
-        "error": "#ff3333",
-        "success": "#00ff00",
-        "header_bg": "linear-gradient(180deg, #2d0a4e 0%, #1a0533 100%)",
-        "glow": "rgba(255, 0, 255, 0.4)",
-    },
-    "Super Mario World": {
-        "name": "Super Mario World",
-        "bg": "#5c94fc",           # Céu azul do Mario
-        "bg2": "#4a7acc",          # Azul mais escuro para contraste
-        "border": "#e52521",       # Vermelho do Mario
-        "text": "#ffffff",         # Branco
-        "text2": "#1a1a1a",        # Preto para legibilidade
-        "accent": "#43b047",       # Verde dos canos/Luigi
-        "warning": "#fbd000",      # Amarelo estrela
-        "error": "#e52521",        # Vermelho
-        "success": "#43b047",      # Verde
-        "header_bg": "linear-gradient(180deg, #5c94fc 0%, #3878d8 100%)",
-        "glow": "rgba(251, 208, 0, 0.5)",  # Brilho dourado
-        "is_light": True,          # Flag para tema claro
-    },
-}
-
-
-def get_current_theme():
-    """Retorna o tema atual selecionado"""
-    theme_name = st.session_state.get("terminal_theme", "COBOL Verde")
-    return THEMES.get(theme_name, THEMES["COBOL Verde"])
-
-
-def _theme_config_path() -> Path:
-    return ROOT / ".last_theme.json"
-
-
-def _load_saved_theme() -> str | None:
-    try:
-        p = _theme_config_path()
-        if not p.exists():
-            return None
-        data = json.loads(p.read_text(encoding="utf-8") or "{}")
-        name = data.get("terminal_theme")
-        if name and name in THEMES:
-            return name
-    except Exception:
-        pass
-    return None
-
-
-def _save_theme(name: str) -> None:
-    try:
-        p = _theme_config_path()
-        p.write_text(json.dumps({"terminal_theme": name}), encoding="utf-8")
-    except Exception:
-        pass
-
-
-# Ensure session state has the saved theme on first run of a session
-try:
-    if "terminal_theme" not in st.session_state:
-        saved = _load_saved_theme()
-        if saved:
-            st.session_state["terminal_theme"] = saved
-        else:
-            st.session_state.setdefault("terminal_theme", "COBOL Verde")
-except Exception:
-    pass
-
-
-def inject_global_css():
-    """Injeta CSS global para estilizar toda a página no tema terminal"""
-    theme = get_current_theme()
-    is_light_theme = theme.get("is_light", False)
-
-    # Button text colors computed for contrast against theme colors
-    btn_text = _contrast_text_for_bg(theme.get("border"), light="#ffffff", dark="#000000")
-    btn_hover_text = _contrast_text_for_bg(theme.get("accent"), light="#ffffff", dark="#000000")
-    btn_primary_text = _contrast_text_for_bg(theme.get("success"), light="#ffffff", dark="#000000")
-    
-    # Cores de texto para widgets em temas claros
-    input_text_color = "#1a1a1a" if is_light_theme else theme["text"]
-    input_bg_color = "#ffffff" if is_light_theme else theme["bg2"]
-    label_color = "#1a1a1a" if is_light_theme else theme["text2"]
-    
-    # Desativar efeito CRT para temas claros
-    crt_effect = "" if is_light_theme else f'''
-        /* CRT scan line effect */
-        .stApp::before {{
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            background: repeating-linear-gradient(
-                0deg,
-                rgba(0, 0, 0, 0.1),
-                rgba(0, 0, 0, 0.1) 1px,
-                transparent 1px,
-                transparent 2px
-            );
-            z-index: 9999;
-        }}
-        
-        /* Flicker animation for authentic CRT feel */
-        @keyframes flicker {{
-            0% {{ opacity: 0.97; }}
-            50% {{ opacity: 1; }}
-            100% {{ opacity: 0.98; }}
-        }}
-        
-        .stApp {{
-            animation: flicker 0.15s infinite;
-        }}
-    '''
-    
-    # Optional: apply a SMW sprite/background to the main Streamlit UI.
-    smw_bg_css = ""
-    try:
-        if theme.get("name") == "Super Mario World":
-            bg_data_uri = None
-
-            # Keep a stable background during the session; changes on hard refresh.
-            chosen = st.session_state.get("_smw_main_bg")
-            if not chosen:
-                # Pick from themes/smw/manifest.json when present.
-                mf = ROOT / "themes" / "smw" / "manifest.json"
-                items = None
-                if mf.exists():
-                    import json as _json
-                    data = _json.loads(mf.read_text(encoding="utf-8"))
-                    items = (data.get("backgrounds") or {}).get("items")
-                candidates = []
-                if isinstance(items, dict):
-                    candidates = [k for k in items.keys() if isinstance(k, str) and k.strip()]
-                if not candidates:
-                    # fallback: scan folder
-                    bg_dir = ROOT / "themes" / "smw" / "backgrounds"
-                    if bg_dir.exists():
-                        candidates = [p.stem for p in bg_dir.iterdir() if p.is_file() and p.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp")]
-                if candidates:
-                    import random as _random
-                    chosen = _random.choice(sorted(candidates))
-                    st.session_state["_smw_main_bg"] = chosen
-
-            # IMPORTANT: do not fetch the background from the local API server.
-            # If the API server is stopped or slow, the browser keeps the tab in a
-            # perpetual "loading" state. Instead embed the selected image as a data URI.
-            if chosen:
-                cached = st.session_state.get("_smw_main_bg_data_uri")
-                cached_name = st.session_state.get("_smw_main_bg_data_uri_name")
-                if cached and cached_name == chosen:
-                    bg_data_uri = cached
-                else:
-                    bg_file = None
-                    bg_dir = ROOT / "themes" / "smw" / "backgrounds"
-                    for ext in (".png", ".jpg", ".jpeg", ".webp"):
-                        p = bg_dir / f"{chosen}{ext}"
-                        if p.exists():
-                            bg_file = p
-                            break
-                    if not bg_file and bg_dir.exists():
-                        # In case chosen already includes an extension or is a full filename.
-                        p = bg_dir / str(chosen)
-                        if p.exists() and p.is_file():
-                            bg_file = p
-
-                    if bg_file and bg_file.exists():
-                        import base64 as _base64
-                        import mimetypes as _mimetypes
-
-                        mime = _mimetypes.guess_type(str(bg_file))[0] or "image/png"
-                        b64 = _base64.b64encode(bg_file.read_bytes()).decode("ascii")
-                        bg_data_uri = f"data:{mime};base64,{b64}"
-                        st.session_state["_smw_main_bg_data_uri"] = bg_data_uri
-                        st.session_state["_smw_main_bg_data_uri_name"] = chosen
-
-            if bg_data_uri:
-                # Apply to the whole app. Add a subtle overlay for readability.
-                smw_bg_css = f'''
-                .stApp {{
-                    background-image:
-                      linear-gradient(
-                        180deg,
-                        rgba(0,0,0,0.25) 0%,
-                        rgba(0,0,0,0.35) 100%
-                      ),
-                      url("{bg_data_uri}") !important;
-                    background-size: cover !important;
-                    background-position: center !important;
-                    background-repeat: no-repeat !important;
-                    background-attachment: fixed !important;
-                }}
-                /* Let the background image show through */
-                .main .block-container {{
-                    background-color: transparent !important;
-                }}
-                /* Make containers readable over the background */
-                .stApp [data-testid="stAppViewContainer"] > .main {{
-                    background: rgba(0,0,0,0.18) !important;
-                }}
-                section[data-testid="stSidebar"] {{
-                    background: rgba(0,0,0,0.25) !important;
-                }}
-                '''
-    except Exception:
-        smw_bg_css = ""
-
-    css = f'''
-    <style>
-        /* =====================================================
-           Escala fluida global (fonte + espaçamento)
-           Mantém a UI proporcional em qualquer resolução.
-           ===================================================== */
-        :root {{
-            /* VSCode-like default sizing: smaller, still responsive */
-            --kc-font: clamp(12px, 0.55vw + 7px, 16px);
-            --kc-s-1: clamp(6px, 0.55vw, 10px);
-            --kc-s-2: clamp(10px, 0.9vw, 16px);
-            --kc-s-3: clamp(14px, 1.2vw, 22px);
-            --kc-gap: clamp(10px, 1.2vw, 18px);
-        }}
-
-        html {{
-            font-size: var(--kc-font);
-        }}
-
-        /* ===== ANTI-FLICKER GLOBAL ===== */
-        /* Previne flash branco durante transições */
-        iframe {{
-            background: {theme["bg"]} !important;
-            transition: none !important;
-            border: none !important;
-        }}
-        
-        /* Desabilita transições que causam flash */
-        * {{
-            transition: none !important;
-        }}
-        
-        /* Previne reflow durante atualizações */
-        .element-container {{
-            contain: layout style;
-            will-change: contents;
-        }}
-        
-        [data-testid="stElementContainer"] {{
-            contain: layout style;
-        }}
-        
-        /* Fix para iframes de components.html - FORÇA fundo escuro */
-        iframe[title="streamlit_components.v1.components.html"] {{
-            background-color: {theme["bg"]} !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-        }}
-        
-        /* Previne flash em fragments */
-        [data-testid="stVerticalBlock"] > div {{
-            background-color: transparent !important;
-        }}
-        
-        /* Reset e base */
-        .stApp {{
-            background-color: {theme["bg"]} !important;
-            font-family: 'Courier New', 'Lucida Console', monospace !important;
-        }}
-        
-        /* Main container */
-        .main .block-container {{
-            background-color: {theme["bg"]} !important;
-            border: 2px solid {theme["border"]} !important;
-            border-radius: 8px !important;
-            box-shadow: 0 0 30px {theme["glow"]}, inset 0 0 50px rgba(0,0,0,0.5) !important;
-            padding: var(--kc-s-3) !important;
-            margin: var(--kc-s-2) !important;
-        }}
-
-        /* Force the main block to use the full viewport width so dashboard
-           columns can expand responsively across resolutions. */
-        .stApp [data-testid="stAppViewContainer"] > .main .block-container,
-        .stApp .block-container {
-            max-width: 100% !important;
-            width: 100% !important;
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-            padding-left: var(--kc-s-3) !important;
-            padding-right: var(--kc-s-3) !important;
-        }
-
-        /* Let columns be flexible and avoid fixed calc widths imposed by
-           some Streamlit builds; this helps `st.columns([1, 999])` behave
-           as expected and fill the available frame. */
-        .stColumn {
-            min-width: 0 !important;
-            flex: 1 1 0% !important;
-            width: auto !important;
-        }
-        
-        /* Headers */
-        h1, h2, h3, h4, h5, h6 {{
-            color: {theme["text"]} !important;
-            font-family: 'Courier New', monospace !important;
-            text-shadow: 0 0 10px {theme["glow"]} !important;
-        }}
-
-        h1 {{ font-size: clamp(1.35rem, 1.8vw, 2.1rem) !important; }}
-        h2 {{ font-size: clamp(1.10rem, 1.4vw, 1.55rem) !important; }}
-        h3 {{ font-size: clamp(1.00rem, 1.2vw, 1.35rem) !important; }}
-        
-        h1::before {{ content: ">>> "; color: {theme["accent"]}; }}
-        h2::before {{ content: ">> "; color: {theme["accent"]}; }}
-        h3::before {{ content: "> "; color: {theme["accent"]}; }}
-        
-        /* Paragraphs and text */
-        p, span, label, .stMarkdown {{
-            color: {theme["text2"]} !important;
-            font-family: 'Courier New', monospace !important;
-        }}
-        
-        /* Sidebar */
-        [data-testid="stSidebar"] {{
-            background-color: {theme["bg2"]} !important;
-            border-right: 2px solid {theme["border"]} !important;
-        }}
-        
-        [data-testid="stSidebar"] * {{
-            color: {theme["text2"]} !important;
-        }}
-        
-        [data-testid="stSidebar"] h1,
-        [data-testid="stSidebar"] h2,
-        [data-testid="stSidebar"] h3 {{
-            color: {theme["text"]} !important;
-        }}
-        
-        /* Inputs */
-        .stTextInput > div > div > input,
-        .stNumberInput > div > div > input,
-        .stSelectbox > div > div > div {{
-            background-color: {input_bg_color} !important;
-            color: {input_text_color} !important;
-            border: 2px solid {theme["border"]} !important;
-            font-family: 'Courier New', monospace !important;
-            border-radius: 4px !important;
-            font-size: 0.95rem !important;
-            padding: 0.55rem 0.6rem !important;
-        }}
-        
-        .stTextInput > div > div > input:focus,
-        .stNumberInput > div > div > input:focus {{
-            box-shadow: 0 0 10px {theme["glow"]} !important;
-            border-color: {theme["accent"]} !important;
-        }}
-        
-        /* Labels dos inputs */
-        .stTextInput label,
-        .stNumberInput label,
-        .stSelectbox label,
-        .stCheckbox label,
-        .stRadio label {{
-            color: {label_color} !important;
-            font-weight: bold !important;
-        }}
-        
-        /* Buttons */
-        .stButton > button {{
-            background-color: {theme["border"]} !important;
-            color: {btn_text} !important;
-            border: 2px solid {theme["border"]} !important;
-            font-family: 'Courier New', monospace !important;
-            font-weight: bold !important;
-            text-transform: uppercase !important;
-            transition: all 0.3s ease !important;
-            border-radius: 8px !important;
-            padding: 0.55em 0.85em !important;
-            min-height: 2.75em !important;
-            font-size: 0.92em !important;
-            line-height: 1.1 !important;
-            white-space: nowrap;
-            text-align: center;
-            overflow: hidden;
-        }}
-
-        /* Keep button labels readable (avoid vertical stacking) */
-        .stButton > button p,
-        .stButton > button span {{
-            white-space: nowrap !important;
-            word-break: keep-all !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            margin: 0 !important;
-        }}
-
-        /* Extra help for the bot table buttons (LOG/REL/Kill) */
-        [class*="st-key-log_"] button,
-        [class*="st-key-rep_"] button,
-        [class*="st-key-kill_"] button,
-        [class*="st-key-log_stopped_"] button,
-        [class*="st-key-rep_stopped_"] button,
-        [class*="st-key-kill_stopped_"] button {{
-            min-width: 5.2em !important;
-            padding: 0.50em 0.70em !important;
-            font-size: 0.90em !important;
-        }}
-
-        /* Reduce excessive gaps between Streamlit columns on some builds */
-        .main [data-testid="stHorizontalBlock"] {{
-            column-gap: var(--kc-gap) !important;
-            row-gap: var(--kc-gap) !important;
-        }}
-
-        /* Progress bar: keep it inside its column */
-        [data-testid="stProgress"] {{
-            width: 100% !important;
-            overflow: hidden !important;
-        }}
-        [data-testid="stProgress"] > div {{
-            width: 100% !important;
-            overflow: hidden !important;
-        }}
-        [data-baseweb="progress-bar"] {{
-            max-width: 100% !important;
-        }}
-        
-        .stButton > button:hover {{
-            background-color: {theme["accent"]} !important;
-            border-color: {theme["accent"]} !important;
-            color: {btn_hover_text} !important;
-            box-shadow: 0 0 20px {theme["glow"]} !important;
-        }}
-        
-        /* Primary button */
-        .stButton > button[kind="primary"] {{
-            background-color: {theme["success"]} !important;
-            border-color: {theme["success"]} !important;
-            color: {btn_primary_text} !important;
-        }}
-        
-        .stButton > button[kind="primary"]:hover {{
-            background-color: {theme["accent"]} !important;
-            border-color: {theme["accent"]} !important;
-            color: {btn_hover_text} !important;
-        }}
-        
-        /* Alerts */
-        .stAlert {{
-            background-color: {theme["bg2"]} !important;
-            border: 1px solid {theme["border"]} !important;
-            font-family: 'Courier New', monospace !important;
-        }}
-        
-        [data-testid="stAlertContainer"] {{
-            background-color: {theme["bg2"]} !important;
-            border-left: 4px solid {theme["success"]} !important;
-        }}
-        
-        /* Success alert */
-        .stAlert [data-testid="stAlertContentSuccess"] {{
-            color: {theme["success"]} !important;
-        }}
-        
-        /* Warning alert */
-        .stAlert [data-testid="stAlertContentWarning"] {{
-            color: {theme["warning"]} !important;
-        }}
-        
-        /* Error alert */
-        .stAlert [data-testid="stAlertContentError"] {{
-            color: {theme["error"]} !important;
-        }}
-        
-        /* Dividers */
-        hr {{
-            border-color: {theme["border"]} !important;
-            box-shadow: 0 0 5px {theme["glow"]} !important;
-        }}
-        
-        /* Metrics */
-        [data-testid="stMetric"] {{
-            background-color: {theme["bg2"]} !important;
-            border: 1px solid {theme["border"]} !important;
-            padding: var(--kc-s-2) !important;
-            border-radius: 4px !important;
-        }}
-        
-        [data-testid="stMetricValue"] {{
-            color: {theme["accent"]} !important;
-            font-family: 'Courier New', monospace !important;
-        }}
-        
-        [data-testid="stMetricLabel"] {{
-            color: {theme["text2"]} !important;
-        }}
-        
-        /* Selectbox dropdown */
-        [data-baseweb="select"] {{
-            background-color: {input_bg_color} !important;
-        }}
-        
-        [data-baseweb="select"] > div {{
-            background-color: {input_bg_color} !important;
-            color: {input_text_color} !important;
-            border: 2px solid {theme["border"]} !important;
-        }}
-        
-        [data-baseweb="menu"] {{
-            background-color: {input_bg_color} !important;
-            border: 2px solid {theme["border"]} !important;
-        }}
-        
-        [data-baseweb="menu"] li {{
-            color: {input_text_color} !important;
-            background-color: {input_bg_color} !important;
-        }}
-        
-        [data-baseweb="menu"] li:hover {{
-            background-color: {theme["border"]} !important;
-            color: #ffffff !important;
-        }}
-        
-        /* Caption text */
-        .stCaption, [data-testid="stCaptionContainer"] {{
-            color: {theme["text2"]} !important;
-            opacity: 0.8;
-        }}
-        
-        /* Info boxes */
-        .stInfo {{
-            background-color: {theme["bg2"]} !important;
-            border-left: 4px solid {theme["accent"]} !important;
-        }}
-        
-        /* Text area */
-        .stTextArea textarea {{
-            background-color: {theme["bg2"]} !important;
-            color: {theme["text"]} !important;
-            border: 1px solid {theme["border"]} !important;
-            font-family: 'Courier New', monospace !important;
-        }}
-        
-        /* Expander */
-        .streamlit-expanderHeader {{
-            background-color: {theme["bg2"]} !important;
-            color: {theme["text"]} !important;
-            border: 1px solid {theme["border"]} !important;
-        }}
-        
-        /* Radio buttons */
-        .stRadio > div {{
-            background-color: transparent !important;
-            padding: 10px !important;
-            border-radius: 4px !important;
-        }}
-        
-        .stRadio label {{
-            color: {label_color} !important;
-        }}
-        
-        .stRadio label span {{
-            color: {label_color} !important;
-        }}
-        
-        /* Checkbox */
-        .stCheckbox label {{
-            color: {label_color} !important;
-        }}
-        
-        .stCheckbox label span {{
-            color: {label_color} !important;
-        }}
-        
-        /* Checkbox box */
-        .stCheckbox [data-testid="stCheckbox"] {{
-            accent-color: {theme["border"]} !important;
-        }}
-        
-        /* Progress bar */
-        .stProgress > div > div {{
-            background-color: {theme["border"]} !important;
-        }}
-        
-        /* Scrollbar */
-        ::-webkit-scrollbar {{
-            width: 8px;
-            height: 8px;
-        }}
-        
-        ::-webkit-scrollbar-track {{
-            background: {theme["bg"]} !important;
-        }}
-        
-        ::-webkit-scrollbar-thumb {{
-            background: {theme["border"]} !important;
-            border-radius: 4px;
-        }}
-        
-        ::-webkit-scrollbar-thumb:hover {{
-            background: {theme["accent"]} !important;
-        }}
-        
-        {crt_effect}
-        
-        /* FORCE ALL BACKGROUNDS TO DARK */
-        div, section, header, footer, main, aside, article {{
-            background-color: transparent !important;
-        }}
-        
-        /* Streamlit specific white backgrounds */
-        [data-testid="stAppViewContainer"] {{
-            background-color: {theme["bg"]} !important;
-        }}
-        
-        [data-testid="stHeader"] {{
-            background-color: {theme["bg"]} !important;
-        }}
-        
-        [data-testid="stToolbar"] {{
-            background-color: {theme["bg"]} !important;
-        }}
-        
-        [data-testid="stDecoration"] {{
-            background-color: {theme["bg"]} !important;
-        }}
-        
-        [data-testid="stBottomBlockContainer"] {{
-            background-color: {theme["bg"]} !important;
-        }}
-        
-        /* Main area */
-        .main {{
-            background-color: {theme["bg"]} !important;
-        }}
-        
-        /* All iframes and embeds */
-        iframe {{
-            background-color: {theme["bg"]} !important;
-        }}
-        
-        /* Form elements */
-        [data-testid="stForm"] {{
-            background-color: {theme["bg2"]} !important;
-            border: 1px solid {theme["border"]} !important;
-        }}
-        
-        /* Popover and modals */
-        [data-baseweb="popover"] {{
-            background-color: {theme["bg2"]} !important;
-            border: 1px solid {theme["border"]} !important;
-        }}
-        
-        /* Tabs */
-        .stTabs [data-baseweb="tab-list"] {{
-            background-color: {theme["bg"]} !important;
-        }}
-        
-        .stTabs [data-baseweb="tab"] {{
-            background-color: {theme["bg2"]} !important;
-            color: {theme["text"]} !important;
-        }}
-        
-        .stTabs [data-baseweb="tab"]:hover {{
-            background-color: {theme["border"]} !important;
-        }}
-        
-        /* Data editor / table */
-        [data-testid="stDataFrame"],
-        [data-testid="stTable"] {{
-            background-color: {theme["bg2"]} !important;
-        }}
-        
-        /* Column config */
-        .stColumn {{
-            background-color: transparent !important;
-        }}
-        
-        /* Element container */
-        [data-testid="stElementContainer"] {{
-            background-color: transparent !important;
-        }}
-        
-        /* Vertical block */
-        [data-testid="stVerticalBlock"] {{
-            background-color: transparent !important;
-        }}
-        
-        /* Horizontal block */
-        [data-testid="stHorizontalBlock"] {{
-            background-color: transparent !important;
-        }}
-        
-        /* Widget label */
-        .stWidgetLabel {{
-            color: {theme["text2"]} !important;
-        }}
-        
-        /* Toast notifications */
-        [data-testid="stToast"] {{
-            background-color: {theme["bg2"]} !important;
-            border: 1px solid {theme["border"]} !important;
-            color: {theme["text"]} !important;
-        }}
-        
-        /* Spinner */
-        .stSpinner {{
-            background-color: transparent !important;
-        }}
-        
-        /* Number input buttons */
-        .stNumberInput button {{
-            background-color: {theme["border"]} !important;
-            color: #ffffff !important;
-            border-color: {theme["border"]} !important;
-        }}
-        
-        .stNumberInput button:hover {{
-            background-color: {theme["accent"]} !important;
-            border-color: {theme["accent"]} !important;
-        }}
-        
-        /* Select all white/light backgrounds */
-        [style*="background-color: white"],
-        [style*="background-color: #fff"],
-        [style*="background-color: rgb(255, 255, 255)"],
-        [style*="background: white"],
-        [style*="background: #fff"] {{
-            background-color: {theme["bg"]} !important;
-        }}
-        
-        /* Base web components */
-        [data-baseweb] {{
-            background-color: transparent !important;
-        }}
-        
-        /* Input containers */
-        [data-baseweb="input"] {{
-            background-color: {input_bg_color} !important;
-        }}
-        
-        [data-baseweb="input"] input {{
-            color: {input_text_color} !important;
-        }}
-        
-        [data-baseweb="base-input"] {{
-            background-color: {input_bg_color} !important;
-            border: 2px solid {theme["border"]} !important;
-        }}
-
-        /* Extra override: remove gaps between dashboard and the outer frame */
-        .stMainBlockContainer,
-        .stApp [data-testid="stAppViewContainer"] > .main,
-        .main .block-container {
-            margin: 0 !important;
-            padding: 0 !important;
-            max-width: 100% !important;
-            width: 100% !important;
-            background: transparent !important;
-        }
-        /* Make columns truly flexible and remove side paddings */
-        .stColumn {
-            min-width: 0 !important;
-            flex: 1 1 0% !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-        }
-        /* Remove extra padding on the main app view wrapper */
-        .stApp > div[role="main"] > div {
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-        }
-        /* Reset any explicit top-padding added elsewhere */
-        .stMainBlockContainer { padding-top: 0 !important; }
-
-        {smw_bg_css}
-    </style>
-    '''
-    st.markdown(css, unsafe_allow_html=True)
-
-
-def render_theme_selector(ui=None):
-    """Renderiza seletor de tema.
-
-    A sidebar é escondida globalmente; por padrão este seletor renderiza no
-    container atual. Se `ui` for um container (ex.: coluna), renderiza dentro dele.
-    """
-
-    # By default, avoid rendering inline when called without a container.
-    # This prevents accidental duplicate renderings if older code paths
-    # call this function without an explicit container.
-    if ui is None and not st.session_state.get("_allow_inline_theme_selector", False):
-        return
-
-    def _render_body():
-        st.markdown("---")
-        st.markdown("### 🎨 Tema do Terminal")
-
-        current_theme = st.session_state.get("terminal_theme", "COBOL Verde")
-        theme_keys = list(THEMES.keys())
-        try:
-            idx = theme_keys.index(current_theme)
-        except Exception:
-            idx = 0
-
-        selected_theme = st.selectbox(
-            "Selecionar tema",
-            options=theme_keys,
-            index=idx,
-            key="theme_selector",
-        )
-
-        if selected_theme != current_theme:
-            st.session_state.terminal_theme = selected_theme
-            try:
-                _save_theme(selected_theme)
-            except Exception:
-                pass
-            _merge_query_params({"theme": selected_theme})
-            st.rerun()
-
-        if get_current_theme().get("name") == "Super Mario World":
-            st.caption("Monitor: fundo SMW aleatório a cada reload")
-
-    if ui is None:
-        _render_body()
-        return
-
-    # If ui is a container (supports context manager), render within it.
-    try:
-        with ui:
-            _render_body()
-    except TypeError:
-        # If ui isn't a context manager, just render in the current container.
-        _render_body()
 
 
 def render_bot_window(bot_id: str, controller):
@@ -4450,33 +3169,22 @@ def colorize_logs_html(log_text: str) -> str:
 
 
 def render_bot_control():
-    # Defensive: require login per session before rendering any UI
-    try:
-        if not bool(st.session_state.get("logado", False)):
-            # Bypass login for dev environment for testing
-            if os.environ.get('APP_ENV') == 'dev':
-                st.session_state["logado"] = True
-            else:
-                st.title("🔐 Login obrigatório")
-                st.warning("Você precisa estar autenticado para acessar o dashboard.")
-                st.stop()
-    except Exception:
-        st.error("Erro ao verificar autenticação. Acesso negado.")
-        st.stop()
-
     # Entry point: call the full UI renderer (kept separate so we can recover safely).
     try:
         controller = None
         try:
             controller = get_global_controller()
-        except Exception:
+            st.write(f"Debug: controller = {controller}")  # Debug line
+        except Exception as e:
+            st.warning(f"⚠️ Erro ao obter controller: {e}")
             controller = None
+        
         _render_full_ui(controller)
     except Exception as e:
-        try:
-            st.error(f"Erro ao renderizar UI: {e}")
-        except Exception:
-            pass
+        st.error(f"❌ Erro ao renderizar UI: {e}")
+        import traceback
+        with st.expander("Detalhes do erro"):
+            st.code(traceback.format_exc())
     return
 
 
@@ -4484,7 +3192,7 @@ def _render_full_ui(controller=None):
     # =====================================================
     # PAGE CONFIG & TEMA GLOBAL
     # =====================================================
-    st.set_page_config(page_title="KuCoin Trading Bot", layout="wide")
+    # st.set_page_config já foi chamado no streamlit_app.py, não chamar novamente
 
     # Injetar CSS do tema terminal
     try:
@@ -4563,6 +3271,16 @@ def _render_full_ui(controller=None):
                             st.session_state["_api_port"] = int(p)
                     except Exception:
                         pass
+        elif st.session_state.get("_api_port") is None:
+            # Se já tentou mas não tem porta, tentar sync uma vez
+            if "start_api_server" in globals() and not st.session_state.get("_api_sync_tried"):
+                st.session_state["_api_sync_tried"] = True
+                try:
+                    p = start_api_server(8765)
+                    if p:
+                        st.session_state["_api_port"] = int(p)
+                except Exception:
+                    pass
     except Exception:
         pass
     # ----------------------------------------------------------------
@@ -4746,6 +3464,7 @@ def _render_full_ui(controller=None):
     # Bugfix: processos que continuam rodando após reload/F5 (ou iniciados fora
     # desta sessão Streamlit) não apareciam porque a UI dependia apenas de
     # st.session_state.active_bots + registry em memória.
+    st.session_state.active_bots = []  # Reset to avoid stale data
     db_sessions_by_id: dict[str, dict] = {}
     ps_pids_by_id: dict[str, int] = {}
 
@@ -4802,8 +3521,14 @@ def _render_full_ui(controller=None):
     # Merge em st.session_state.active_bots preservando ordem e removendo mortos
     discovered_ids: list[str] = []
     for bot_id, sess in db_sessions_by_id.items():
-        if _pid_alive(sess.get("pid")):
+        pid = sess.get("pid")
+        # Se tem PID válido, verificar se está vivo; senão, confiar no status
+        if pid and _pid_alive(pid):
             discovered_ids.append(bot_id)
+        elif sess.get("status") == "running":
+            # Bot marcado como running sem PID verificável (pode estar em container)
+            discovered_ids.append(bot_id)
+            
     for bot_id, pid in ps_pids_by_id.items():
         if _pid_alive(pid) and bot_id not in discovered_ids:
             discovered_ids.append(bot_id)
@@ -4874,6 +3599,66 @@ def _render_full_ui(controller=None):
         except Exception:
             pass
 
+    # Pipelines panel in sidebar: quick view of recent GitHub Actions runs
+    try:
+        with st.sidebar.expander("🔁 Pipelines (CI/CD)", expanded=False):
+            try:
+                import requests
+                owner = "eddiejdi"
+                repo = "AutoCoinBot"
+                gh_token = None
+                try:
+                    gh_token = st.secrets.get("GITHUB_TOKEN")
+                except Exception:
+                    gh_token = None
+                if not gh_token:
+                    gh_token = os.getenv("GITHUB_TOKEN")
+                if not gh_token:
+                    gh_token = st.session_state.get("_gh_token_temp")
+
+                if not gh_token:
+                    t = st.text_input("GitHub token (optional)", value="", type="password", key="gh_token_input")
+                    if t:
+                        st.session_state["_gh_token_temp"] = t
+                        gh_token = t
+
+                headers = {"Accept": "application/vnd.github+json"}
+                if gh_token:
+                    headers["Authorization"] = f"token {gh_token}"
+
+                api_url = f"https://api.github.com/repos/{owner}/{repo}/actions/runs?per_page=10"
+                resp = requests.get(api_url, headers=headers, timeout=10)
+                if resp.status_code != 200:
+                    st.error(f"GitHub API error: {resp.status_code}")
+                else:
+                    data = resp.json()
+                    runs = data.get("workflow_runs", []) or []
+                    if not runs:
+                        st.info("Nenhum run recente encontrado.")
+                    else:
+                        try:
+                            import pandas as _pd
+                            rows = []
+                            for r in runs:
+                                rows.append({
+                                    "Workflow": r.get("name") or r.get("path"),
+                                    "Branch": r.get("head_branch"),
+                                    "Status": r.get("status"),
+                                    "Conclusion": r.get("conclusion") or "",
+                                    "Created": r.get("created_at"),
+                                    "URL": r.get("html_url"),
+                                })
+                            df = _pd.DataFrame(rows)
+                            df["Open"] = df["URL"].apply(lambda u: f"[open]({u})" if u else "")
+                            st.table(df[["Workflow", "Branch", "Status", "Conclusion", "Created", "Open"]])
+                        except Exception:
+                            for r in runs:
+                                st.markdown(f"- **{r.get('name')}** ({r.get('head_branch')}) — {r.get('status')}/{r.get('conclusion')} — [{r.get('created_at')}]({r.get('html_url')})")
+            except Exception as e:
+                st.error(f"Erro ao obter runs: {e}")
+    except Exception:
+        pass
+
     st.subheader("🚀 Bot Control")
     col1, col2 = st.columns(2)
     with col1:
@@ -4883,7 +3668,7 @@ def _render_full_ui(controller=None):
     start_dry = st.button("🧪 START (DRY-RUN)", key="start_dry")
     num_bots = st.session_state.get("num_bots", 1)
 
-    # STATUS + RESTANTE DO DASHBOARD
+    # STATUS + BOTS ATIVOS (logo abaixo do painel de controle)
     with _safe_container(border=True):
         st.subheader("📋 Status")
         selected_bot_txt = st.session_state.get("selected_bot")
@@ -4914,376 +3699,69 @@ def _render_full_ui(controller=None):
                 key="dash_wallet_rss",
             )
 
-    # --- Sincroniza lista de bots ativos com DB e processos vivos ---
-    try:
-        db_sync = DatabaseManager()
-        db_bots = db_sync.get_active_bots() or []
-        active_bots = []
-        for sess in db_bots:
-            pid = sess.get('pid')
-            if pid:
-                try:
-                    os.kill(int(pid), 0)
-                    active_bots.append(sess.get('id'))
-                except Exception:
-                    # Se o processo não está vivo, marca como parado
-                    db_sync.update_bot_session(sess.get('id'), {"status": "stopped", "end_ts": time.time()})
-        st.session_state.active_bots = active_bots
-    except Exception:
-        pass
-
-    # Fallback: if DB shows nothing active, attempt to discover running bots via
-    # controller in-memory registry and live subprocess table (best-effort).
-    try:
-        if not st.session_state.active_bots:
-            ctrl = st.session_state.get('controller') or (controller if 'controller' in globals() else None) or get_global_controller()
-            discovered = []
-            # 1) Check controller.processes (Popen objects)
-            try:
-                for bid, proc in getattr(ctrl, 'processes', {}).items():
-                    try:
-                        if proc is not None and proc.poll() is None:
-                            discovered.append(str(bid))
-                    except Exception:
-                        continue
-            except Exception:
-                pass
-
-            # 2) Check registry (may have pid or proc)
-            try:
-                if hasattr(ctrl, 'registry') and ctrl.registry is not None:
-                    for bid in ctrl.registry.list_active_bots().keys():
-                        if bid not in discovered:
-                            discovered.append(bid)
-            except Exception:
-                pass
-
-            # 3) ps scan as a last resort (look for bot_core.py)
-            try:
-                r = subprocess.run(["ps", "-eo", "pid,args"], capture_output=True, text=True, check=False)
-                out = (r.stdout or '').splitlines()
-                for line in out[1:]:
-                    if 'bot_core.py' in line:
-                        try:
-                            pid_s, args_s = line.strip().split(None, 1)
-                            argv = shlex.split(args_s)
-                            if '--bot-id' in argv:
-                                idx = argv.index('--bot-id')
-                                bot_id = argv[idx+1]
-                                if bot_id and bot_id not in discovered:
-                                    discovered.append(bot_id)
-                        except Exception:
-                            continue
-            except Exception:
-                pass
-
-            if discovered:
-                # Merge discovered into session state preserving order
-                for b in discovered:
-                    if b not in st.session_state.active_bots:
-                        st.session_state.active_bots.append(b)
-    except Exception:
-        pass
-
     with _safe_container(border=True):
         active_bots = st.session_state.active_bots
         if active_bots:
             st.subheader(f"🤖 Bots Ativos ({len(active_bots)})")
 
-            # Selection + one-shot hard kill (-9) for chosen bots
-            kill_sel_key = "_kill_sel_bots"
-            if kill_sel_key not in st.session_state:
-                st.session_state[kill_sel_key] = {}
-
-            top_cols = st.columns([3.2, 1.0])
-            with top_cols[0]:
-                st.caption("Marque os bots e use o botão à direita para SIGKILL (-9).")
-            with top_cols[1]:
-                selected_now = [
-                    b
-                    for b in list(active_bots)
-                    if bool(st.session_state.get(f"sel_kill_{b}", False))
-                ]
-                try:
-                    clicked_kill_selected = st.button(
-                        f"🛑 Kill -9 ({len(selected_now)})",
-                        key="kill_selected_3",
-                        type="secondary",
-                        use_container_width=True,
-                        disabled=(len(selected_now) == 0),
-                    )
-                except TypeError:
-                    clicked_kill_selected = st.button(
-                        f"🛑 Kill -9 ({len(selected_now)})",
-                        key="kill_selected_3",
-                        type="secondary",
-                        use_container_width=True,
-                    )
-
-            if clicked_kill_selected:
-                selected = [
-                    b
-                    for b in list(active_bots)
-                    if bool(st.session_state.get(f"sel_kill_{b}", False))
-                ]
-                if not selected:
-                    st.warning("Nenhum bot selecionado para Kill -9.")
-                else:
-                    killed_any = False
-                    killed_ids: list[str] = []
-                    for bot_id in selected:
-                        killed = False
-
-                        # Busca detalhes completos do bot
-                        sess = db_sessions_by_id.get(str(bot_id))
-                        bot_info = controller.registry.get_bot_info(bot_id)
-
-                        pid = None
-                        try:
-                            pid = (
-                                (sess.get("pid") if sess else None)
-                                or (bot_info.get("pid") if bot_info else None)
-                                or ps_pids_by_id.get(str(bot_id))
-                            )
-                        except Exception:
-                            pid = None
-
-                        # Ask controller to stop first (best-effort)
-                        try:
-                            controller.stop_bot(str(bot_id))
-                        except Exception:
-                            pass
-
-                        # Force SIGKILL by PID if available
-                        if pid is not None:
-                            try:
-                                killed = _kill_pid_sigkill_only(int(pid))
-                            except Exception as e:
-                                st.error(f"Erro ao dar Kill -9 em {str(bot_id)[:8]} (PID {pid}): {e}")
-                                killed = False
-                        else:
-                            st.warning(f"PID não encontrado para bot {str(bot_id)[:8]}")
-
-                            try:
-                                DatabaseManager().update_bot_session(bot_id, {"status": "stopped", "end_ts": time.time()})
-                            except Exception:
-                                pass
-
-                            try:
-                                DatabaseManager().release_bot_quota(str(bot_id))
-                            except Exception:
-                                pass
-
-                            try:
-                                if bot_id in st.session_state.active_bots:
-                                    st.session_state.active_bots = [b for b in st.session_state.active_bots if b != bot_id]
-                                if st.session_state.get("selected_bot") == bot_id:
-                                    st.session_state.selected_bot = None
-                            except Exception:
-                                pass
-
-                            # Clear selection checkbox state for removed bot
-                            try:
-                                st.session_state[f"sel_kill_{bot_id}"] = False
-                            except Exception:
-                                pass
-
-                            if killed:
-                                killed_any = True
-                                killed_ids.append(str(bot_id))
-
-                        if killed_any:
-                            st.success(f"Kill -9 aplicado em {len(killed_ids)} bot(s).")
-                            st.rerun()
-
-            header_cols = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
+            # Header row
+            header_cols = st.columns([2.5, 3.0, 2.0, 1.5])
             header_cols[0].markdown("**🆔 Bot ID**")
-            header_cols[1].markdown("**📊 Símbolo**")
-            header_cols[2].markdown("**⚙️ Modo**")
-            header_cols[3].markdown("**📑 Relatório**")
-            header_cols[4].markdown("**✅ Sel.**")
-            header_cols[5].markdown("**📈 Progresso**")
+            header_cols[1].markdown("**📝 Último Evento**")
+            header_cols[2].markdown("**📜 Log**")
+            header_cols[3].markdown("**🛑 Kill**")
 
-            db_for_progress = DatabaseManager()
-            target_pct_global = st.session_state.get("target_profit_pct", 2.0)
+            db_for_logs = DatabaseManager()
 
             for bot_id in list(active_bots):
-                # Busca detalhes completos do bot
                 sess = db_sessions_by_id.get(str(bot_id))
-                bot_info = controller.registry.get_bot_info(bot_id)
-                symbol = (bot_info.get('symbol') if bot_info else None) or (sess.get('symbol') if sess else None) or 'N/A'
-                mode = (bot_info.get('mode') if bot_info else None) or (sess.get('mode') if sess else None) or 'N/A'
-
-                # Compute progress toward target profit based on recent logs
-                progress_value = 0.0
-                profit_pct_value = 0.0
+                
+                # Get last event from logs
+                last_event = "Sem eventos"
                 try:
-                    logs = db_for_progress.get_bot_logs(bot_id, limit=30)
-                    current_price = 0.0
-                    entry_price = 0.0
-                    for log in logs:
-                        msg = (log.get('message') or "")
-                        try:
-                            import json as _json
-                            data = _json.loads(msg)
-                            if 'price' in data and data['price'] is not None:
-                                current_price = float(data['price'])
-                            if 'entry_price' in data and data['entry_price'] is not None:
-                                entry_price = float(data['entry_price'])
-                        except Exception:
-                            continue
-
-                    if entry_price > 0 and current_price > 0:
-                        profit_pct_value = ((current_price - entry_price) / entry_price) * 100
-                    if target_pct_global and float(target_pct_global) > 0:
-                        progress_value = min(1.0, max(0.0, (profit_pct_value / float(target_pct_global))))
+                    logs = db_for_logs.get_bot_logs(bot_id, limit=1)
+                    if logs:
+                        last_log = logs[0]
+                        msg = last_log.get('message', '')
+                        ts = last_log.get('timestamp', '')
+                        if len(msg) > 50:
+                            msg = msg[:50] + "..."
+                        last_event = f"{ts[:19] if ts else ''} - {msg}"
                 except Exception:
                     pass
 
-                # Determine if this session/bot is a dry-run to adjust visuals
-                try:
-                    dry_flag = False
-                    try:
-                        dry_flag = bool(int((sess.get("dry_run") if sess is not None else None) or 0) == 1)
-                    except Exception:
-                        dry_flag = False
-                    try:
-                        if not dry_flag and bot_info:
-                            dry_flag = bool(int((bot_info.get("dry_run") if bot_info is not None else None) or 0) == 1)
-                    except Exception:
-                        row[0].write(str(bot_id)[:12])
-
-                    row[1].write(symbol)
-                    # Mode rendered as a colored badge (green for real, amber for dry)
-                    try:
-                        mode_color = "#f59e0b" if dry_flag else "#22c55e"
-                        mode_html = (
-                            f'<div style="display:inline-block;padding:6px 8px;border-radius:6px;'
-                            f'background:rgba(255,255,255,0.02);color:{mode_color};font-weight:700;' 
-                            f'font-family:monospace">{str(mode).upper()}</div>'
-                        )
-                        row[2].markdown(mode_html, unsafe_allow_html=True)
-                    except Exception:
-                        row[2].write(str(mode).upper())
-
-                    # LOG + Relatório (HTML) in a NEW TAB.
-                    # Use real links instead of server-side webbrowser (works in VS Code/remote too).
-                    api_port = st.session_state.get("_api_port")
-                    try:
-                        if not api_port and 'start_api_server' in globals():
-                            p = start_api_server(8765)
-                            if p:
-                                st.session_state["_api_port"] = int(p)
-                                api_port = int(p)
-                    except Exception:
-                        pass
-                except Exception:
-                    dry_flag = False
-
-                row = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
-                # Render bot id with a colored badge depending on dry-run status
-                try:
-                    if dry_flag:
-                        badge_html = (
-                            f'<div style="background:#0b1220;color:#f8f8f2;padding:6px;border-radius:6px;'
-                            f'border-left:4px solid #f59e0b;font-family:monospace;font-weight:700">{str(bot_id)[:12]}… '
-                            f'<span style="color:#ffd166;font-size:0.85em;margin-left:8px;font-weight:600">DRY</span></div>'
-                        )
-                    else:
-                        badge_html = (
-                            f'<div style="background:#071329;color:#c9d1d9;padding:6px;border-radius:6px;'
-                            f'border-left:4px solid #22c55e;font-family:monospace;font-weight:700">{str(bot_id)[:12]}…</div>'
-                        )
-                    row[0].markdown(badge_html, unsafe_allow_html=True)
-                except Exception:
-                    row[0].write(str(bot_id)[:12])
-
-                row[1].write(symbol)
-                # Mode rendered as a colored badge (green for real, amber for dry)
-                try:
-                    mode_color = "#f59e0b" if dry_flag else "#22c55e"
-                    mode_html = (
-                        f'<div style="display:inline-block;padding:6px 8px;border-radius:6px;'
-                        f'background:rgba(255,255,255,0.02);color:{mode_color};font-weight:700;'
-                        f'font-family:monospace">{str(mode).upper()}</div>'
-                    )
-                    row[2].markdown(mode_html, unsafe_allow_html=True)
-                except Exception:
-                    row[2].write(str(mode).upper())
-
-                # LOG + Relatório (HTML) in a NEW TAB.
-                # Use real links instead of server-side webbrowser (works in VS Code/remote too).
-                api_port = st.session_state.get("_api_port")
-                try:
-                    if not api_port and 'start_api_server' in globals():
-                        p = start_api_server(8765)
-                        if p:
-                            st.session_state["_api_port"] = int(p)
-                            api_port = int(p)
-                except Exception:
-                    pass
-
+                row = st.columns([2.5, 3.0, 2.0, 1.5])
+                
+                # Bot ID
+                row[0].code(str(bot_id)[:12])
+                
+                # Último Evento
+                row[1].caption(last_event)
+                
+                # Abrir Log button
+                api_port = st.session_state.get("_api_port", 8765)
+                log_url = f"http://127.0.0.1:{api_port}/monitor?bot={bot_id}"
+                if hasattr(st, "link_button"):
+                    row[2].link_button("📜 Abrir Log", log_url, use_container_width=True)
+                else:
+                    row[2].markdown(f'<a href="{log_url}" target="_blank">📜 Abrir Log</a>', unsafe_allow_html=True)
+                
+                # Kill checkbox + button
                 with row[3]:
-                    c_log, c_rep = st.columns(2)
-                    if not api_port:
-                        c_log.caption("LOG: off")
-                        c_rep.caption("REP: off")
-                    else:
-                        theme_query = str(theme_qs).lstrip('&')
-                        base = f"http://127.0.0.1:{int(api_port)}"
+                    if st.button(f"🛑 Kill", key=f"kill_{bot_id}", use_container_width=True):
                         try:
-                            try:
-                                st_port = int(st.get_option("server.port"))
-                            except Exception:
-                                st_port = 8501
-                            home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
-                            home_val = urllib.parse.quote(home_url, safe='')
-                        except Exception:
-                            home_val = ''
-
-                        log_url = (
-                            f"{base}/monitor?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                            if theme_query
-                            else f"{base}/monitor?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                        )
-                        rep_url = (
-                            f"{base}/report?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                            if theme_query
-                            else f"{base}/report?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                        )
-
-                        if hasattr(st, "link_button"):
-                            c_log.link_button("📜 LOG", log_url, use_container_width=True)
-                            c_rep.link_button("📑 REL.", rep_url, use_container_width=True)
-                        else:
-                            c_log.markdown(
-                                f'<a href="{log_url}" target="_blank" rel="noopener noreferrer">📜 LOG</a>',
-                                unsafe_allow_html=True,
-                            )
-                            c_rep.markdown(
-                                f'<a href="{rep_url}" target="_blank" rel="noopener noreferrer">📑 REL.</a>',
-                                unsafe_allow_html=True,
-                            )
-
-                # Selection checkbox (replaces per-row kill)
-                with row[4]:
-                    st.checkbox(
-                        "Selecionar",
-                        key=f"sel_kill_{bot_id}",
-                        label_visibility="collapsed",
-                    )
-
-                row[5].progress(progress_value)
-                try:
-                    pct_color = "#f59e0b" if dry_flag else "#22c55e"
-                    row[5].markdown(
-                        f"<div style='color:{pct_color};font-weight:700'>{profit_pct_value:+.2f}% / alvo {float(target_pct_global):.2f}%</div>",
-                        unsafe_allow_html=True,
-                    )
-                except Exception:
-                    row[5].caption(f"{profit_pct_value:+.2f}% / alvo {float(target_pct_global):.2f}%")
-        else:
-            st.info("🚦 Nenhum bot ativo. Use os controles à esquerda para iniciar um novo bot.")
+                            pid = sess.get("pid") if sess else None
+                            if pid:
+                                _kill_pid_sigkill_only(int(pid))
+                            controller.stop_bot(str(bot_id))
+                            DatabaseManager().update_bot_session(bot_id, {"status": "stopped", "end_ts": time.time()})
+                            st.session_state.active_bots = [b for b in st.session_state.active_bots if b != bot_id]
+                            st.success(f"Bot {str(bot_id)[:8]} encerrado.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro: {e}")
+            else:
+                st.info("🚦 Nenhum bot ativo. Use os controles à esquerda para iniciar um novo bot.")
 
         with _safe_container(border=True):
             # Bots encerrados hoje (sessões com end_ts dentro do dia atual)
@@ -5510,11 +3988,4 @@ def _render_full_ui(controller=None):
     # TELA PRINCIPAL
     # =====================================================
     # Aqui só chegamos se NÃO estivermos em modo janela
-
-    # Footer com versão
-    st.markdown("---")
-    st.markdown(
-        f"<div style='text-align: center; color: #666; font-size: 0.8em;'>{get_version()} - AutoCoinBot</div>",
-        unsafe_allow_html=True
-    )
 

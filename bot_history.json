@@ -74184,5 +74184,417 @@
     "executed_trades": [],
     "total_profit": 0,
     "dry_run": true
+  },
+  {
+    "id": "bot_e5d555a4",
+    "symbol": "BTC-USDT",
+    "entry_price": 0.0,
+    "mode": "sell",
+    "start_ts": 1766883972.8977811,
+    "end_ts": 1766883972.9002132,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_157fe7bc",
+    "symbol": "BTC-USDT",
+    "entry_price": 0.0,
+    "mode": "sell",
+    "start_ts": 1767293595.7505462,
+    "end_ts": 1767293595.7573984,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
+  },
+  {
+    "id": "bot_c5907c30",
+    "symbol": "BTC-USDT",
+    "entry_price": 88159.7,
+    "mode": "flow",
+    "start_ts": 1767295476.595126,
+    "end_ts": 1767295537.4252253,
+    "executed_trades": [
+      {
+        "timestamp": 1767295486.1179085,
+        "datetime": "2026-01-01T19:24:46.117912",
+        "kind": "flow_buy",
+        "price": 88159.7,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295506.172339,
+        "datetime": "2026-01-01T19:25:06.172343",
+        "kind": "flow_buy",
+        "price": 88159.8,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295532.4204617,
+        "datetime": "2026-01-01T19:25:32.420467",
+        "kind": "flow_buy",
+        "price": 88159.8,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_c5907c30",
+    "symbol": "BTC-USDT",
+    "entry_price": 88159.8,
+    "mode": "flow",
+    "start_ts": 1767295542.8186002,
+    "end_ts": 1767295607.2891114,
+    "executed_trades": [
+      {
+        "timestamp": 1767295556.425234,
+        "datetime": "2026-01-01T19:25:56.425239",
+        "kind": "flow_buy",
+        "price": 88159.7,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295576.712968,
+        "datetime": "2026-01-01T19:26:16.712971",
+        "kind": "flow_buy",
+        "price": 88159.7,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295602.2857933,
+        "datetime": "2026-01-01T19:26:42.285797",
+        "kind": "flow_buy",
+        "price": 88159.8,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_c5907c30",
+    "symbol": "BTC-USDT",
+    "entry_price": 88159.8,
+    "mode": "flow",
+    "start_ts": 1767295612.51537,
+    "end_ts": 1767295672.9087026,
+    "executed_trades": [
+      {
+        "timestamp": 1767295626.2945256,
+        "datetime": "2026-01-01T19:27:06.294529",
+        "kind": "flow_buy",
+        "price": 88159.8,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295646.4964695,
+        "datetime": "2026-01-01T19:27:26.496473",
+        "kind": "flow_buy",
+        "price": 88159.8,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295667.905959,
+        "datetime": "2026-01-01T19:27:47.905961",
+        "kind": "flow_buy",
+        "price": 88159.7,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_c5907c30",
+    "symbol": "BTC-USDT",
+    "entry_price": 88159.7,
+    "mode": "flow",
+    "start_ts": 1767295678.4519858,
+    "end_ts": 1767295743.2193377,
+    "executed_trades": [
+      {
+        "timestamp": 1767295692.2465239,
+        "datetime": "2026-01-01T19:28:12.246528",
+        "kind": "flow_buy",
+        "price": 88159.8,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295712.5979598,
+        "datetime": "2026-01-01T19:28:32.597971",
+        "kind": "flow_buy",
+        "price": 88159.8,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295738.211846,
+        "datetime": "2026-01-01T19:28:58.211852",
+        "kind": "flow_buy",
+        "price": 88168.0,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_09e06fd2",
+    "symbol": "BTC-USDT",
+    "entry_price": 88170.6,
+    "mode": "flow",
+    "start_ts": 1767295877.9434018,
+    "end_ts": 1767295938.957932,
+    "executed_trades": [
+      {
+        "timestamp": 1767295881.3361137,
+        "datetime": "2026-01-01T19:31:21.336116",
+        "kind": "flow_buy",
+        "price": 88170.5,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295907.9981365,
+        "datetime": "2026-01-01T19:31:47.998141",
+        "kind": "flow_buy",
+        "price": 88170.6,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767295932.3616939,
+        "datetime": "2026-01-01T19:32:12.361699",
+        "kind": "flow_buy",
+        "price": 88170.6,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_09e06fd2",
+    "symbol": "BTC-USDT",
+    "entry_price": 88170.6,
+    "mode": "flow",
+    "start_ts": 1767295944.1786425,
+    "end_ts": 1767296553.4712386,
+    "executed_trades": [
+      {
+        "timestamp": 1767295952.2838786,
+        "datetime": "2026-01-01T19:32:32.283884",
+        "kind": "flow_buy",
+        "price": 88170.5,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767296528.836467,
+        "datetime": "2026-01-01T19:42:08.836477",
+        "kind": "flow_buy",
+        "price": 88324.4,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767296548.4676769,
+        "datetime": "2026-01-01T19:42:28.467681",
+        "kind": "flow_buy",
+        "price": 88333.5,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_09e06fd2",
+    "symbol": "BTC-USDT",
+    "entry_price": 88333.5,
+    "mode": "flow",
+    "start_ts": 1767296558.7721977,
+    "end_ts": 1767296943.2698941,
+    "executed_trades": [
+      {
+        "timestamp": 1767296567.2279782,
+        "datetime": "2026-01-01T19:42:47.227983",
+        "kind": "flow_buy",
+        "price": 88336.2,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767296921.930377,
+        "datetime": "2026-01-01T19:48:41.930383",
+        "kind": "flow_buy",
+        "price": 88328.6,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767296938.2659035,
+        "datetime": "2026-01-01T19:48:58.265907",
+        "kind": "flow_buy",
+        "price": 88340.7,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_09e06fd2",
+    "symbol": "BTC-USDT",
+    "entry_price": 88340.7,
+    "mode": "flow",
+    "start_ts": 1767296948.5129051,
+    "end_ts": 1767297012.3437996,
+    "executed_trades": [
+      {
+        "timestamp": 1767296967.4229865,
+        "datetime": "2026-01-01T19:49:27.422999",
+        "kind": "flow_buy",
+        "price": 88365.9,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767296987.5941546,
+        "datetime": "2026-01-01T19:49:47.594160",
+        "kind": "flow_buy",
+        "price": 88371.8,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767297007.3315763,
+        "datetime": "2026-01-01T19:50:07.331582",
+        "kind": "flow_buy",
+        "price": 88391.7,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_09e06fd2",
+    "symbol": "BTC-USDT",
+    "entry_price": 88391.7,
+    "mode": "flow",
+    "start_ts": 1767297017.757767,
+    "end_ts": 1767297084.0147943,
+    "executed_trades": [
+      {
+        "timestamp": 1767297033.8952165,
+        "datetime": "2026-01-01T19:50:33.895220",
+        "kind": "flow_buy",
+        "price": 88401.8,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767297058.8853528,
+        "datetime": "2026-01-01T19:50:58.885357",
+        "kind": "flow_buy",
+        "price": 88418.9,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767297079.0103776,
+        "datetime": "2026-01-01T19:51:19.010384",
+        "kind": "flow_buy",
+        "price": 88426.6,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
+  },
+  {
+    "id": "bot_a9b7d0ec",
+    "symbol": "BTC-USDT",
+    "entry_price": 88330.0,
+    "mode": "flow",
+    "start_ts": 1767301942.4222884,
+    "end_ts": 1767301995.7569158,
+    "executed_trades": [
+      {
+        "timestamp": 1767301945.1243305,
+        "datetime": "2026-01-01T21:12:25.124333",
+        "kind": "flow_buy",
+        "price": 88374.0,
+        "portion": 0.3,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767301969.9808836,
+        "datetime": "2026-01-01T21:12:49.980887",
+        "kind": "flow_buy",
+        "price": 88388.2,
+        "portion": 0.5,
+        "profit_usdt": 0.0,
+        "simulated": false
+      },
+      {
+        "timestamp": 1767301990.7324917,
+        "datetime": "2026-01-01T21:13:10.732494",
+        "kind": "flow_buy",
+        "price": 88443.0,
+        "portion": 0.2,
+        "profit_usdt": 0.0,
+        "simulated": false
+      }
+    ],
+    "total_profit": 0.0,
+    "dry_run": false
   }
 ]

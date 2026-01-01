@@ -35,15 +35,12 @@ logger = logging.getLogger(__name__)
 # ====================== LOAD ENVIRONMENT ======================
 try:
     from dotenv import load_dotenv
-    THIS_DIR = Path(__file__).resolve().parent
-    ENV_FILE = THIS_DIR / ".env"
-    if not ENV_FILE.exists():
-        ENV_FILE = THIS_DIR.parent / ".env"
-    if ENV_FILE.exists():
-        load_dotenv(dotenv_path=str(ENV_FILE))
-        logger.info(f"✅ Loaded .env from {ENV_FILE}")
+    ROOT_ENV = Path(__file__).resolve().parent.parent / ".env"
+    if ROOT_ENV.exists():
+        load_dotenv(dotenv_path=str(ROOT_ENV))
+        logger.info(f"✅ Loaded .env from {ROOT_ENV}")
     else:
-        logger.warning("⚠️ No .env file found")
+        logger.warning("⚠️ No .env file found at project root")
 except ImportError:
     logger.warning("⚠️ python-dotenv not installed, using system env vars only")
 
@@ -147,17 +144,77 @@ def validate_credentials():
             "and API_PASSPHRASE in .env file or environment variables"
         )
 
-@retry_on_failure(max_retries=2)
-def _server_time() -> int:
-    """Obtém timestamp do servidor em milliseconds"""
+# ====================== TIME SYNC ======================
+# Cache do offset de tempo entre servidor e local para evitar chamadas repetidas
+_time_offset_ms: int = 0  # offset = server_time - local_time
+_time_offset_updated: float = 0.0  # quando foi atualizado
+_TIME_OFFSET_TTL: float = 300.0  # atualizar offset a cada 5 minutos
+_time_sync_failures: int = 0  # contador de falhas consecutivas
+
+
+def _sync_time_offset() -> bool:
+    """Sincroniza o offset de tempo com o servidor KuCoin.
+    
+    Retorna True se sincronizou com sucesso, False caso contrário.
+    """
+    global _time_offset_ms, _time_offset_updated, _time_sync_failures
+    
     try:
         rate_limit()
-        r = requests.get(f"{KUCOIN_BASE}/api/v1/timestamp", timeout=5)
+        local_before = int(time.time() * 1000)
+        r = requests.get(f"{KUCOIN_BASE}/api/v1/timestamp", timeout=10)
+        local_after = int(time.time() * 1000)
+        
         if r.status_code == 200:
-            return int(r.json().get("data", int(time.time() * 1000)))
+            server_time = int(r.json().get("data", 0))
+            if server_time > 0:
+                # Usar média do tempo local para calcular offset
+                local_avg = (local_before + local_after) // 2
+                _time_offset_ms = server_time - local_avg
+                _time_offset_updated = time.time()
+                _time_sync_failures = 0
+                
+                if abs(_time_offset_ms) > 1000:
+                    logger.info(f"🕐 Time offset synchronized: {_time_offset_ms}ms")
+                return True
     except Exception as e:
-        logger.warning(f"⚠️ Failed to get server time, using local: {e}")
-    return int(time.time() * 1000)
+        _time_sync_failures += 1
+        logger.warning(f"⚠️ Time sync failed (attempt {_time_sync_failures}): {e}")
+    
+    return False
+
+
+def _get_synced_timestamp() -> int:
+    """Obtém timestamp sincronizado com o servidor.
+    
+    Usa cache de offset para evitar chamadas repetidas ao servidor.
+    Se não conseguir sincronizar, usa tempo local com offset anterior.
+    """
+    global _time_offset_ms, _time_offset_updated, _time_sync_failures
+    
+    now = time.time()
+    
+    # Verificar se precisa re-sincronizar
+    needs_sync = (
+        _time_offset_updated == 0.0 or  # nunca sincronizou
+        (now - _time_offset_updated) > _TIME_OFFSET_TTL or  # TTL expirado
+        (_time_sync_failures > 0 and _time_sync_failures < 3)  # retry após falha
+    )
+    
+    if needs_sync:
+        _sync_time_offset()
+    
+    # Retornar tempo local + offset (mesmo que offset seja 0)
+    return int(now * 1000) + _time_offset_ms
+
+
+@retry_on_failure(max_retries=2)
+def _server_time() -> int:
+    """Obtém timestamp sincronizado em milliseconds.
+    
+    Usa sistema de cache de offset para melhor performance e resiliência.
+    """
+    return _get_synced_timestamp()
 
 def _build_headers(method: str, endpoint: str, body_str: str = "", use_server_time: bool = True) -> Dict[str, str]:
     """Constrói headers para endpoints privados (suporta V1 e V2).

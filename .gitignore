@@ -5,15 +5,7 @@ nohup.out
 .env
 .envrc
 .streamlit/
-
-# Virtualenvs
-.venv
-venv/
-env/
-/.pdm-python
-.pixi
-__pypackages__/
-
+=======
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
