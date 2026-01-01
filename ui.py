@@ -174,6 +174,25 @@ def _get_kill_on_start_guard():
 # _pid_alive, _kill_pid_best_effort, _kill_pid_sigkill_only movidos para ui_components.utils
 
 
+def _confirm_pid_dead(pid: int, checks: int = 3, delay_s: float = 0.1) -> bool:
+    """Confirma que um PID está realmente morto após múltiplas verificações.
+    
+    Args:
+        pid: O ID do processo a verificar
+        checks: Número de verificações a fazer
+        delay_s: Intervalo entre verificações em segundos
+    
+    Returns:
+        True se o PID estiver morto em todas as verificações, False caso contrário
+    """
+    for i in range(checks):
+        if _pid_alive(pid):
+            return False
+        if i < checks - 1 and delay_s > 0:
+            time.sleep(delay_s)
+    return True
+
+
 def _kill_active_bot_sessions_on_start(controller: BotController | None = None):
     """Kill any leftover running bot sessions when the app starts.
 
