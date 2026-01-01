@@ -122,6 +122,143 @@ def _create_driver(headless=False):
     return driver
 
 
+def _check_eternal_loading(driver, timeout=30):
+    """
+    Verifica se a página está em loading eterno (spinner infinito do Streamlit).
+    
+    Detecta:
+    - Spinner de "Running..." do Streamlit
+    - Status widget indicando execução
+    - Tela travada sem conteúdo interativo
+    
+    Args:
+        driver: WebDriver instance
+        timeout: Tempo máximo para aguardar o loading parar (segundos)
+        
+    Returns:
+        dict: {
+            'is_loading': bool - Se ainda está carregando
+            'is_stuck': bool - Se está travado (loading eterno)
+            'wait_time': float - Tempo que aguardou
+            'details': str - Detalhes do estado
+        }
+    """
+    result = {
+        'is_loading': False,
+        'is_stuck': False,
+        'wait_time': 0,
+        'details': ''
+    }
+    
+    # Seletores que indicam loading no Streamlit
+    loading_selectors = [
+        "[data-testid='stStatusWidget']",  # Widget de status
+        "[data-testid='stStatusWidgetRunningIcon']",  # Ícone "Running..."
+        "[data-testid='stAppRunningIcon']",  # App running icon
+        ".stSpinner",  # Spinner class
+        "[data-testid='stSpinner']",  # Spinner testid
+        ".stProgress",  # Progress bar
+    ]
+    
+    # Seletores que indicam que a página carregou
+    loaded_selectors = [
+        "[data-testid='stApp']",  # App container
+        "[data-testid='stSidebar']",  # Sidebar
+        "button",  # Qualquer botão
+        "input",  # Qualquer input
+        ".stButton",  # Botão Streamlit
+    ]
+    
+    start_time = time.time()
+    check_interval = 0.5  # Intervalo de verificação
+    was_loading = False
+    
+    while (time.time() - start_time) < timeout:
+        is_loading_now = False
+        
+        # Verifica indicadores de loading
+        for selector in loading_selectors:
+            try:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                for el in elements:
+                    if el.is_displayed():
+                        is_loading_now = True
+                        was_loading = True
+                        break
+            except Exception:
+                pass
+            if is_loading_now:
+                break
+        
+        # Se não está mais carregando, verifica se tem conteúdo
+        if not is_loading_now:
+            content_found = False
+            for selector in loaded_selectors:
+                try:
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                    for el in elements:
+                        if el.is_displayed():
+                            content_found = True
+                            break
+                except Exception:
+                    pass
+                if content_found:
+                    break
+            
+            if content_found:
+                result['wait_time'] = time.time() - start_time
+                result['details'] = 'Página carregada com sucesso'
+                return result
+        
+        result['is_loading'] = is_loading_now
+        time.sleep(check_interval)
+    
+    # Timeout atingido
+    result['wait_time'] = time.time() - start_time
+    result['is_stuck'] = True
+    
+    if was_loading:
+        result['details'] = f'Loading eterno detectado - spinner ativo por mais de {timeout}s'
+    else:
+        result['details'] = f'Página não carregou conteúdo após {timeout}s'
+    
+    return result
+
+
+def _wait_page_ready(driver, timeout=30, min_wait=3):
+    """
+    Aguarda a página estar pronta (não mais em loading).
+    
+    Args:
+        driver: WebDriver instance
+        timeout: Tempo máximo de espera
+        min_wait: Tempo mínimo para aguardar antes de verificar
+        
+    Returns:
+        dict: Resultado da verificação de loading
+    """
+    # Aguarda tempo mínimo para Streamlit iniciar
+    time.sleep(min_wait)
+    
+    # Verifica loading
+    load_status = _check_eternal_loading(driver, timeout=timeout - min_wait)
+    
+    if load_status['is_stuck']:
+        print(f"   ⚠️ ALERTA: {load_status['details']}")
+        # Tenta refresh como fallback
+        try:
+            driver.refresh()
+            time.sleep(5)
+            load_status_retry = _check_eternal_loading(driver, timeout=15)
+            if not load_status_retry['is_stuck']:
+                print("   ✓ Página carregou após refresh")
+                return load_status_retry
+        except Exception:
+            pass
+    
+    return load_status
+
+
 def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
     """
     Valida a tela inicial (dashboard) do aplicativo.
@@ -145,20 +282,38 @@ def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
         'inputs_found': [],
         'buttons_found': [],
         'sections_found': [],
+        'loading_status': None,
+        'is_stuck_loading': False,
         'errors': []
     }
     
     try:
         driver.get(url)
         print(f"   ✓ Página carregada: {url}")
-        time.sleep(8)  # Aguarda renderização do Streamlit (aumentado)
+        
+        # NOVA VERIFICAÇÃO: Detecta loading eterno
+        print("   ⏳ Verificando estado de carregamento...")
+        load_status = _wait_page_ready(driver, timeout=30, min_wait=3)
+        resultados['loading_status'] = load_status
+        resultados['is_stuck_loading'] = load_status['is_stuck']
+        
+        if load_status['is_stuck']:
+            resultados['errors'].append(f"Loading eterno: {load_status['details']}")
+            print(f"   ❌ {load_status['details']}")
+            driver.save_screenshot(screenshot_path.replace('.png', '_stuck.png'))
+            resultados['screenshot_stuck'] = screenshot_path.replace('.png', '_stuck.png')
+        else:
+            print(f"   ✓ Página pronta em {load_status['wait_time']:.1f}s")
         
         # Tenta fazer login se necessário
         print("   🔐 Tentando login automático...")
         try:
             login_ok = _try_auto_login(driver, max_attempts=3)
             if login_ok:
-                time.sleep(4)  # Aguarda carregamento pós-login
+                # Re-verifica loading após login
+                load_status_post = _wait_page_ready(driver, timeout=20, min_wait=2)
+                if load_status_post['is_stuck']:
+                    resultados['errors'].append(f"Loading pós-login: {load_status_post['details']}")
         except Exception as e:
             resultados['errors'].append(f"Login: {str(e)}")
         
@@ -292,14 +447,30 @@ def testar_start_bot(url, dry_run=True, screenshot_path='screenshot_bot_start.pn
     try:
         driver.get(url)
         print(f"   ✓ Página carregada: {url}")
-        time.sleep(8)  # Aumentado tempo de espera
+        
+        # NOVA VERIFICAÇÃO: Detecta loading eterno
+        print("   ⏳ Verificando estado de carregamento...")
+        load_status = _wait_page_ready(driver, timeout=30, min_wait=3)
+        resultados['loading_status'] = load_status
+        resultados['is_stuck_loading'] = load_status.get('is_stuck', False)
+        
+        if load_status['is_stuck']:
+            resultados['errors'].append(f"Loading eterno: {load_status['details']}")
+            print(f"   ❌ {load_status['details']}")
+            driver.save_screenshot(screenshot_path.replace('.png', '_stuck.png'))
+            # Continua mesmo assim para tentar coletar mais informações
+        else:
+            print(f"   ✓ Página pronta em {load_status['wait_time']:.1f}s")
         
         # Tenta fazer login se necessário
         print("   🔐 Tentando login automático...")
         try:
             login_ok = _try_auto_login(driver, max_attempts=3)
             if login_ok:
-                time.sleep(4)  # Aguarda carregamento pós-login
+                # Re-verifica loading após login
+                load_status_post = _wait_page_ready(driver, timeout=20, min_wait=2)
+                if load_status_post['is_stuck']:
+                    resultados['errors'].append(f"Loading pós-login: {load_status_post['details']}")
         except Exception as e:
             resultados['errors'].append(f"Login: {str(e)}")
         

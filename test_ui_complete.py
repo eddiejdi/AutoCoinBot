@@ -39,8 +39,79 @@ def log_result(name, passed, msg=""):
         RESULTS["failed"].append(f"{name}: {msg}")
         print(f"❌ {name}: {msg}")
 
+def check_eternal_loading(driver, timeout=20):
+    """
+    Verifica se a página está em loading eterno.
+    
+    Returns:
+        dict: {'is_stuck': bool, 'wait_time': float, 'details': str}
+    """
+    loading_selectors = [
+        "[data-testid='stStatusWidget']",
+        "[data-testid='stStatusWidgetRunningIcon']",
+        ".stSpinner",
+        "[data-testid='stSpinner']",
+    ]
+    
+    loaded_selectors = [
+        "[data-testid='stApp']",
+        "button",
+        "input",
+        ".stButton",
+    ]
+    
+    start_time = time.time()
+    was_loading = False
+    
+    while (time.time() - start_time) < timeout:
+        is_loading = False
+        
+        # Verifica indicadores de loading
+        for selector in loading_selectors:
+            try:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                for el in elements:
+                    if el.is_displayed():
+                        is_loading = True
+                        was_loading = True
+                        break
+            except:
+                pass
+            if is_loading:
+                break
+        
+        # Se não está carregando, verifica conteúdo
+        if not is_loading:
+            for selector in loaded_selectors:
+                try:
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                    for el in elements:
+                        if el.is_displayed():
+                            return {
+                                'is_stuck': False,
+                                'wait_time': time.time() - start_time,
+                                'details': 'Página carregada'
+                            }
+                except:
+                    pass
+        
+        time.sleep(0.5)
+    
+    return {
+        'is_stuck': True,
+        'wait_time': time.time() - start_time,
+        'details': f'Loading eterno detectado após {timeout}s'
+    }
+
 def wait_page_load(driver, timeout=15):
-    time.sleep(4)
+    time.sleep(2)
+    
+    # Verifica loading eterno primeiro
+    load_status = check_eternal_loading(driver, timeout=timeout)
+    if load_status['is_stuck']:
+        log_result("Loading Check", False, load_status['details'])
+        return False
+    
     try:
         WebDriverWait(driver, timeout).until(
             lambda d: d.execute_script("return document.readyState") == "complete"
@@ -49,9 +120,10 @@ def wait_page_load(driver, timeout=15):
         WebDriverWait(driver, timeout).until(
             EC.presence_of_element_located((By.TAG_NAME, "button"))
         )
-        time.sleep(2)
+        time.sleep(1)
+        return True
     except:
-        pass
+        return False
 
 def do_login(driver):
     """Tenta login se necessário."""

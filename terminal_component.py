@@ -287,8 +287,42 @@ def start_api_server(preferred_port: int = 8765) -> Optional[int]:
             self.send_header('Access-Control-Allow-Headers', '*')
             super().end_headers()
 
+        def log_message(self, format, *args):
+            # Suppress default logging to stderr
+            pass
+
         def do_GET(self):
             parsed = urllib.parse.urlparse(self.path)
+
+            # Serve /monitor → monitor_window.html
+            if parsed.path == '/monitor':
+                html_file = Path(__file__).parent / 'monitor_window.html'
+                if html_file.exists():
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(html_file.read_bytes())
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+                    self.wfile.write(b'monitor_window.html not found')
+                return
+
+            # Serve /report → report_window.html
+            if parsed.path == '/report':
+                html_file = Path(__file__).parent / 'report_window.html'
+                if html_file.exists():
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(html_file.read_bytes())
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+                    self.wfile.write(b'report_window.html not found')
+                return
+
+            # API endpoint: /api/logs
             if parsed.path != '/api/logs':
                 self.send_response(404)
                 self.end_headers()
@@ -705,6 +739,7 @@ def start_api_server(preferred_port: int = 8765) -> Optional[int]:
 
     Exposes GET /api/logs?bot=<bot_id>&limit=<n>
     Returns JSON array of log objects.
+    Also serves /monitor and /report HTML pages.
     """
     global _LOG_SERVER
 
@@ -730,8 +765,42 @@ def start_api_server(preferred_port: int = 8765) -> Optional[int]:
             self.send_header('Access-Control-Allow-Headers', '*')
             super().end_headers()
 
+        def log_message(self, format, *args):
+            # Suppress default logging to stderr
+            pass
+
         def do_GET(self):
             parsed = urllib.parse.urlparse(self.path)
+
+            # Serve /monitor → monitor_window.html
+            if parsed.path == '/monitor':
+                html_file = Path(__file__).parent / 'monitor_window.html'
+                if html_file.exists():
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(html_file.read_bytes())
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+                    self.wfile.write(b'monitor_window.html not found')
+                return
+
+            # Serve /report → report_window.html
+            if parsed.path == '/report':
+                html_file = Path(__file__).parent / 'report_window.html'
+                if html_file.exists():
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(html_file.read_bytes())
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+                    self.wfile.write(b'report_window.html not found')
+                return
+
+            # API endpoint: /api/logs
             if parsed.path != '/api/logs':
                 self.send_response(404)
                 self.end_headers()
