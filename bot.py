@@ -830,6 +830,7 @@ class EnhancedTradeBot:
         """Registra trade.
 
         Importante: BUY não é PnL realizado. PnL (profit) só é registrado para SELL.
+        Para fins de aprendizado, stop_loss também gera reward negativo (penalização).
         """
 
         # Determinar side de forma robusta
@@ -842,8 +843,11 @@ class EnhancedTradeBot:
             else:
                 side = "unknown"
 
+        # Flag para identificar eventos que devem gerar penalização no aprendizado
+        is_stop_loss = "stop_loss" in kind.lower()
+        
         profit = None
-        if side == "sell":
+        if side == "sell" or is_stop_loss:
             # Prefer executed_size (base qty) when available, because self.size may be unset
             # when the bot was configured with funds instead of size.
             base_qty = None
@@ -865,8 +869,14 @@ class EnhancedTradeBot:
                 except Exception:
                     profit = None
 
-        # Update learning after a realized SELL (reward = profit_pct).
-        if side == "sell" and profit is not None and self._learn_selected_params:
+        # Update learning after a realized SELL or stop_loss (reward = profit_pct).
+        # Stop-loss events geram penalização (profit negativo) para o aprendizado.
+        should_update_learning = (
+            (side == "sell" or is_stop_loss) and 
+            profit is not None and 
+            self._learn_selected_params
+        )
+        if should_update_learning:
             try:
                 # profit_pct normalized by entry notional (entry_price * qty)
                 base_qty_for_pct = None
@@ -881,6 +891,17 @@ class EnhancedTradeBot:
                 denom = float(self.entry_price) * float(base_qty_for_pct or 0.0)
                 if denom > 0:
                     profit_pct = (float(profit) / denom) * 100.0
+                    
+                    # Penalização extra para stop-loss: multiplica o prejuízo por 1.5
+                    # Isso faz o bot aprender a evitar configurações que levam a stop-loss
+                    if is_stop_loss and profit_pct < 0:
+                        profit_pct = profit_pct * 1.5  # penalização 50% extra
+                        self._log(
+                            "stop_loss_penalty_applied",
+                            original_pct=round(float(profit) / denom * 100.0, 4),
+                            penalized_pct=round(profit_pct, 4),
+                        )
+                    
                     db = self._get_db()
 
                     # Optional shaping for FLOW params: penalize wide spreads to prefer
@@ -908,6 +929,7 @@ class EnhancedTradeBot:
                                 base_reward=round(float(profit_pct), 6),
                                 spread_bps=round(float(spread_bps), 2),
                                 kind=kind,
+                                is_penalty=is_stop_loss,
                             )
                         except Exception:
                             continue

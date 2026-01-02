@@ -40,6 +40,26 @@ from .navigation import (
     _hide_sidebar_everywhere,
 )
 
+from .gauges import (
+    render_progress_gauge,
+    render_status_indicator,
+    render_metric_card,
+    render_pnl_badge,
+)
+
+from .terminal import (
+    render_log_terminal,
+    render_command_output,
+    render_log_legend,
+)
+
+from .dashboard import (
+    render_bot_overview_card,
+    render_summary_stats,
+    render_recent_trades_table,
+    render_eternal_mode_status,
+)
+
 __all__ = [
     # utils
     "set_logged_in",
@@ -66,4 +86,18 @@ __all__ = [
     "_build_relative_url_with_query_updates",
     "_hide_sidebar_for_fullscreen_pages",
     "_hide_sidebar_everywhere",
+    # gauges
+    "render_progress_gauge",
+    "render_status_indicator",
+    "render_metric_card",
+    "render_pnl_badge",
+    # terminal
+    "render_log_terminal",
+    "render_command_output",
+    "render_log_legend",
+    # dashboard
+    "render_bot_overview_card",
+    "render_summary_stats",
+    "render_recent_trades_table",
+    "render_eternal_mode_status",
 ]

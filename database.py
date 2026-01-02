@@ -97,6 +97,91 @@ class DatabaseManager:
         finally:
             conn.close()
 
+    def get_best_learned_param(self, symbol: str, param_name: str) -> dict | None:
+        """Retorna o melhor parâmetro aprendido (maior mean_reward com n >= 3).
+        
+        Returns:
+            Dict com param_value, mean_reward, n ou None se não houver dados suficientes.
+        """
+        conn = self.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                """
+                SELECT param_value, mean_reward, n
+                FROM learning_stats
+                WHERE symbol = ? AND param_name = ? AND n >= 3
+                ORDER BY mean_reward DESC
+                LIMIT 1
+                """,
+                (symbol, param_name)
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+        except Exception as e:
+            logger.error(f"Erro ao buscar best_learned_param: {e}")
+            return None
+        finally:
+            conn.close()
+
+    def get_learning_summary(self, symbol: str) -> dict:
+        """Retorna resumo de aprendizado para um símbolo.
+        
+        Returns:
+            Dict com total_rewards, positive_rewards, negative_rewards,
+            avg_reward, best_params por param_name.
+        """
+        conn = self.get_connection()
+        cur = conn.cursor()
+        try:
+            # Estatísticas gerais do histórico
+            cur.execute(
+                """
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN reward > 0 THEN 1 ELSE 0 END) as positive,
+                    SUM(CASE WHEN reward < 0 THEN 1 ELSE 0 END) as negative,
+                    AVG(reward) as avg_reward,
+                    SUM(reward) as total_reward
+                FROM learning_history
+                WHERE symbol = ?
+                """,
+                (symbol,)
+            )
+            row = cur.fetchone()
+            summary = dict(row) if row else {}
+            
+            # Melhores parâmetros por tipo
+            cur.execute(
+                """
+                SELECT param_name, param_value, mean_reward, n
+                FROM learning_stats
+                WHERE symbol = ? AND n >= 3
+                ORDER BY param_name, mean_reward DESC
+                """,
+                (symbol,)
+            )
+            rows = cur.fetchall()
+            
+            best_params = {}
+            for r in rows:
+                pname = r['param_name']
+                if pname not in best_params:
+                    best_params[pname] = {
+                        'value': r['param_value'],
+                        'mean_reward': r['mean_reward'],
+                        'n': r['n']
+                    }
+            
+            summary['best_params'] = best_params
+            return summary
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar learning_summary: {e}")
+            return {}
+        finally:
+            conn.close()
+
     def choose_bandit_param(self, symbol: str, param_name: str, candidates: list, epsilon: float = 0.1) -> float:
         """
         Escolhe um parâmetro usando estratégia epsilon-greedy baseada em histórico de recompensas.

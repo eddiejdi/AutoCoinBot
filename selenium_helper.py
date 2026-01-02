@@ -37,7 +37,12 @@ def get_chrome_driver(headless=True, show_browser=False):
     # Usar webdriver_manager para gerenciar ChromeDriver automaticamente
     try:
         from webdriver_manager.chrome import ChromeDriverManager
-        service = Service(ChromeDriverManager().install())
+        from webdriver_manager.core.os_manager import ChromeType
+        # Usar ChromeType.CHROMIUM se Chromium estiver instalado
+        if os.path.exists('/usr/bin/chromium'):
+            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+        else:
+            service = Service(ChromeDriverManager().install())
     except ImportError:
         # Fallback para caminhos padrão
         chrome_paths = [
