@@ -378,14 +378,17 @@
         const bot = u.searchParams.get('bot');
 
         // Home should go back to the Streamlit app, not this report server.
+        // In production (Fly.io), nginx proxies both Streamlit and API on same origin.
         const homeRaw = u.searchParams.get('home') || '/?view=dashboard';
         let home = homeRaw;
         try {
           if (!/^https?:\/\//i.test(String(homeRaw || ''))) {
+            // Use origin (current host:port) to work in both local and production
+            const origin = window.location.origin;
             if (String(homeRaw).startsWith('/')) {
-              home = `${u.protocol}//${u.hostname}:8501${homeRaw}`;
+              home = `${origin}${homeRaw}`;
             } else if (String(homeRaw).startsWith('?')) {
-              home = `${u.protocol}//${u.hostname}:8501/${homeRaw}`;
+              home = `${origin}/${homeRaw}`;
             }
           }
         } catch (_) {}
