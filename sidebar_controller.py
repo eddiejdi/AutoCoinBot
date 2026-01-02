@@ -1,3 +1,18 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  ⚠️  ATENÇÃO: Widgets com key= sincronizados com ui.py session_state        ║
+# ║                                                                              ║
+# ║  Se ui.py inicializa st.session_state["X"] = valor, então o widget aqui     ║
+# ║  com key="X" NÃO DEVE ter parâmetro value=. Caso contrário, Streamlit gera  ║
+# ║  warning e pode causar comportamento inesperado.                             ║
+# ║                                                                              ║
+# ║  Exemplo CORRETO:                                                            ║
+# ║    ui.py:               st.session_state["target_profit_pct"] = 2.0          ║
+# ║    sidebar_controller:  st.number_input(..., key="target_profit_pct")  # OK  ║
+# ║                                                                              ║
+# ║  Exemplo ERRADO (causa warning):                                             ║
+# ║    st.number_input(..., value=2.0, key="target_profit_pct")  # ❌ ERRADO     ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
 import streamlit as st
 from pathlib import Path
 import time

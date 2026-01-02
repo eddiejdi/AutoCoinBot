@@ -1,111 +1,142 @@
-# Copilot Instructions — AutoCoinBot (resumo prático)
+# Copilot Instructions — AutoCoinBot
 
-> **🤖 Default Agent: `dev-senior`** — Ver [agents.json](agents.json) para configuração de agentes.  
-> **📚 Manual de Treinamento:** [AGENTE_TREINAMENTO.md](../AGENTE_TREINAMENTO.md)
+Streamlit UI que gerencia subprocessos de trading bots. Logs e trades são persistidos em SQLite (`trades.db`). UI consome API HTTP local (porta 8765) para logs em tempo real.
 
-**Objetivo breve:** Streamlit UI controla subprocessos de bots que escrevem logs e trades em `trades.db`. A UI consome um terminal HTTP local para render de logs em tempo real.
+## Arquitetura (fluxo de dados)
 
----
-
-## 1. Ambiente & Quickstart
-
-### Setup inicial
-```bash
-python3 -m venv venv
-source venv/bin/activate  # Linux/macOS/WSL
-pip install -r requirements.txt
+```
+streamlit_app.py → ui.py → bot_controller.py → subprocess(bot_core.py)
+                              ↓                        ↓
+                        bot_sessions (DB)        bot_logs/trades (DB)
+                                                       ↑
+                              terminal_component.py ←──┘ (HTTP API :8765)
 ```
 
-### Executar a aplicação
+**Arquivos-chave:**
+- `bot_controller.py` — monta comando CLI e grava `bot_sessions`
+- `bot_core.py` / `bot.py` (`EnhancedTradeBot`) — lógica de trading, modos: `sell`, `buy`, `mixed`, `flow`
+- `database.py` — schema SQLite: `bot_sessions`, `bot_logs`, `trades`, `learning_stats`, `eternal_runs`
+- `terminal_component.py` — API HTTP (`/api/logs`, `/api/trades`, `/monitor`, `/report`)
+- `ui_components/` — módulos: `utils.py`, `theme.py`, `navigation.py`, `gauges.py`, `terminal.py`, `dashboard.py`
+
+## Comandos essenciais
+
 ```bash
-# Terminal 1: Streamlit UI
+# Ativar venv (obrigatório)
+source venv/bin/activate
+
+# Streamlit
 python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true
 
-# Terminal 2: Bot (dry-run recomendado)
-python -u bot_core.py --bot-id test_dry_1 --symbol BTC-USDT --entry 30000 --targets "2:0.3" --interval 5 --size 0.1 --funds 0 --dry
+# Bot dry-run (recomendado para testes)
+python -u bot_core.py --bot-id test_1 --symbol BTC-USDT --entry 90000 --targets "2:0.3,5:0.5" --interval 5 --size 0.001 --funds 0 --dry
+
+# Bot eternal mode (reinicia após cada target)
+python -u bot_core.py --bot-id eternal_1 --symbol BTC-USDT --entry 90000 --targets "2:1" --eternal --dry
+
+# Testes
+./run_tests.sh                    # pytest (exclui Selenium)
+RUN_SELENIUM=1 ./run_tests.sh     # inclui testes visuais
+python -m py_compile <file>.py    # verificar sintaxe
+
+# Docker
+docker-compose up -d              # subir containers (streamlit + api)
+docker-compose logs -f            # ver logs
+docker-compose down               # parar
 ```
 
----
+## Padrões críticos do projeto
 
-## 2. Arquitetura (arquivos-chave)
-
-| Arquivo | Descrição |
-|---------|-----------|
-| [streamlit_app.py](../streamlit_app.py) | Entrada da app + persistência `.login_status` |
-| [ui.py](../ui.py) | Lógica de UI, guardas multi-tab/kill-on-start, render do terminal |
-| [bot_controller.py](../bot_controller.py) | Compõe o comando do subprocess e grava `bot_sessions` |
-| [bot_core.py](../bot_core.py) / [bot.py](../bot.py) | Lógica do bot; usa `DatabaseLogger`/`database.py` |
-| [terminal_component.py](../terminal_component.py) | API HTTP local (~8765) que serve logs para o widget |
-| [database.py](../database.py) | Schema + helpers (tabelas: `bot_sessions`, `bot_logs`, `trades`) |
-| [api.py](../api.py) | Integração com KuCoin API e lookup de secrets |
-
-### Tabelas principais do banco de dados
-- **`bot_sessions`**: sessões de bots (id, status, PID, config)
-- **`bot_logs`**: logs em tempo real dos bots
-- **`trades`**: histórico de trades executados
-- **`learning_stats`**: estatísticas de aprendizado ML
-- **`learning_history`**: histórico de treinamento
-
----
-
-## 3. Convenções importantes (não alterar sem checar)
-
-- **Evite `print()`** em código comprometido; use `DatabaseLogger` ou `logging` (ver `bot_core.py`)
-- **CLI do bot**: se alterar flags/args, atualizar **simultaneamente** `bot_core.py` e `bot_controller.py` (builder vs actor devem estar sincronizados)
-- **Schema do DB**: se mudar, atualizar `database.py` e **todos** os callers que tocam as colunas modificadas
-- **Terminal API**: preservar formato JSON e headers CORS em `terminal_component.py` (UI depende da shape)
-- **Multi-tab/kill-on-start**: implementado via `ui.py` + flags no DB (prefira persistência DB a estados em memória)
-
----
-
-## 4. Integrações e pontos exteriores
-
-| Componente | Detalhe |
-|------------|---------|
-| **DB SQLite** | `trades.db` na raiz do repo (ver `database.py`) |
-| **Terminal API** | `http://localhost:8765/api/logs?bot=<bot_id>` usado pela UI |
-| **Secrets** | `.env` local ou `st.secrets` para `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `API_KEY_VERSION`, `KUCOIN_BASE`, `TRADES_DB` |
-
----
-
-## 5. Comandos úteis e testes
-
-```bash
-# Verificar sintaxe
-python -m py_compile <file>.py
-
-# Testes unitários
-pytest tests/
-
-# Testes completos (APP_ENV=dev por padrão)
-./run_tests.sh
-
-# Testes Selenium/E2E (requer Chrome + chromedriver)
-RUN_SELENIUM=1 ./run_tests.sh
-
-# Inspeção do banco de dados
-python scripts/db_inspect.py
+### 1. CLI do bot sincronizado
+Se alterar flags em `bot_core.py` (argparse), **atualizar também** `bot_controller.py` (builder do comando):
+```python
+# bot_core.py: --eternal flag
+parser.add_argument("--eternal", action="store_true")
+# bot_controller.py: deve adicionar ao cmd[]
+if eternal_mode:
+    cmd.append("--eternal")
 ```
 
----
+### 2. ⚠️ UI NÃO TRAVAR (ui.py + sidebar_controller.py)
+**CRÍTICO**: Alterações em `ui.py` podem causar "loading eterno". Regras:
+```python
+# ❌ ERRADO - causa warning e possível travamento
+st.session_state["target_profit_pct"] = 2.0  # em ui.py
+st.number_input(..., value=2.0, key="target_profit_pct")  # em sidebar_controller.py
 
-## 6. Checklist rápido antes de PRs
+# ✅ CORRETO - session_state OU value, nunca ambos
+st.session_state["target_profit_pct"] = 2.0  # em ui.py
+st.number_input(..., key="target_profit_pct")  # SEM value= no widget
+```
+**Antes de alterar ui.py**: `git checkout main -- ui.py` para restaurar versão estável.
 
-- [ ] **Alterou CLI do bot?** → testar dry-run e validar `bot_sessions`/`bot_logs` no DB
-- [ ] **Alterou schema?** → adicionar migração/nota e atualizar `database.py` callers
-- [ ] **Alterou terminal API/UI?** → validar widget e headers CORS
-- [ ] **Adicionou prints?** → substituir por `DatabaseLogger`
-- [ ] **Alterou UI?** → rodar `python -m py_compile ui.py` e testar navegação por tabs
+### 3. Logging via DatabaseLogger (não use `print()`)
+```python
+# bot_core.py
+from database import DatabaseManager
+logger = DatabaseLogger(db_manager, bot_id)
+logger.info("mensagem")  # grava em bot_logs
+```
 
----
+### 4. Targets com custos de trading
+`bot.py` ajusta targets para compensar taxas (~0.25%):
+```python
+self._total_trading_cost_pct = self._buy_fee_pct + self._sell_fee_pct + self._slippage_pct
+# Target 2% → preço precisa subir 2.25% para lucro líquido de 2%
+```
 
-## 7. Referências rápidas
+### 4. Bandit learning para parâmetros
+`database.py` implementa epsilon-greedy para auto-tuning com recompensa/penalização:
+```python
+# Escolher parâmetro (25% exploração, 75% greedy)
+db.choose_bandit_param(symbol, "take_profit_trailing_pct", candidates=[0.2, 0.5, 1.0], epsilon=0.25)
 
-- [AGENTE_TREINAMENTO.md](../AGENTE_TREINAMENTO.md) — Manual completo de treinamento
-- [agents.json](agents.json) — Configuração de agentes especializados
-- [tests/](../tests/) — Testes unitários e E2E
-- [scripts/](../scripts/) — Scripts de manutenção e inspeção
+# Atualizar reward após SELL (profit_pct positivo = recompensa, negativo = penalização)
+db.update_bandit_reward(symbol, param_name, param_value, reward=profit_pct)
 
----
+# Stop-loss gera penalização extra (profit * 1.5) para evitar configurações ruins
+# Consultar melhor parâmetro aprendido
+db.get_best_learned_param(symbol, "take_profit_trailing_pct")  # retorna {value, mean_reward, n}
+db.get_learning_summary(symbol)  # resumo geral com positive/negative rewards
+```
 
-**Nota:** Este documento contém as instruções essenciais para agentes Copilot. Para documentação detalhada, consulte [AGENTE_TREINAMENTO.md](../AGENTE_TREINAMENTO.md).
+### 5. Selenium com webdriver_manager
+Use `selenium_helper.py` para configuração automática:
+```python
+from selenium_helper import get_chrome_driver
+driver = get_chrome_driver(headless=True)
+```
+
+### 6. Eternal Mode (reinício automático)
+Flag `--eternal` faz o bot reiniciar automaticamente após atingir todos os targets:
+```python
+# bot_core.py detecta flag
+if args.eternal:
+    # Após completar targets, registra ciclo em eternal_runs e reinicia
+    db.add_eternal_run(bot_id, run_number, symbol, entry_price, total_targets)
+    # ... executa ciclo ...
+    db.complete_eternal_run(run_id, exit_price, profit_pct, profit_usdt, targets_hit)
+    # Loop infinito: bot não para até SIGTERM
+```
+
+## Schema DB (tabelas principais)
+
+| Tabela | Colunas-chave |
+|--------|---------------|
+| `bot_sessions` | id, pid, symbol, status, entry_price, dry_run |
+| `bot_logs` | bot_id, timestamp, level, message |
+| `trades` | symbol, side, price, size, profit, dry_run, order_id |
+| `learning_stats` | symbol, param_name, param_value, mean_reward, n |
+| `eternal_runs` | bot_id, run_number, entry_price, exit_price, profit_pct, status |
+
+## Checklist antes de PRs
+
+- [ ] Alterou CLI? → sincronizar `bot_core.py` ↔ `bot_controller.py`
+- [ ] Alterou schema? → atualizar `database.py` e todos os callers
+- [ ] Alterou API HTTP? → preservar JSON shape e headers CORS
+- [ ] Adicionou prints? → substituir por `DatabaseLogger`
+- [ ] Alterou UI? → `python -m py_compile ui.py` e testar navegação
+
+## Secrets
+
+`.env` ou `st.secrets`: `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `KUCOIN_BASE`, `TRADES_DB`

@@ -1,3 +1,24 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  ⚠️  ATENÇÃO: NÃO MODIFICAR ESTRUTURA DESTE ARQUIVO SEM TESTAR UI           ║
+# ║                                                                              ║
+# ║  Este arquivo controla toda a renderização do Streamlit. Alterações          ║
+# ║  incorretas causam "loading eterno" (tela travada).                          ║
+# ║                                                                              ║
+# ║  ANTES DE QUALQUER ALTERAÇÃO:                                                ║
+# ║  1. Faça backup: git stash ou git checkout -b feature/minha-mudanca          ║
+# ║  2. Teste localmente: python -m streamlit run streamlit_app.py               ║
+# ║  3. Valide com Selenium: python selenium_dashboard.py                        ║
+# ║  4. Se travar, restaure: git checkout main -- ui.py                          ║
+# ║                                                                              ║
+# ║  PADRÕES CRÍTICOS (não violar):                                              ║
+# ║  - Imports devem ter try/except para fallback                                ║
+# ║  - Não usar st.write() para debug (causa reloads infinitos)                  ║
+# ║  - session_state init deve ser idempotente (checar "if X not in")            ║
+# ║  - Widgets com key= NÃO devem ter value= se session_state já inicializa      ║
+# ║                                                                              ║
+# ║  Última versão estável: commit 1b1a6d4 (main)                                ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
 try:
     import html
 except Exception:
@@ -60,6 +81,7 @@ def set_logged_in(status):
         if os.path.exists(LOGIN_FILE):
             os.remove(LOGIN_FILE)
 
+# ⚠️ CRÍTICO: Imports com try/except - NÃO REMOVER os fallbacks
 try:
     # Quando importado como pacote (AutoCoinBot.ui)
     from .bot_controller import BotController
@@ -4559,8 +4581,13 @@ def _render_full_ui(controller=None):
     # Remover coluna lateral (sidebar) globalmente
     # _hide_sidebar_everywhere()
 
-    # ---------- Session state initialization (defensive) ----------
-    # Ensure commonly used keys exist to avoid AttributeError during render.
+    # ╔════════════════════════════════════════════════════════════════════════╗
+    # ║  ⚠️ CRÍTICO: Session State Initialization                              ║
+    # ║  - SEMPRE usar "if X not in st.session_state" antes de atribuir        ║
+    # ║  - Se um widget usa key="X", NÃO definir value= no widget              ║
+    # ║  - Violação causa: "widget created with default value but also had     ║
+    # ║    its value set via Session State API" → pode travar a UI             ║
+    # ╚════════════════════════════════════════════════════════════════════════╝
     try:
         if not isinstance(st.session_state.get("active_bots", None), list):
             st.session_state["active_bots"] = []
@@ -4575,7 +4602,7 @@ def _render_full_ui(controller=None):
         if "_equity_snapshot_started" not in st.session_state:
             st.session_state["_equity_snapshot_started"] = False
         if "target_profit_pct" not in st.session_state:
-            st.session_state["target_profit_pct"] = 2.0
+            st.session_state["target_profit_pct"] = 2.0  # ⚠️ sidebar_controller.py widget NÃO deve ter value=
         if "monitor_bg_pack" not in st.session_state:
             st.session_state["monitor_bg_pack"] = None
         if "monitor_bg" not in st.session_state:
