@@ -227,6 +227,186 @@ git diff origin/main --stat
 git log origin/main..HEAD --oneline
 ```
 
+## 🖥️ Selenium e Testes Visuais
+
+### Configuração do Chrome para containers
+O `selenium_helper.py` configura Chrome/Chromium com opções necessárias para rodar em containers sem display:
+
+```python
+from selenium_helper import get_chrome_driver
+
+# Headless por padrão
+driver = get_chrome_driver(headless=True)
+
+# Com browser visível (requer DISPLAY ou Xvfb)
+driver = get_chrome_driver(show_browser=True)
+```
+
+### ⚠️ Problema comum: "Chrome instance exited"
+Em containers sem X11/display, Selenium falha com erro `SessionNotCreatedException`. Soluções:
+
+1. **Instalar Xvfb** (recomendado para CI):
+```bash
+apt-get install -y xvfb
+xvfb-run python selenium_dashboard.py
+```
+
+2. **Usar pyvirtualdisplay** (Python):
+```python
+from pyvirtualdisplay import Display
+display = Display(visible=0, size=(1920, 1080))
+display.start()
+# ... usar Selenium ...
+display.stop()
+```
+
+3. **Validação alternativa sem Selenium**:
+```python
+import requests
+
+# Testar Streamlit
+r = requests.get('http://localhost:8501', timeout=10)
+assert r.status_code == 200
+
+# Testar Health
+r = requests.get('http://localhost:8501/_stcore/health', timeout=5)
+assert 'ok' in r.text.lower()
+
+# Testar Database
+from database import DatabaseManager
+db = DatabaseManager()
+active = db.get_active_bots()  # deve funcionar
+```
+
+### Testes Selenium disponíveis
+```bash
+# Dashboard completo
+python selenium_dashboard.py
+
+# Página de learning
+python selenium_learning.py
+
+# Relatório
+python selenium_report.py
+
+# Lista de trades
+python selenium_trades.py
+```
+
+## 📊 UI: Campo "Último Evento" na lista de bots
+
+### Estrutura da coluna
+A lista de bots ativos exibe o último evento registrado no log:
+
+```python
+# ui.py - buscar último log
+logs = db_for_logs.get_bot_logs(bot_id, limit=1)
+if logs:
+    last_log = logs[0]
+    msg = last_log.get('message', '')
+    ts = last_log.get('timestamp', '')  # ⚠️ É um FLOAT, não string!
+```
+
+### ⚠️ Timestamp é float, não string
+O banco SQLite armazena timestamp como `float` (Unix timestamp). Converter antes de exibir:
+
+```python
+# ❌ ERRADO - causa erro "float object is not subscriptable"
+ts_short = ts[:19]
+
+# ✅ CORRETO - converter para datetime
+if isinstance(ts, (int, float)):
+    from datetime import datetime
+    ts = datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+ts_short = str(ts)[:19] if ts else ''
+```
+
+### Extrair evento do JSON
+Os logs são salvos como JSON. Extrair campo `event` se disponível:
+
+```python
+import json
+msg = log.get('message', '')
+try:
+    data = json.loads(msg)
+    if 'event' in data:
+        event_display = data['event'].upper().replace('_', ' ')
+        # "order_success" → "ORDER SUCCESS"
+except:
+    # Fallback: usar mensagem truncada
+    event_display = msg[:40] + "..." if len(msg) > 40 else msg
+```
+
+### Eventos comuns do bot
+| Evento JSON | Display | Significado |
+|-------------|---------|-------------|
+| `price_update` | PRICE UPDATE | Atualização de preço |
+| `order_success` | ORDER SUCCESS | Ordem executada |
+| `order_failed` | ORDER FAILED | Ordem falhou |
+| `target_hit` | TARGET HIT | Target atingido |
+| `stop_loss` | STOP LOSS | Stop-loss disparado |
+| `simulated_order` | SIMULATED ORDER | Ordem dry-run |
+
+## 🔄 Padrões de Produção vs Local
+
+### Detecção de ambiente
+```python
+import os
+
+# Fly.io define automaticamente FLY_APP_NAME
+is_production = bool(os.environ.get("FLY_APP_NAME"))
+
+# Ou usar APP_ENV
+APP_ENV = os.environ.get('APP_ENV', 'dev').lower()
+is_hom = APP_ENV in ('hom', 'homologation', 'prod_hom')
+```
+
+### URLs condicionais
+```python
+# ⚠️ CRÍTICO: URLs hardcoded (127.0.0.1) não funcionam em produção
+
+# ❌ ERRADO - só funciona local
+report_url = f"http://127.0.0.1:{api_port}/report"
+
+# ✅ CORRETO - funciona em ambos
+is_production = bool(os.environ.get("FLY_APP_NAME"))
+if is_production:
+    report_url = "/report"  # URL relativa
+else:
+    report_url = f"http://127.0.0.1:{api_port}/report"
+```
+
+### Arquivos HTML com JavaScript
+Os arquivos HTML (`report_window.html`, `monitor_window.html`) usam `window.location.origin` para APIs:
+
+```javascript
+// ✅ Padrão correto para produção
+const apiUrl = new URL('/api/trades', window.location.origin);
+
+// ❌ Evitar hardcoded
+const apiUrl = 'http://127.0.0.1:8765/api/trades';  // quebra em produção
+```
+
 ## Secrets
 
 `.env` ou `st.secrets`: `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `KUCOIN_BASE`, `TRADES_DB`
+
+## 📝 Lições Aprendidas (Histórico)
+
+### 2026-01-02: URLs dinâmicas para Fly.io
+- **Problema**: iframe de report retornava 404 em `autocoinbot.fly.dev`
+- **Causa**: URL hardcoded `http://127.0.0.1:port/report`
+- **Solução**: Detectar `FLY_APP_NAME` e usar URLs relativas em produção
+- **Arquivos**: `ui.py` (3 locais corrigidos)
+
+### 2026-01-02: Campo "Último Evento"
+- **Problema**: Campo mostrava "Sem eventos" mesmo com logs
+- **Causa**: Timestamp salvo como float, código tentava fazer `ts[:19]`
+- **Solução**: Converter float para datetime string antes de formatar
+- **Arquivos**: `ui.py` (função de display de bots ativos)
+
+### 2026-01-02: Selenium em container
+- **Problema**: `SessionNotCreatedException: Chrome instance exited`
+- **Causa**: Container sem X11/display
+- **Solução**: Validação alternativa com requests + testes de database
+- **Futuro**: Instalar Xvfb no container para testes visuais completos
