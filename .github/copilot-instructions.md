@@ -140,3 +140,12 @@ if args.eternal:
 ## Secrets
 
 `.env` ou `st.secrets`: `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `KUCOIN_BASE`, `TRADES_DB`
+
+## 📝 Lições Aprendidas
+
+### 2026-01-02: Scripts de debug não devem ter prefixo test_
+- **Problema**: pytest coletava arquivos `test_imports.py`, `test_validation_debug.py` que são scripts de debug, não testes
+- **Causa**: Arquivos com prefixo `test_` são coletados automaticamente pelo pytest
+- **Solução**: Renomear para `debug_*.py`: `debug_imports.py`, `debug_validation.py`, `debug_loading_check.py`
+- **Arquivos**: Scripts de debug na raiz do projeto
+- **Regra**: Nunca criar arquivos de debug com prefixo `test_`, usar `debug_` ou `check_`
