@@ -2,6 +2,40 @@
 
 Streamlit UI que gerencia subprocessos de trading bots. Logs e trades são persistidos em SQLite (`trades.db`). UI consome API HTTP local (porta 8765) para logs em tempo real.
 
+## 🧠 REGRA DE APRENDIZADO CONTÍNUO
+
+**OBRIGATÓRIO**: Toda vez que for feito um **commit** ou **checkpoint**, executar a rotina de aprendizado:
+
+1. **Identificar lições aprendidas** na sessão atual:
+   - Bugs corrigidos e suas causas raiz
+   - Padrões que funcionaram vs não funcionaram
+   - Erros de CI/CD e soluções
+   - Peculiaridades do ambiente (container, produção, etc)
+
+2. **Atualizar este documento** (`copilot-instructions.md`):
+   - Adicionar na seção "📝 Lições Aprendidas" com data
+   - Criar nova seção se o tópico for recorrente/importante
+   - Incluir código de exemplo quando relevante
+
+3. **Formato da entrada**:
+   ```markdown
+   ### YYYY-MM-DD: Título curto do problema
+   - **Problema**: Descrição do que aconteceu
+   - **Causa**: Por que aconteceu
+   - **Solução**: Como foi resolvido
+   - **Arquivos**: Quais arquivos foram afetados
+   ```
+
+4. **Commit junto com as alterações**:
+   ```bash
+   git add .github/copilot-instructions.md
+   git commit -m "docs: atualizar treinamento com lições da sessão"
+   ```
+
+**Por quê?** Isso garante que o conhecimento adquirido seja persistido e reutilizado em sessões futuras, evitando repetir os mesmos erros.
+
+---
+
 ## Arquitetura (fluxo de dados)
 
 ```
