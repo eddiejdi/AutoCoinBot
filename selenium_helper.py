@@ -18,11 +18,23 @@ def get_chrome_driver(headless=True, show_browser=False):
     """
     options = Options()
     
-    # Configurações básicas
+    # Configurações para container/CI sem display
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
+    options.add_argument('--disable-software-rasterizer')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--disable-background-networking')
+    options.add_argument('--disable-sync')
     options.add_argument('--incognito')
+    options.add_argument('--disable-setuid-sandbox')
+    
+    # Opções para ambiente sem X11/display
+    options.add_argument('--disable-features=VizDisplayCompositor')
+    options.add_argument('--use-gl=swiftshader')
+    options.add_argument('--disable-gl-drawing-for-tests')
+    options.add_argument('--disable-3d-apis')
+    options.add_argument('--window-size=1920,1080')
     
     # Headless mode
     env_show = os.environ.get('SHOW_BROWSER', '0').lower() in ('1', 'true', 'yes')

@@ -4767,7 +4767,18 @@ def _render_full_ui(controller=None):
         api_port = st.session_state.get("_api_port")
         if api_port:
             theme_query = str(theme_qs).lstrip('&')
-            report_url = f"http://127.0.0.1:{int(api_port)}/report?{theme_query}" if theme_query else f"http://127.0.0.1:{int(api_port)}/report"
+            
+            # ⚠️ CRÍTICO: Detectar ambiente para URL correta do iframe
+            # Em produção (Fly.io), FLY_APP_NAME está definido - usar URL relativa
+            # Localmente, usar localhost:api_port
+            is_production = bool(os.environ.get("FLY_APP_NAME"))
+            
+            if is_production:
+                # Em produção: iframe carrega do mesmo domínio (URLs relativas funcionam)
+                report_url = f"/report?{theme_query}" if theme_query else "/report"
+            else:
+                # Local: usar localhost com porta da API
+                report_url = f"http://127.0.0.1:{int(api_port)}/report?{theme_query}" if theme_query else f"http://127.0.0.1:{int(api_port)}/report"
 
             # Provide a safe return URL for the HTML window to navigate back.
             try:
@@ -4775,7 +4786,10 @@ def _render_full_ui(controller=None):
                     st_port = int(st.get_option("server.port"))
                 except Exception:
                     st_port = 8501
-                home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
+                if is_production:
+                    home_url = "/?view=dashboard"
+                else:
+                    home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
                 home_val = urllib.parse.quote(home_url, safe='')
             except Exception:
                 home_val = ''
@@ -5204,15 +5218,15 @@ def _render_full_ui(controller=None):
                             st.success(f"Kill -9 aplicado em {len(killed_ids)} bot(s).")
                             # st.rerun()  # Removido para evitar reload desnecessário
 
-            header_cols = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
+            header_cols = st.columns([2.0, 1.8, 1.0, 3.5, 0.8, 1.5])
             header_cols[0].markdown("**🆔 Bot ID**")
             header_cols[1].markdown("**📊 Símbolo**")
             header_cols[2].markdown("**⚙️ Modo**")
-            header_cols[3].markdown("**📑 Relatório**")
+            header_cols[3].markdown("**📝 Último Evento**")
             header_cols[4].markdown("**✅ Sel.**")
-            header_cols[5].markdown("**📈 Progresso**")
+            header_cols[5].markdown("**📜 Log**")
 
-            db_for_progress = DatabaseManager()
+            db_for_logs = DatabaseManager()
             target_pct_global = st.session_state.get("target_profit_pct", 2.0)
 
             for bot_id in list(active_bots):
@@ -5221,6 +5235,37 @@ def _render_full_ui(controller=None):
                 bot_info = controller.registry.get_bot_info(bot_id)
                 symbol = (bot_info.get('symbol') if bot_info else None) or (sess.get('symbol') if sess else None) or 'N/A'
                 mode = (bot_info.get('mode') if bot_info else None) or (sess.get('mode') if sess else None) or 'N/A'
+
+                # Buscar último evento dos logs
+                last_event = "Sem eventos"
+                try:
+                    logs = db_for_logs.get_bot_logs(bot_id, limit=1)
+                    if logs:
+                        last_log = logs[0]
+                        msg = last_log.get('message', '')
+                        ts = last_log.get('timestamp', '')
+                        # Tentar extrair event do JSON, senão usar mensagem truncada
+                        try:
+                            import json as _json
+                            data = _json.loads(msg)
+                            if 'event' in data:
+                                msg = data['event'].upper().replace('_', ' ')
+                            elif len(msg) > 40:
+                                msg = msg[:40] + "..."
+                        except Exception:
+                            if len(msg) > 40:
+                                msg = msg[:40] + "..."
+                        # Converter timestamp float para string se necessário
+                        if isinstance(ts, (int, float)):
+                            try:
+                                from datetime import datetime
+                                ts = datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+                            except Exception:
+                                ts = str(ts)
+                        ts_short = str(ts)[:19] if ts else ''
+                        last_event = f"{ts_short} - {msg}" if ts_short else msg
+                except Exception:
+                    pass
 
                 # Compute progress toward target profit based on recent logs (cached)
                 cache_key = f"progress_{bot_id}"
@@ -5294,7 +5339,7 @@ def _render_full_ui(controller=None):
                 except Exception:
                     dry_flag = False
 
-                row = st.columns([2.0, 1.8, 1.0, 2.7, 0.8, 1.7])
+                row = st.columns([2.0, 1.8, 1.0, 3.5, 0.8, 1.5])
                 # Render bot id with a colored badge depending on dry-run status
                 try:
                     if dry_flag:
@@ -5325,8 +5370,18 @@ def _render_full_ui(controller=None):
                 except Exception:
                     row[2].write(str(mode).upper())
 
-                # LOG + Relatório (HTML) in a NEW TAB.
-                # Use real links instead of server-side webbrowser (works in VS Code/remote too).
+                # Coluna 3: Último Evento
+                row[3].caption(last_event)
+
+                # Selection checkbox
+                with row[4]:
+                    st.checkbox(
+                        "Selecionar",
+                        key=f"sel_kill_{bot_id}",
+                        label_visibility="collapsed",
+                    )
+
+                # Coluna 5: Link para Log
                 api_port = st.session_state.get("_api_port")
                 try:
                     if not api_port and 'start_api_server' in globals():
@@ -5337,57 +5392,34 @@ def _render_full_ui(controller=None):
                 except Exception:
                     pass
 
-                with row[3]:
-                    c_log, c_rep = st.columns(2)
-                    if not api_port:
-                        c_log.caption("LOG: off")
-                        c_rep.caption("REP: off")
-                    else:
-                        theme_query = str(theme_qs).lstrip('&')
-                        base = f"http://127.0.0.1:{int(api_port)}"
+                with row[5]:
+                    if api_port:
+                        # ⚠️ CRÍTICO: Detectar ambiente para URL correta
+                        is_production = bool(os.environ.get("FLY_APP_NAME"))
+                        base = "" if is_production else f"http://127.0.0.1:{int(api_port)}"
                         try:
-                            try:
-                                st_port = int(st.get_option("server.port"))
-                            except Exception:
-                                st_port = 8501
-                            home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
-                            home_val = urllib.parse.quote(home_url, safe='')
+                            st_port = int(st.get_option("server.port"))
                         except Exception:
-                            home_val = ''
-
+                            st_port = 8501
+                        home_url = "/?view=dashboard" if is_production else f"http://127.0.0.1:{st_port}/?view=dashboard"
+                        home_val = urllib.parse.quote(home_url, safe='')
+                        theme_query = str(theme_qs).lstrip('&')
+                        
                         log_url = (
                             f"{base}/monitor?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
                             if theme_query
                             else f"{base}/monitor?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
                         )
-                        rep_url = (
-                            f"{base}/report?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                            if theme_query
-                            else f"{base}/report?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                        )
-
+                        
                         if hasattr(st, "link_button"):
-                            c_log.link_button("📜 LOG", log_url, use_container_width=True)
-                            c_rep.link_button("📑 REL.", rep_url, use_container_width=True)
+                            st.link_button("📜 Log", log_url, use_container_width=True)
                         else:
-                            c_log.markdown(
-                                f'<a href="{log_url}" target="_blank" rel="noopener noreferrer">📜 LOG</a>',
+                            st.markdown(
+                                f'<a href="{log_url}" target="_blank" rel="noopener noreferrer">📜 Log</a>',
                                 unsafe_allow_html=True,
                             )
-                            c_rep.markdown(
-                                f'<a href="{rep_url}" target="_blank" rel="noopener noreferrer">📑 REL.</a>',
-                                unsafe_allow_html=True,
-                            )
-
-                # Selection checkbox (replaces per-row kill)
-                with row[4]:
-                    st.checkbox(
-                        "Selecionar",
-                        key=f"sel_kill_{bot_id}",
-                        label_visibility="collapsed",
-                    )
-
-                row[5].progress(progress_value)
+                    else:
+                        st.caption("off")
                 try:
                     pct_color = "#f59e0b" if dry_flag else "#22c55e"
                     row[5].markdown(
@@ -5515,13 +5547,15 @@ def _render_full_ui(controller=None):
                             c_rep.caption("REP: off")
                         else:
                             theme_query = str(theme_qs).lstrip('&')
-                            base = f"http://127.0.0.1:{int(api_port)}"
+                            # ⚠️ CRÍTICO: Detectar ambiente para URL correta
+                            is_production = bool(os.environ.get("FLY_APP_NAME"))
+                            base = "" if is_production else f"http://127.0.0.1:{int(api_port)}"
                             try:
                                 try:
                                     st_port = int(st.get_option("server.port"))
                                 except Exception:
                                     st_port = 8501
-                                home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
+                                home_url = "/?view=dashboard" if is_production else f"http://127.0.0.1:{st_port}/?view=dashboard"
                                 home_val = urllib.parse.quote(home_url, safe='')
                             except Exception:
                                 home_val = ''
