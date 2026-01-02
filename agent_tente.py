@@ -26,26 +26,40 @@ LOG_FILE = "selenium_agent.log"
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
 def log(msg):
+    """
+    Loga mensagem no arquivo e no console. Simples para LLMs menos potentes.
+    """
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    with open(LOG_FILE, 'a') as f:
-        f.write(f"[{now}] {msg}\n")
+    try:
+        with open(LOG_FILE, 'a') as f:
+            f.write(f"[{now}] {msg}\n")
+    except Exception:
+        pass
     try:
         print(f"[LOG] {msg}")
-    except (IOError, BrokenPipeError):
-        pass  # Ignorar erros de pipe quebrado
+    except Exception:
+        pass
 
 def take_screenshot(driver, name):
-    path = os.path.join(SCREENSHOT_DIR, f"{name}.png")
-    driver.save_screenshot(path)
-    log(f"Screenshot salva: {path}")
+    """
+    Salva screenshot e loga caminho. Simples para LLMs menos potentes.
+    """
+    try:
+        path = os.path.join(SCREENSHOT_DIR, f"{name}.png")
+        driver.save_screenshot(path)
+        log(f"Screenshot salva: {path}")
+    except Exception as e:
+        log(f"Erro ao salvar screenshot: {e}")
 
 def main():
+    """
+    Função principal: executa fluxo de teste Selenium. Modularizada para LLMs simples.
+    """
     chrome_options = Options()
     chrome_options.add_argument('--headless')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--window-size=1920,1080')
-    
     try:
         driver = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(driver, 10)
