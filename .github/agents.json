@@ -1,0 +1,42 @@
+{
+  "version": "1.0.0",
+  "default": "dev-senior",
+  "agents": {
+    "dev-senior": {
+      "name": "Agente Dev Sênior",
+      "description": "Agente principal para desenvolvimento, manutenção e evolução do projeto AutoCoinBot",
+      "training": "AGENTE_TREINAMENTO.md",
+      "capabilities": [
+        "code-review",
+        "debugging",
+        "architecture",
+        "testing",
+        "documentation",
+        "deployment"
+      ],
+      "instructions": ".github/copilot-instructions.md"
+    },
+    "os-cleaner": {
+      "name": "OS Cleaner Agent",
+      "description": "Agente especializado em limpeza de sistema operacional",
+      "module": "agents/os_cleaner_agent.py",
+      "documentation": "agents/OS_CLEANER_README.md",
+      "capabilities": [
+        "disk-cleanup",
+        "cache-management",
+        "system-maintenance"
+      ]
+    },
+    "scraper": {
+      "name": "Scraper Agent",
+      "description": "Agente de validação visual e testes E2E com Selenium",
+      "module": "agent0_scraper.py",
+      "capabilities": [
+        "visual-validation",
+        "e2e-testing",
+        "screenshot-capture",
+        "report-generation"
+      ]
+    }
+  }
+}

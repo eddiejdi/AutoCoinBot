@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-01-01T14:50:27.358901",
+  "os": "windows",
+  "dry_run": false,
+  "aggressive": false,
+  "summary": {
+    "total_freed_estimated": 308836504,
+    "total_freed_actual": 25214976,
+    "total_files_removed": 28,
+    "targets_successful": 9,
+    "targets_failed": 0
+  },
+  "disk_before": {
+    "free": 2682245120,
+    "percent_used": 97.46623441873172
+  },
+  "disk_after": {
+    "free": 2707460096,
+    "percent_used": 97.44241525401596
+  },
+  "details": [
+    {
+      "target": "Arquivos Tempor\u00e1rios",
+      "bytes_freed": 76398778,
+      "files_removed": 6,
+      "success": true,
+      "error": null
+    },
+    {
+      "target": "Cache Geral",
+      "bytes_freed": 5250512,
+      "files_removed": 15,
+      "success": true,
+      "error": null
+    },
+    {
+      "target": "Arquivos de Log",
+      "bytes_freed": 0,
+      "files_removed": 0,
+      "success": true,
+      "error": null
+    },
+    {
+      "target": "Cache de Navegadores",
+      "bytes_freed": 132503973,
+      "files_removed": 2,
+      "success": true,
+      "error": null
+    },
+    {
+      "target": "Miniaturas/Thumbnails",
+      "bytes_freed": 0,
+      "files_removed": 0,
+      "success": true,
+      "error": null
+    },
+    {
+      "target": "Windows Update Cache",
+      "bytes_freed": 94683241,
+      "files_removed": 5,
+      "success": true,
+      "error": null
+    },
+    {
+      "target": "Prefetch",
+      "bytes_freed": 0,
+      "files_removed": 0,
+      "success": true,
+      "error": null
+    },
+    {
+      "target": "Lixeira",
+      "bytes_freed": 0,
+      "files_removed": 0,
+      "success": true,
+      "error": null
+    },
+    {
+      "target": "Delivery Optimization",
+      "bytes_freed": 0,
+      "files_removed": 0,
+      "success": true,
+      "error": null
+    }
+  ]
+}

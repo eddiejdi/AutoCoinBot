@@ -1,12 +1,11 @@
 import time
 import os
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+from selenium_helper import get_chrome_driver, wait_for_http
 
 # Config
 LOCAL_URL = os.environ.get('LOCAL_URL', 'http://localhost:8501')
@@ -17,21 +16,8 @@ if APP_ENV in ('hom', 'homologation', 'prod_hom'):
 else:
     URL = LOCAL_URL + "?report=1"
 
-options = Options()
 show_browser = os.environ.get('SHOW_BROWSER', '1').lower() in ('1', 'true', 'yes')
-if not show_browser:
-    try:
-        options.add_argument('--headless=new')
-    except Exception:
-        options.add_argument('--headless')
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--incognito')
-
-options.add_argument('--headless=new')  # Não usar headless para manter janela visível
-service = Service('/usr/bin/chromedriver')
-options.binary_location = '/usr/bin/chromium-browser' if os.path.exists('/usr/bin/chromium-browser') else '/usr/bin/chromium'
-driver = webdriver.Chrome(service=service, options=options)
+driver = get_chrome_driver(headless=not show_browser, show_browser=show_browser)
 
 driver.set_window_size(1920, 1080)
 driver.get(URL)

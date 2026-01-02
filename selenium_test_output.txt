@@ -1,0 +1,8 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.6.0 -- /home/edenilson/AutoCoinBot/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/edenilson/AutoCoinBot
+collecting ... collected 11 items
+
+test_ui_complete.py::test_dashboard PASSED                               [  9%]
+test_ui_complete.py::test_view_monitor 

@@ -1,14 +1,11 @@
 import time
 import os
-import urllib.request
-import urllib.error
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+from selenium_helper import get_chrome_driver, wait_for_http
 
 # Config
 LOCAL_URL = os.environ.get('LOCAL_URL', 'http://localhost:8501')
@@ -19,39 +16,8 @@ if APP_ENV in ('hom', 'homologation', 'prod_hom'):
 else:
     URL = LOCAL_URL
 
-options = Options()
 show_browser = os.environ.get('SHOW_BROWSER', '1').lower() in ('1', 'true', 'yes')
-if not show_browser:
-    try:
-        options.add_argument('--headless=new')  # Não usar headless para manter janela visível
-    except Exception:
-        options.add_argument('--headless')
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--incognito')
-
-service = Service('/usr/bin/chromedriver')
-options.binary_location = '/usr/bin/chromium-browser' if os.path.exists('/usr/bin/chromium-browser') else '/usr/bin/chromium'
-driver = webdriver.Chrome(service=service, options=options)
-
-
-def wait_for_http(url, timeout=30, interval=0.5):
-    deadline = time.time() + timeout
-    last_exc = None
-    while time.time() < deadline:
-        try:
-            req = urllib.request.Request(url, method='GET')
-            with urllib.request.urlopen(req, timeout=2) as resp:
-                code = getattr(resp, 'status', None) or getattr(resp, 'getcode', lambda: None)()
-                if code and int(code) == 200:
-                    return True
-        except Exception as e:
-            last_exc = e
-        time.sleep(interval)
-    return False
-
-
-driver.set_window_size(1920, 1080)
+driver = get_chrome_driver(headless=not show_browser, show_browser=show_browser)
 
 # Wait until the server responds HTTP 200 to avoid connection/refused race
 if not wait_for_http(URL, timeout=30, interval=0.5):
