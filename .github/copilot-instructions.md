@@ -129,6 +129,43 @@ if args.eternal:
 | `learning_stats` | symbol, param_name, param_value, mean_reward, n |
 | `eternal_runs` | bot_id, run_number, entry_price, exit_price, profit_pct, status |
 
+## 🔍 Metodologia de correção de bugs
+
+### SEMPRE pesquisar histórico Git antes de implementar
+Antes de construir uma solução do zero, **procure uma versão funcional no histórico Git**:
+
+```bash
+# 1. Buscar commits que alteraram arquivo específico
+git log --oneline -20 -- ui.py
+
+# 2. Ver TODAS as alterações de um padrão no histórico
+git log --all -p -- ui.py | grep -A5 -B5 "report_url"
+
+# 3. Buscar em todo o projeto por padrão (atual + histórico)
+git log --all -p | grep -B10 "window.location.hostname"
+
+# 4. Ver estado de um arquivo em commit específico
+git show abc1234:ui.py | head -100
+
+# 5. Comparar versão atual com versão funcional
+git diff abc1234 HEAD -- ui.py
+```
+
+**Por quê?** O projeto pode já ter resolvido o problema antes, ou ter padrões funcionais em outros arquivos que podem ser reutilizados.
+
+### 7. URLs dinâmicas para produção vs local
+Em produção (Fly.io), usar URLs relativas. Detectar via `FLY_APP_NAME`:
+```python
+# ui.py - padrão para URLs de iframe/links
+is_production = bool(os.environ.get("FLY_APP_NAME"))
+if is_production:
+    base_url = ""  # URLs relativas
+    home_url = "/?view=dashboard"
+else:
+    base_url = f"http://127.0.0.1:{api_port}"
+    home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
+```
+
 ## Checklist antes de PRs
 
 - [ ] Alterou CLI? → sincronizar `bot_core.py` ↔ `bot_controller.py`

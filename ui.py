@@ -4767,7 +4767,18 @@ def _render_full_ui(controller=None):
         api_port = st.session_state.get("_api_port")
         if api_port:
             theme_query = str(theme_qs).lstrip('&')
-            report_url = f"http://127.0.0.1:{int(api_port)}/report?{theme_query}" if theme_query else f"http://127.0.0.1:{int(api_port)}/report"
+            
+            # ⚠️ CRÍTICO: Detectar ambiente para URL correta do iframe
+            # Em produção (Fly.io), FLY_APP_NAME está definido - usar URL relativa
+            # Localmente, usar localhost:api_port
+            is_production = bool(os.environ.get("FLY_APP_NAME"))
+            
+            if is_production:
+                # Em produção: iframe carrega do mesmo domínio (URLs relativas funcionam)
+                report_url = f"/report?{theme_query}" if theme_query else "/report"
+            else:
+                # Local: usar localhost com porta da API
+                report_url = f"http://127.0.0.1:{int(api_port)}/report?{theme_query}" if theme_query else f"http://127.0.0.1:{int(api_port)}/report"
 
             # Provide a safe return URL for the HTML window to navigate back.
             try:
@@ -4775,7 +4786,10 @@ def _render_full_ui(controller=None):
                     st_port = int(st.get_option("server.port"))
                 except Exception:
                     st_port = 8501
-                home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
+                if is_production:
+                    home_url = "/?view=dashboard"
+                else:
+                    home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
                 home_val = urllib.parse.quote(home_url, safe='')
             except Exception:
                 home_val = ''
@@ -5344,13 +5358,15 @@ def _render_full_ui(controller=None):
                         c_rep.caption("REP: off")
                     else:
                         theme_query = str(theme_qs).lstrip('&')
-                        base = f"http://127.0.0.1:{int(api_port)}"
+                        # ⚠️ CRÍTICO: Detectar ambiente para URL correta
+                        is_production = bool(os.environ.get("FLY_APP_NAME"))
+                        base = "" if is_production else f"http://127.0.0.1:{int(api_port)}"
                         try:
                             try:
                                 st_port = int(st.get_option("server.port"))
                             except Exception:
                                 st_port = 8501
-                            home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
+                            home_url = "/?view=dashboard" if is_production else f"http://127.0.0.1:{st_port}/?view=dashboard"
                             home_val = urllib.parse.quote(home_url, safe='')
                         except Exception:
                             home_val = ''
@@ -5515,13 +5531,15 @@ def _render_full_ui(controller=None):
                             c_rep.caption("REP: off")
                         else:
                             theme_query = str(theme_qs).lstrip('&')
-                            base = f"http://127.0.0.1:{int(api_port)}"
+                            # ⚠️ CRÍTICO: Detectar ambiente para URL correta
+                            is_production = bool(os.environ.get("FLY_APP_NAME"))
+                            base = "" if is_production else f"http://127.0.0.1:{int(api_port)}"
                             try:
                                 try:
                                     st_port = int(st.get_option("server.port"))
                                 except Exception:
                                     st_port = 8501
-                                home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
+                                home_url = "/?view=dashboard" if is_production else f"http://127.0.0.1:{st_port}/?view=dashboard"
                                 home_val = urllib.parse.quote(home_url, safe='')
                             except Exception:
                                 home_val = ''
