@@ -528,6 +528,21 @@ st.markdown(f'''
 - **Causa**: Fly.io só expõe uma porta (8501), API HTTP roda em porta separada (8765)
 - **Solução**: Usar nginx como proxy reverso para rotear requisições
 - **Arquivos**: `nginx.conf`, `start.sh`, `Dockerfile`, `fly.toml`
+
+### 2026-01-02: Botão Home no monitor voltava para URL errada
+- **Problema**: Ao clicar em "Home" no monitor/report, voltava para a home local ao invés de produção
+- **Causa**: Porta 8501 hardcoded em `monitor_window.html` e `report_window.html`
+- **Solução**: Usar `window.location.origin` ao invés de `u.hostname:8501`
+- **Arquivos**: `monitor_window.html`, `report_window.html`
+- **Código**:
+```javascript
+// ❌ ERRADO - porta hardcoded não funciona com nginx
+home = `${u.protocol}//${u.hostname}:8501${homeRaw}`;
+
+// ✅ CORRETO - usa a origem atual (funciona em qualquer porta)
+const origin = window.location.origin;
+home = `${origin}${homeRaw}`;
+```
 - **Diagrama**:
 ```
 nginx (:8080) → /         → Streamlit (:8501)
