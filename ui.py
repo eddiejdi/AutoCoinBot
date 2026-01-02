@@ -5255,7 +5255,14 @@ def _render_full_ui(controller=None):
                         except Exception:
                             if len(msg) > 40:
                                 msg = msg[:40] + "..."
-                        ts_short = ts[:19] if ts else ''
+                        # Converter timestamp float para string se necessário
+                        if isinstance(ts, (int, float)):
+                            try:
+                                from datetime import datetime
+                                ts = datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+                            except Exception:
+                                ts = str(ts)
+                        ts_short = str(ts)[:19] if ts else ''
                         last_event = f"{ts_short} - {msg}" if ts_short else msg
                 except Exception:
                     pass
