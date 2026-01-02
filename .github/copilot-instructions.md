@@ -96,10 +96,6 @@ Internet → nginx (:8080) → Streamlit (:8501)  [rotas /]
 - `nginx.conf` — Proxy reverso para rotear requisições
 - `start.sh` — Script que inicia API + Streamlit + nginx
 
-**Por que nginx?** O Fly.io só expõe uma porta. Nginx faz proxy reverso para:
-- `/` → Streamlit (porta 8501)
-- `/api/*`, `/monitor`, `/report` → API HTTP (porta 8765)
-
 **Arquivos-chave:**
 - `bot_controller.py` — monta comando CLI e grava `bot_sessions`
 - `bot_core.py` / `bot.py` (`EnhancedTradeBot`) — lógica de trading, modos: `sell`, `buy`, `mixed`, `flow`
@@ -531,11 +527,7 @@ st.markdown(f'''
 - **Problema**: Rotas `/api`, `/monitor`, `/report` retornavam página do Streamlit
 - **Causa**: Fly.io só expõe uma porta (8501), API HTTP roda em porta separada (8765)
 - **Solução**: Usar nginx como proxy reverso para rotear requisições
-- **Arquivos**: 
-  - `nginx.conf` - Configuração do proxy reverso
-  - `start.sh` - Script para iniciar API + Streamlit + nginx
-  - `Dockerfile` - Atualizado para incluir nginx
-  - `fly.toml` - Atualizado para expor porta 8080 (nginx)
+- **Arquivos**: `nginx.conf`, `start.sh`, `Dockerfile`, `fly.toml`
 - **Diagrama**:
 ```
 nginx (:8080) → /         → Streamlit (:8501)
