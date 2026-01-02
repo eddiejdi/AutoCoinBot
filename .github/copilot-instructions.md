@@ -137,6 +137,59 @@ if args.eternal:
 - [ ] Adicionou prints? → substituir por `DatabaseLogger`
 - [ ] Alterou UI? → `python -m py_compile ui.py` e testar navegação
 
+## ⚠️ Workflow Git obrigatório (conflitos e CI)
+
+### Antes de criar PR
+```bash
+# 1. Sempre sincronizar com main antes de push
+git fetch origin main
+git merge origin/main
+
+# 2. Se houver conflitos, resolver manualmente:
+git status  # ver arquivos com conflito (UU)
+# Editar arquivos, remover marcadores <<<<< ===== >>>>>
+git add <arquivo>
+git commit -m "merge: resolve conflicts with main"
+
+# 3. Verificar sintaxe dos arquivos modificados
+python -m py_compile <arquivo>.py
+```
+
+### Após criar PR - SEMPRE verificar CI
+1. Acessar link do PR no GitHub
+2. Verificar aba "Checks" ou "Actions"
+3. Se CI falhar:
+   ```bash
+   # Ver logs do erro no GitHub Actions
+   # Corrigir localmente
+   git add . && git commit -m "fix: corrigir erro do CI"
+   git push
+   ```
+4. Repetir até CI passar ✅
+
+### Erros comuns de CI e soluções
+| Erro | Solução |
+|------|---------|
+| `ModuleNotFoundError` | Adicionar ao `requirements.txt` |
+| `SyntaxError` | `python -m py_compile <file>.py` |
+| `Merge conflict` | `git fetch origin main && git merge origin/main` |
+| `pytest failed` | Rodar `./run_tests.sh` localmente |
+| `ChromeDriver version` | Usar `selenium_helper.py` com webdriver_manager |
+
+### Comandos úteis para debug de CI
+```bash
+# Simular CI localmente
+pip install -r requirements.txt
+python -m py_compile *.py
+./run_tests.sh
+
+# Ver diferenças com main
+git diff origin/main --stat
+
+# Ver commits pendentes
+git log origin/main..HEAD --oneline
+```
+
 ## Secrets
 
 `.env` ou `st.secrets`: `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `KUCOIN_BASE`, `TRADES_DB`
