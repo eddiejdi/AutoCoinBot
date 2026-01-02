@@ -320,9 +320,21 @@ class EnhancedTradeBot:
             self.target_profit_pct = float(target_profit_pct or 0.0)
         except Exception:
             self.target_profit_pct = 0.0
-        # Buffer to avoid "near-zero" sells due to fees/slippage.
-        # This is a conservative default; real net profit is reconciled in reports via kucoin fills.
-        self._fee_buffer_pct: float = 0.20
+        
+        # ====== CUSTOS DE TRADING (TAXAS KUCOIN) ======
+        # KuCoin cobra ~0.1% por operação (maker/taker padrão)
+        # Para operação completa (compra + venda), custo total = ~0.2%
+        # Adicionamos margem de segurança para slippage
+        self._buy_fee_pct: float = 0.10   # Taxa de compra (%)
+        self._sell_fee_pct: float = 0.10  # Taxa de venda (%)
+        self._slippage_pct: float = 0.05  # Margem para slippage (%)
+        
+        # Custo total de uma operação round-trip (compra + venda + slippage)
+        self._total_trading_cost_pct: float = self._buy_fee_pct + self._sell_fee_pct + self._slippage_pct
+        
+        # Buffer para evitar vendas com lucro "zero" após taxas
+        # Agora considera o custo real de trading
+        self._fee_buffer_pct: float = self._total_trading_cost_pct
         self._min_true_profit_pct: float = max(0.0, float(self.target_profit_pct) + float(self._fee_buffer_pct))
         # Trailing percent used after a take-profit level is reached (aims for higher peaks).
         # Derived from target_profit_pct so users can tune it without new UI fields.
@@ -467,6 +479,17 @@ class EnhancedTradeBot:
             dry_run=self.dry_run,
             auto_strategy=self.auto_strategy_enabled,
             public_flow=self.public_flow_enabled,
+        )
+        
+        # Log dos custos de trading
+        self._log(
+            "trading_costs_configured",
+            buy_fee_pct=self._buy_fee_pct,
+            sell_fee_pct=self._sell_fee_pct,
+            slippage_pct=self._slippage_pct,
+            total_trading_cost_pct=self._total_trading_cost_pct,
+            min_true_profit_pct=self._min_true_profit_pct,
+            message=f"Targets ajustados para compensar taxas: +{self._total_trading_cost_pct:.2f}%"
         )
 
     def _symbol_base_quote(self) -> tuple[str, str]:
@@ -977,26 +1000,57 @@ class EnhancedTradeBot:
         return self._get_total_remaining() > 0.01
 
     def _get_next_target(self) -> Optional[Dict]:
-        """Retorna próximo target"""
+        """Retorna próximo target ajustado com custos de trading"""
         for pct, portion in self.targets:
             if pct not in self._executed_parts:
                 pct_abs = abs(float(pct))
-
+                
+                # ====== CÁLCULO DE TARGET COM TAXAS ======
+                # Para VENDA: target nominal + custo de trading = lucro líquido desejado
+                # Exemplo: target 2%, custo 0.25% -> preço deve subir 2.25% para lucro líquido de 2%
+                # Para COMPRA: target nominal - custo de trading
+                
                 # Runtime semantics:
-                # - sell: upper target (entry * (1 + |pct|/100))
-                # - buy:  lower target (entry * (1 - |pct|/100))
-                # - mixed: bracket (both)
-                upper = self.entry_price * (1 + pct_abs / 100)
-                lower = self.entry_price * (1 - pct_abs / 100)
+                # - sell: upper target ajustado (entry * (1 + (|pct| + fees)/100))
+                # - buy:  lower target ajustado (entry * (1 - (|pct| + fees)/100))
+                # - mixed: bracket (ambos)
+                
+                fee_adjustment = self._total_trading_cost_pct
+                
+                # Para VENDA: precisa subir mais para compensar taxas
+                upper_adjusted_pct = pct_abs + fee_adjustment
+                upper = self.entry_price * (1 + upper_adjusted_pct / 100)
+                upper_nominal = self.entry_price * (1 + pct_abs / 100)  # Sem ajuste (para referência)
+                
+                # Para COMPRA: precisa cair mais para compensar taxas
+                lower_adjusted_pct = pct_abs + fee_adjustment  
+                lower = self.entry_price * (1 - lower_adjusted_pct / 100)
+                lower_nominal = self.entry_price * (1 - pct_abs / 100)  # Sem ajuste (para referência)
 
                 if self.mode == "sell":
                     target_price = upper
                     distance_pct = ((target_price / self._last_price) - 1) * 100
-                    return {"pct": pct, "portion": portion, "price": target_price, "distance_pct": distance_pct}
+                    return {
+                        "pct": pct, 
+                        "portion": portion, 
+                        "price": target_price, 
+                        "price_nominal": upper_nominal,
+                        "distance_pct": distance_pct,
+                        "fee_adjustment_pct": fee_adjustment,
+                        "net_profit_pct": pct_abs
+                    }
                 if self.mode == "buy":
                     target_price = lower
                     distance_pct = ((target_price / self._last_price) - 1) * 100
-                    return {"pct": pct, "portion": portion, "price": target_price, "distance_pct": distance_pct}
+                    return {
+                        "pct": pct, 
+                        "portion": portion, 
+                        "price": target_price,
+                        "price_nominal": lower_nominal, 
+                        "distance_pct": distance_pct,
+                        "fee_adjustment_pct": fee_adjustment,
+                        "net_profit_pct": pct_abs
+                    }
 
                 # mixed: return both levels + nearest distance
                 dist_upper = ((upper / self._last_price) - 1) * 100
@@ -1007,7 +1061,11 @@ class EnhancedTradeBot:
                     "portion": portion,
                     "upper": upper,
                     "lower": lower,
+                    "upper_nominal": upper_nominal,
+                    "lower_nominal": lower_nominal,
                     "distance_pct": nearest,
+                    "fee_adjustment_pct": fee_adjustment,
+                    "net_profit_pct": pct_abs
                 }
         return None
 
@@ -1305,12 +1363,22 @@ class EnhancedTradeBot:
  
                     pct_f = float(pct)
                     pct_abs = abs(pct_f)
-                    upper = self.entry_price * (1 + pct_abs / 100)
-                    lower = self.entry_price * (1 - pct_abs / 100)
+                    
+                    # ====== CÁLCULO DE TARGETS COM CUSTOS DE TRADING ======
+                    # Ajustar targets para compensar taxas de compra + venda + slippage
+                    fee_adjustment = self._total_trading_cost_pct
+                    
+                    # Para VENDA: preço precisa subir mais para compensar taxas
+                    upper_adjusted_pct = pct_abs + fee_adjustment
+                    upper = self.entry_price * (1 + upper_adjusted_pct / 100)
+                    
+                    # Para COMPRA: preço precisa cair mais para compensar taxas  
+                    lower_adjusted_pct = pct_abs + fee_adjustment
+                    lower = self.entry_price * (1 - lower_adjusted_pct / 100)
 
                     # Backward compat: if user passes negative pct in buy mode, treat it as lower target.
                     if self.mode == "buy" and pct_f < 0:
-                        lower = self.entry_price * (1 + pct_f / 100)
+                        lower = self.entry_price * (1 + (pct_f - fee_adjustment) / 100)
 
                     if self.mode == "sell":
                         min_true_price = self.entry_price * (1 + float(self._min_true_profit_pct or 0.0) / 100.0)

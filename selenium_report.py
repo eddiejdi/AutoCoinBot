@@ -10,7 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # Config
 LOCAL_URL = os.environ.get('LOCAL_URL', 'http://localhost:8501')
-REMOTE_URL = os.environ.get('HOM_URL', 'https://autocoinbot-hom.streamlit.app/')
+REMOTE_URL = os.environ.get('HOM_URL', 'https://autocoinbot.fly.dev/')
 APP_ENV = os.environ.get('APP_ENV', os.environ.get('ENV', 'dev')).lower()
 if APP_ENV in ('hom', 'homologation', 'prod_hom'):
     URL = REMOTE_URL + "?report=1"

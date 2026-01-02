@@ -89,100 +89,54 @@ def main():
         except Exception:
             pass
 
-        top_loader = st.empty()
-        try:
-            top_loader.info("⏳ Carregando...")
-        except Exception:
-            try:
-                top_loader.markdown("⏳ Carregando...")
-            except Exception:
-                pass
-
+        # Verificar se usuário está logado (exigir login por sessão)
         try:
             logged = bool(st.session_state.get("logado", False))
         except Exception:
             logged = False
 
         if not logged:
-            try:
-                top_loader.empty()
-            except Exception:
-                pass
             fazer_login()
             return
 
-        # Usuário já está logado: remove o indicador de carregamento
-        # antes de renderizar a UI principal, para evitar a impressão de
-        # "carregamento infinito" caso a UI chame st.stop()/st.rerun.
-        try:
-            top_loader.empty()
-        except Exception:
-            pass
-
-        # Usuário logado - importar UI
-        ui_mod = None
-        here = os.path.dirname(__file__)
-        try:
-            import ui as ui_mod
-        except Exception:
+        # Mostrar loader enquanto importa UI
+        with st.spinner("⏳ Carregando dashboard..."):
+            # Usuário logado - importar UI
+            ui_mod = None
+            here = os.path.dirname(__file__)
             try:
-                import types
-                import importlib.util
-                pkg_name = "kucoin_app"
-                pkg = types.ModuleType(pkg_name)
-                pkg.__path__ = [here]
-                sys.modules[pkg_name] = pkg
-                ui_path = os.path.join(here, "ui.py")
-                spec = importlib.util.spec_from_file_location(f"{pkg_name}.ui", ui_path)
-                ui_mod = importlib.util.module_from_spec(spec)
-                ui_mod.__package__ = pkg_name
-                sys.modules[f"{pkg_name}.ui"] = ui_mod
-                spec.loader.exec_module(ui_mod)
-            except Exception as e:
+                import ui as ui_mod
+            except Exception:
                 try:
-                    import socket
-                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    s.connect(("localhost", 8501))
-                    try:
-                        import webbrowser
-                        st_port = int(st.get_option("server.port")) if st.get_option("server.port") else 8501
-                        home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
-                        webbrowser.open_new_tab(home_url)
-                    except Exception:
-                        pass
-                    try:
-                        top_loader.empty()
-                    except Exception:
-                        pass
+                    import types
+                    import importlib.util
+                    pkg_name = "kucoin_app"
+                    pkg = types.ModuleType(pkg_name)
+                    pkg.__path__ = [here]
+                    sys.modules[pkg_name] = pkg
+                    ui_path = os.path.join(here, "ui.py")
+                    spec = importlib.util.spec_from_file_location(f"{pkg_name}.ui", ui_path)
+                    ui_mod = importlib.util.module_from_spec(spec)
+                    ui_mod.__package__ = pkg_name
+                    sys.modules[f"{pkg_name}.ui"] = ui_mod
+                    spec.loader.exec_module(ui_mod)
+                except Exception as e:
+                    st.error(f"❌ Erro ao carregar módulos: {e}")
                     return
-                except Exception:
-                    try:
-                        render_exception_page(e, context="Erro ao importar módulos (fallback)")
-                    except Exception:
-                        pass
-                    try:
-                        top_loader.empty()
-                    except Exception:
-                        pass
-                    return
-                finally:
-                    try:
-                        s.close()
-                    except Exception:
-                        pass
 
-        if hasattr(ui_mod, "render_bot_control"):
-            # A UI pode chamar st.stop()/st.rerun; o loader já foi
-            # limpo acima para não ficar preso na tela.
-            ui_mod.render_bot_control()
+        if ui_mod and hasattr(ui_mod, "render_bot_control"):
+            try:
+                ui_mod.render_bot_control()
+            except Exception as e:
+                st.error(f"❌ Erro ao renderizar interface: {e}")
         else:
             st.error("render_bot_control não encontrado em ui.py")
 
     except Exception as exc:
-        try:
-            render_exception_page(exc, context="Erro global na main() do streamlit_app.py")
-        except Exception:
-            pass
+        st.error(f"❌ Erro global: {exc}")
+        import traceback
+        with st.expander("Detalhes do erro"):
+            st.code(traceback.format_exc())
 
 
 if __name__ == "__main__":

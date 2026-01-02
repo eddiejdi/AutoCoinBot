@@ -1,42 +1,45 @@
 # kucoin_app/database.py
-# PostgreSQL database manager for trades, logs, and equity tracking
+# SQLite database manager for trades, logs, and equity tracking
 
+import sqlite3
 import os
+from pathlib import Path as _Path
 import json
 import time
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
-import sqlite3
-
-# Load .env if available to allow configuring DATABASE_URL in env file
-try:
-    from dotenv import load_dotenv
-    try:
-        load_dotenv()
-    except Exception:
-        pass
-except Exception:
-    pass
-
-# Enforce Postgres-only backend. DATABASE_URL must be set.
-PG_CONN_INFO = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
-
-try:
-    import psycopg2
-    import psycopg2.extras
-except Exception:
-    psycopg2 = None  # type: ignore
-
-# Backend: Postgres only when URL + psycopg2 are disponíveis
-USE_PG = bool(PG_CONN_INFO) and psycopg2 is not None
 
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent
 
+# Load .env if available to allow configuring DB path via TRADES_DB
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
+if load_dotenv:
+    try:
+        load_dotenv(dotenv_path=_Path.cwd() / '.env')
+    except Exception:
+        pass
+    try:
+        load_dotenv()
+    except Exception:
+        pass
+
+# Allow overriding DB location with TRADES_DB env var
+_env_db = os.environ.get('TRADES_DB')
+if _env_db:
+    DB_PATH = Path(_env_db)
+else:
+    DB_PATH = ROOT / "trades.db"
+
 class DatabaseManager:
+    # --- LEARNING (APRENDIZADO) ---
     def get_learning_symbols(self) -> list:
         """Retorna todos os símbolos presentes em learning_stats."""
         conn = self.get_connection()
@@ -210,123 +213,15 @@ class DatabaseManager:
 
     """Gerencia todas as operações do banco de dados"""
 
-    def __init__(self):
-        # Caminho opcional para SQLite (usado em testes ou modo local)
-        # Pode ser sobrescrito externamente (ex.: db.db_path = temp_db_path em testes).
-        self.db_path: str | None = os.environ.get("TRADES_DB")
-
-        # Postgres DSN é mantido para ambientes que usam PG.
-        self._enabled = USE_PG
-        self._initialized = False
-
-        # Se estivermos em modo Postgres, inicializa o esquema em background.
-        if self._enabled:
-            try:
-                import threading
-                threading.Thread(target=self._init_database_background, daemon=True).start()
-            except Exception:
-                # Fallback: inicialização síncrona (raro)
-                try:
-                    self.init_database()
-                    self._initialized = True
-                except Exception:
-                    logger.exception("Erro ao inicializar o DB sincronamente")
-
-    def _init_database_background(self):
-        try:
-            self.init_database()
-            self._initialized = True
-        except Exception:
-            logger.exception("Erro na inicialização do DB em background")
+    def __init__(self, db_path: Path = DB_PATH):
+        self.db_path = db_path
+        self.init_database()
     
     def get_connection(self):
-        """Obtém uma conexão com o banco.
-
-        - Se ``self.db_path`` estiver setado, usa SQLite (útil para testes e modo local).
-        - Caso contrário, usa PostgreSQL conforme configurado em ``DATABASE_URL``.
-        """
-
-        # Preferência explícita por SQLite quando db_path é definido (ex.: em testes).
-        if getattr(self, "db_path", None):
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            return conn
-
-        if not USE_PG or psycopg2 is None:
-            raise RuntimeError("DATABASE_URL não configurado; operação de banco indisponível em modo local.")
-
-        # Use a short connect timeout so UI doesn't hang if DB is unreachable.
-        try:
-            conn = psycopg2.connect(PG_CONN_INFO, connect_timeout=2)
-        except TypeError:
-            # Some psycopg2 versions / DSN styles may not accept kwarg when DSN is passed as string.
-            # Try to pass via environment variable fallback.
-            conn = psycopg2.connect(PG_CONN_INFO)
-        conn.autocommit = False
-        class PGCursor:
-            def __init__(self, cur):
-                self._cur = cur
-            def execute(self, sql, params=None):
-                if params is None:
-                    params = []
-                if '%s' in sql:
-                    sql2 = sql  # Já está no formato psycopg2
-                else:
-                    q_count = sql.count('?')
-                    if q_count == len(params) and q_count > 0:
-                        # Substitui cada '?' por '%s' individualmente
-                        parts = sql.split('?')
-                        sql2 = ''
-                        for i, part in enumerate(parts[:-1]):
-                            sql2 += part + '%s'
-                        sql2 += parts[-1]
-                    else:
-                        sql2 = sql
-                import logging
-                logging.getLogger("autocoin_sql_debug").debug(f"SQL: {sql2} | params: {params}")
-                return self._cur.execute(sql2, params)
-            def executemany(self, sql, seq_of_params):
-                seq_of_params = list(seq_of_params)
-                n_params = len(seq_of_params[0]) if seq_of_params else 0
-                if '%s' in sql:
-                    sql2 = sql  # Já está no formato psycopg2
-                else:
-                    q_count = sql.count('?')
-                    if q_count == n_params and q_count > 0:
-                        parts = sql.split('?')
-                        sql2 = ''
-                        for i, part in enumerate(parts[:-1]):
-                            sql2 += part + '%s'
-                        sql2 += parts[-1]
-                    else:
-                        sql2 = sql
-                import logging
-                logging.getLogger("autocoin_sql_debug").debug(f"SQL: {sql2} | params: {seq_of_params}")
-                return self._cur.executemany(sql2, seq_of_params)
-            def fetchall(self):
-                return self._cur.fetchall()
-            def fetchone(self):
-                return self._cur.fetchone()
-            def close(self):
-                try:
-                    self._cur.close()
-                except Exception:
-                    pass
-        class PGConnection:
-            def __init__(self, conn):
-                self._conn = conn
-            def cursor(self):
-                return PGCursor(self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor))
-            def commit(self):
-                return self._conn.commit()
-            def rollback(self):
-                return self._conn.rollback()
-            def close(self):
-                try:
-                    return self._conn.close()
-                except Exception:
-                    pass
-        return PGConnection(conn)
+        """Obtém a conexão com o banco de dados com row factory"""
+        conn = sqlite3.connect(str(self.db_path))
+        conn.row_factory = sqlite3.Row
+        return conn
     
     def init_database(self):
         """Inicializa o esquema do banco de dados"""
@@ -334,18 +229,7 @@ class DatabaseManager:
         cursor = conn.cursor()
         
         # Tabela Trades
-        def exec_sql(sql: str):
-            # Executa DDL diretamente para PostgreSQL
-            sql_pg = sql.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
-            sql_pg = sql_pg.replace('DATETIME DEFAULT CURRENT_TIMESTAMP', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
-            sql_pg = sql_pg.replace('REAL', 'DOUBLE PRECISION')
-            sql_pg = sql_pg.replace("\"", '"')
-            try:
-                cursor.execute(sql_pg)
-            except Exception as e:
-                logger.debug(f"Error executing PG DDL: {e} -- sql: {sql_pg}")
-
-        exec_sql('''
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS trades (
                 id TEXT PRIMARY KEY,
                 timestamp REAL NOT NULL,
@@ -366,7 +250,7 @@ class DatabaseManager:
         ''')
         
         # Tabela Bot sessions
-        exec_sql('''
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS bot_sessions (
                 id TEXT PRIMARY KEY,
                 pid INTEGER,
@@ -390,7 +274,7 @@ class DatabaseManager:
         ''')
         
         # Tabela Equity snapshots (AGORA COM average_cost)
-        exec_sql('''
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS equity_snapshots (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp REAL NOT NULL,
@@ -403,7 +287,7 @@ class DatabaseManager:
         ''')
         
         # Tabela Eternal Runs - histórico de ciclos do eternal mode
-        exec_sql('''
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS eternal_runs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 bot_id TEXT NOT NULL,
@@ -423,7 +307,7 @@ class DatabaseManager:
         ''')
         
         # Tabela Bot logs
-        exec_sql('''
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS bot_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 bot_id TEXT NOT NULL,
@@ -436,7 +320,7 @@ class DatabaseManager:
         ''')
         
         # Tabela Risk metrics
-        exec_sql('''
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS risk_metrics (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp REAL NOT NULL,
@@ -448,7 +332,7 @@ class DatabaseManager:
         ''')
         
         # Tabela Learning stats (estatísticas de aprendizado por parâmetro)
-        exec_sql('''
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS learning_stats (
                 symbol TEXT NOT NULL,
                 param_name TEXT NOT NULL,
@@ -460,7 +344,7 @@ class DatabaseManager:
         ''')
         
         # Tabela Learning history (histórico de recompensas)
-        exec_sql('''
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS learning_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 symbol TEXT NOT NULL,
@@ -472,39 +356,17 @@ class DatabaseManager:
         ''')
         
         # Cria índices
-        for idx_sql in [
-            'CREATE INDEX IF NOT EXISTS idx_trades_timestamp ON trades(timestamp)',
-            'CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol)',
-            'CREATE INDEX IF NOT EXISTS idx_bot_sessions_status ON bot_sessions(status)',
-            'CREATE INDEX IF NOT EXISTS idx_bot_logs_bot_id ON bot_logs(bot_id)',
-            'CREATE INDEX IF NOT EXISTS idx_equity_timestamp ON equity_snapshots(timestamp)',
-            'CREATE INDEX IF NOT EXISTS idx_learning_history_symbol_param ON learning_history(symbol, param_name)',
-            'CREATE INDEX IF NOT EXISTS idx_learning_history_timestamp ON learning_history(timestamp)',
-            'CREATE INDEX IF NOT EXISTS idx_learning_stats_symbol_param ON learning_stats(symbol, param_name)'
-        ]:
-            try:
-                if USE_PG:
-                    # Postgres will accept these index creations; ignore failures
-                    cursor.execute(idx_sql)
-                else:
-                    cursor.execute(idx_sql)
-            except Exception:
-                try:
-                    pass
-                except Exception:
-                    pass
-
-        try:
-            conn.commit()
-        except Exception:
-            try:
-                conn.rollback()
-            except Exception:
-                pass
-        try:
-            conn.close()
-        except Exception:
-            pass
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_trades_timestamp ON trades(timestamp)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_bot_sessions_status ON bot_sessions(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_bot_logs_bot_id ON bot_logs(bot_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_equity_timestamp ON equity_snapshots(timestamp)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_learning_history_symbol_param ON learning_history(symbol, param_name)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_learning_history_timestamp ON learning_history(timestamp)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_learning_stats_symbol_param ON learning_stats(symbol, param_name)')       
+        
+        conn.commit()
+        conn.close()
         logger.info("Database initialized successfully")
     
     def get_bot_ids(self):
@@ -638,15 +500,18 @@ class DatabaseManager:
             query += " AND dry_run = 0"
         
         if group_by_order_id:
-            query += " GROUP BY id, timestamp, symbol, side, price, size, funds, profit, commission, order_id, bot_id, strategy, dry_run, metadata"
+            query += " GROUP BY order_id"
+        
         query += " ORDER BY timestamp DESC LIMIT ?"
         params.append(limit)
+        
         cur.execute(query, params)
         rows = cur.fetchall()
         conn.close()
+        
         # Converte para lista de dicts
         return [
-            dict(r) if hasattr(r, 'keys') else {
+            {
                 "id": r[0],
                 "timestamp": r[1],
                 "symbol": r[2],
@@ -1129,27 +994,4 @@ if __name__ == "__main__":
         print("✅ Database resetado com sucesso.")
     else:
         print("❌ Operação cancelada.")
-
-
-# Standalone functions for compatibility
-def get_logs(limit=1000):
-    """Get recent logs from all bots"""
-    try:
-        conn = db.get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM bot_logs ORDER BY timestamp DESC LIMIT ?", (limit,))
-        rows = cur.fetchall()
-        conn.close()
-        return [dict(row) for row in rows]
-    except Exception as e:
-        logger.error(f"Error getting logs: {e}")
-        return []
-
-def get_trades(bot_id=None):
-    """Get trades, optionally filtered by bot_id"""
-    return db.get_trades(bot_id)
-
-def get_bot_sessions():
-    """Get active bot sessions"""
-    return db.get_active_bots()
 

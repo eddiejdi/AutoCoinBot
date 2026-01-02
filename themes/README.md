@@ -1,43 +1,8 @@
-# Themes packs
+## Themes
 
-Each folder under `themes/<pack>/` is a user-provided asset pack.
+Esta pasta contém apenas os pacotes de temas e assets.
 
-## Expected structure
-- `backgrounds/` (images)
-- `characters/` (sprites/sheets)
-- `ui/` (icons)
-- `tiles/` (optional: console-like formats, e.g. SNES 4bpp `.chr`)
-- `palettes/` (optional: palettes, e.g. `.pal`)
-- `meta/` (license/credits)
-
-## Using in the monitor
-The monitor supports a background image via URL parameters:
-- `bg_pack=<pack>&bg=<background_name_without_ext>`
-
-Example:
-- `/monitor?bot=<id>&bg_pack=user_sprite_pack&bg=donut_plains_1`
-
-Files are served by the local API server at:
-- `/themes/<pack>/...`
-
-## Mascot / Characters
-The monitor can load a mascot sprite from the theme pack via `themes/<pack>/manifest.json`.
-
-### Simple (single image)
-```json
-{
-	"characters": {
-		"mascot": {
-			"image": "characters/mascot.png"
-		}
-	}
-}
-```
-
-### Animated (multiple images)
-```json
-{
-	"characters": {
+Consulte o [README principal do projeto](../README.md) para instruções de uso e integração.
 		"mascot": {
 			"frames": ["characters/m0.png", "characters/m1.png"],
 			"fps": 8
