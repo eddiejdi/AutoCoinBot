@@ -18,11 +18,23 @@ def get_chrome_driver(headless=True, show_browser=False):
     """
     options = Options()
     
-    # Configurações básicas
+    # Configurações para container/CI sem display
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
+    options.add_argument('--disable-software-rasterizer')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--disable-background-networking')
+    options.add_argument('--disable-sync')
     options.add_argument('--incognito')
+    options.add_argument('--disable-setuid-sandbox')
+    
+    # Opções para ambiente sem X11/display
+    options.add_argument('--disable-features=VizDisplayCompositor')
+    options.add_argument('--use-gl=swiftshader')
+    options.add_argument('--disable-gl-drawing-for-tests')
+    options.add_argument('--disable-3d-apis')
+    options.add_argument('--window-size=1920,1080')
     
     # Headless mode
     env_show = os.environ.get('SHOW_BROWSER', '0').lower() in ('1', 'true', 'yes')
@@ -37,7 +49,12 @@ def get_chrome_driver(headless=True, show_browser=False):
     # Usar webdriver_manager para gerenciar ChromeDriver automaticamente
     try:
         from webdriver_manager.chrome import ChromeDriverManager
-        service = Service(ChromeDriverManager().install())
+        from webdriver_manager.core.os_manager import ChromeType
+        # Usar ChromeType.CHROMIUM se Chromium estiver instalado
+        if os.path.exists('/usr/bin/chromium'):
+            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+        else:
+            service = Service(ChromeDriverManager().install())
     except ImportError:
         # Fallback para caminhos padrão
         chrome_paths = [
