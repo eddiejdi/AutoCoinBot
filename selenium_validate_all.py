@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ╔═══════════════════════════════════════════════════════════════════════════════╗
+# ║  🔒 HOMOLOGADO: selenium_validate_all.py - Script de validação completo       ║
+# ║  Data: 2026-01-02 | Sessão: fix-selenium-validation                           ║
+# ║  NÃO ALTERAR SEM APROVAÇÃO - Valida todos os elementos UI ajustados           ║
+# ╚═══════════════════════════════════════════════════════════════════════════════╝
 """
 Selenium Validation Script - Validates all UI elements adjusted in this session.
 

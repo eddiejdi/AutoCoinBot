@@ -5394,7 +5394,10 @@ def _render_full_ui(controller=None):
 
                 with row[5]:
                     if api_port:
-                        # ⚠️ CRÍTICO: Detectar ambiente para URL correta
+                        # ╔═══════════════════════════════════════════════════════════════════════════════╗
+                        # ║  🔒 HOMOLOGADO: Detecção FLY_APP_NAME para URLs dinâmicas                     ║
+                        # ║  Data: 2026-01-02 | Sessão: fix-link-button-target-blank                      ║
+                        # ╚═══════════════════════════════════════════════════════════════════════════════╝
                         is_production = bool(os.environ.get("FLY_APP_NAME"))
                         base = "" if is_production else f"http://127.0.0.1:{int(api_port)}"
                         try:
@@ -5410,8 +5413,12 @@ def _render_full_ui(controller=None):
                             if theme_query
                             else f"{base}/monitor?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
                         )
+                        # 🔒 FIM HOMOLOGADO
                         
-                        # Usar HTML com target="_blank" para garantir abertura em nova aba
+                        # ╔═══════════════════════════════════════════════════════════════════════════════╗
+                        # ║  🔒 HOMOLOGADO: Botão Log com HTML target="_blank"                            ║
+                        # ║  Data: 2026-01-02 | Sessão: fix-link-button-target-blank                      ║
+                        # ╚═══════════════════════════════════════════════════════════════════════════════╝
                         st.markdown(
                             f'''
                             <a href="{log_url}" target="_blank" rel="noopener noreferrer"
@@ -5425,6 +5432,7 @@ def _render_full_ui(controller=None):
                             ''',
                             unsafe_allow_html=True,
                         )
+                        # 🔒 FIM HOMOLOGADO
                     else:
                         st.caption("off")
                 try:
@@ -5554,7 +5562,10 @@ def _render_full_ui(controller=None):
                             c_rep.caption("REP: off")
                         else:
                             theme_query = str(theme_qs).lstrip('&')
-                            # ⚠️ CRÍTICO: Detectar ambiente para URL correta
+                            # ╔═══════════════════════════════════════════════════════════════════════════════╗
+                            # ║  🔒 HOMOLOGADO: URLs dinâmicas + Botões Log/Report em sessões encerradas      ║
+                            # ║  Data: 2026-01-02 | Sessão: fix-link-button-target-blank                      ║
+                            # ╚═══════════════════════════════════════════════════════════════════════════════╝
                             is_production = bool(os.environ.get("FLY_APP_NAME"))
                             base = "" if is_production else f"http://127.0.0.1:{int(api_port)}"
                             try:
@@ -5578,7 +5589,6 @@ def _render_full_ui(controller=None):
                                 else f"{base}/report?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
                             )
 
-                            # Usar HTML com target="_blank" para garantir abertura em nova aba
                             c_log.markdown(
                                 f'''
                                 <a href="{log_url}" target="_blank" rel="noopener noreferrer"
@@ -5605,6 +5615,7 @@ def _render_full_ui(controller=None):
                                 ''',
                                 unsafe_allow_html=True,
                             )
+                            # 🔒 FIM HOMOLOGADO
 
                     # Kill não faz sentido para sessão já encerrada
                     row[4].button("✅ Enc.", key=f"kill_stopped_{bot_id}", disabled=True, use_container_width=True)

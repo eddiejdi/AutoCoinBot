@@ -2,6 +2,43 @@
 
 Streamlit UI que gerencia subprocessos de trading bots. Logs e trades são persistidos em SQLite (`trades.db`). UI consome API HTTP local (porta 8765) para logs em tempo real.
 
+## 🔒 BLOCOS HOMOLOGADOS - NÃO ALTERAR
+
+**CRÍTICO**: Blocos marcados com `# 🔒 HOMOLOGADO` são código **validado e funcional**.
+
+### Regras para blocos homologados:
+1. **NÃO ALTERAR** sem aprovação explícita do usuário
+2. **NÃO REFATORAR** mesmo que pareça "melhorável"
+3. **NÃO MOVER** para outros arquivos/módulos
+4. **PULAR** durante análise de código (economia de tokens)
+
+### Formato dos marcadores:
+```python
+# ╔═══════════════════════════════════════════════════════════════════════════════╗
+# ║  🔒 HOMOLOGADO: <descrição curta>                                             ║
+# ║  Data: YYYY-MM-DD | Sessão: <identificador>                                   ║
+# ╚═══════════════════════════════════════════════════════════════════════════════╝
+<código homologado>
+# 🔒 FIM HOMOLOGADO
+```
+
+### Lista de blocos homologados:
+| Arquivo | Linha | Descrição |
+|---------|-------|-----------|
+| `ui.py` | ~5408 | Botões Log/Report com HTML target="_blank" |
+| `ui.py` | ~5398 | Detecção FLY_APP_NAME para URLs dinâmicas |
+| `ui.py` | ~5551 | Botões Log/Report em sessões encerradas |
+| `selenium_helper.py` | todo | Configuração Chrome/Chromium para containers |
+| `selenium_validate_all.py` | todo | Script de validação completo |
+
+### Como adicionar novo bloco homologado:
+1. Usuário aprova o código: "homologue este bloco"
+2. Adicionar marcadores no código
+3. Atualizar tabela acima
+4. Commit: `git commit -m "lock: homologar <descrição>"`
+
+---
+
 ## 🧠 REGRA DE APRENDIZADO CONTÍNUO
 
 **OBRIGATÓRIO**: Toda vez que for feito um **commit** ou **checkpoint**, executar a rotina de aprendizado:
