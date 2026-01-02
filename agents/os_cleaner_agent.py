@@ -61,7 +61,10 @@ class DiskInfo:
 
 
 class CleanupTarget(ABC):
-    """Classe base abstrata para alvos de limpeza."""
+    """
+    Classe base abstrata para alvos de limpeza.
+    Modular e clara para LLMs simples.
+    """
     
     name: str = "base"
     description: str = "Base cleanup target"
@@ -88,6 +91,7 @@ class CleanupTarget(ABC):
 class OSCleanerAgent:
     """
     Agente principal de limpeza de SO.
+    Modular, com docstrings e funções pequenas para LLMs simples.
     Detecta automaticamente o sistema operacional e executa limpezas apropriadas.
     """
     
@@ -109,7 +113,9 @@ class OSCleanerAgent:
             logger.warning("Modo AGRESSIVO ativado")
     
     def _detect_os(self) -> str:
-        """Detecta o sistema operacional."""
+        """
+        Detecta o sistema operacional. Modular para LLMs simples.
+        """
         system = platform.system().lower()
         if system == 'windows':
             return 'windows'
@@ -123,7 +129,9 @@ class OSCleanerAgent:
         return 'unknown'
     
     def get_disk_info(self, path: str = '/') -> DiskInfo:
-        """Obtém informações do disco."""
+        """
+        Obtém informações do disco. Modular para LLMs simples.
+        """
         if self.os_type == 'windows':
             path = 'C:\\'
         
@@ -141,7 +149,9 @@ class OSCleanerAgent:
             return DiskInfo(path=path, total=0, used=0, free=0, percent_used=0)
     
     def format_size(self, bytes_size: int) -> str:
-        """Formata tamanho em bytes para formato legível."""
+        """
+        Formata tamanho em bytes para formato legível. Modular para LLMs simples.
+        """
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
             if abs(bytes_size) < 1024.0:
                 return f"{bytes_size:.2f} {unit}"
@@ -149,7 +159,9 @@ class OSCleanerAgent:
         return f"{bytes_size:.2f} PB"
     
     def get_dir_size(self, path: Path) -> int:
-        """Calcula o tamanho total de um diretório."""
+        """
+        Calcula o tamanho total de um diretório. Modular para LLMs simples.
+        """
         total = 0
         try:
             for entry in path.rglob('*'):
@@ -163,7 +175,9 @@ class OSCleanerAgent:
         return total
     
     def safe_remove(self, path: Path, is_dir: bool = False) -> Tuple[bool, int]:
-        """Remove arquivo ou diretório de forma segura."""
+        """
+        Remove arquivo ou diretório de forma segura. Modular para LLMs simples.
+        """
         if self.dry_run:
             size = self.get_dir_size(path) if is_dir else (path.stat().st_size if path.exists() else 0)
             logger.debug(f"[DRY-RUN] Removeria: {path} ({self.format_size(size)})")
@@ -185,7 +199,7 @@ class OSCleanerAgent:
                        recursive: bool = True, contents_only: bool = True) -> CleanupResult:
         """
         Limpa um diretório.
-        
+        Modular, com tratamento de exceção para LLMs simples.
         Args:
             path: Caminho do diretório
             patterns: Padrões de arquivos a remover (None = todos)
@@ -239,7 +253,9 @@ class OSCleanerAgent:
     # ==================== TARGETS DE LIMPEZA ====================
     
     def get_cleanup_targets(self) -> Dict[str, Callable]:
-        """Retorna os alvos de limpeza disponíveis para o SO atual."""
+        """
+        Retorna os alvos de limpeza disponíveis para o SO atual. Modular para LLMs simples.
+        """
         common_targets = {
             'temp': self.clean_temp_files,
             'cache': self.clean_cache,
@@ -281,7 +297,9 @@ class OSCleanerAgent:
     # ==================== LIMPEZAS COMUNS ====================
     
     def clean_temp_files(self) -> CleanupResult:
-        """Limpa arquivos temporários."""
+        """
+        Limpa arquivos temporários. Modular para LLMs simples.
+        """
         result = CleanupResult(target="Arquivos Temporários")
         
         temp_paths = []
@@ -309,7 +327,9 @@ class OSCleanerAgent:
         return result
     
     def clean_cache(self) -> CleanupResult:
-        """Limpa caches gerais."""
+        """
+        Limpa caches gerais. Modular para LLMs simples.
+        """
         result = CleanupResult(target="Cache Geral")
         
         cache_paths = []
@@ -336,7 +356,9 @@ class OSCleanerAgent:
         return result
     
     def clean_logs(self) -> CleanupResult:
-        """Limpa arquivos de log antigos."""
+        """
+        Limpa arquivos de log antigos. Modular para LLMs simples.
+        """
         result = CleanupResult(target="Arquivos de Log")
         
         log_paths = []
@@ -364,7 +386,9 @@ class OSCleanerAgent:
         return result
     
     def clean_browsers(self) -> CleanupResult:
-        """Limpa cache dos navegadores."""
+        """
+        Limpa cache dos navegadores. Modular para LLMs simples.
+        """
         result = CleanupResult(target="Cache de Navegadores")
         
         browser_caches = []
@@ -407,7 +431,9 @@ class OSCleanerAgent:
         return result
     
     def clean_thumbnails(self) -> CleanupResult:
-        """Limpa cache de miniaturas."""
+        """
+        Limpa cache de miniaturas. Modular para LLMs simples.
+        """
         result = CleanupResult(target="Miniaturas/Thumbnails")
         
         thumb_paths = []

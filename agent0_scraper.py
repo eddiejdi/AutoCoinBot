@@ -1,13 +1,14 @@
 import time
 import os
 from pathlib import Path
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
+
+# Usar helper homologado para Chrome robusto
+from selenium_helper import get_chrome_driver
 
 import argparse
 try:
@@ -97,48 +98,21 @@ BOT_CONFIG_FIELDS = [
 
 
 def _create_driver(headless=False):
-    """Cria e configura o driver do Chrome."""
-    options = Options()
-    if headless:
-        options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--incognito')
-    
-    driver = None
-    try:
-        from webdriver_manager.chrome import ChromeDriverManager
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-    except Exception:
-        try:
-            driver = webdriver.Chrome(options=options)
-        except Exception:
-            driver = webdriver.Chrome()
-    driver.set_window_size(1920, 1080)
-    return driver
+    """
+    Cria e configura o driver do Chrome usando selenium_helper.py (robusto para CI/containers).
+    """
+    return get_chrome_driver(headless=headless)
 
 
 def _check_eternal_loading(driver, timeout=30):
     """
     Verifica se a página está em loading eterno (spinner infinito do Streamlit).
-    
-    Detecta:
-    - Spinner de "Running..." do Streamlit
-    - Status widget indicando execução
-    - Tela travada sem conteúdo interativo
-    
+    Modular, com tratamento de exceção para LLMs simples.
     Args:
         driver: WebDriver instance
         timeout: Tempo máximo para aguardar o loading parar (segundos)
-        
     Returns:
-        dict: {
-            'is_loading': bool - Se ainda está carregando
-            'is_stuck': bool - Se está travado (loading eterno)
-            'wait_time': float - Tempo que aguardou
-            'details': str - Detalhes do estado
-        }
+        dict: status do loading
     """
     result = {
         'is_loading': False,
@@ -225,14 +199,13 @@ def _check_eternal_loading(driver, timeout=30):
 def _wait_page_ready(driver, timeout=30, min_wait=3):
     """
     Aguarda a página estar pronta (não mais em loading).
-    
+    Modular, com tratamento de exceção para LLMs simples.
     Args:
         driver: WebDriver instance
         timeout: Tempo máximo de espera
         min_wait: Tempo mínimo para aguardar antes de verificar
-        
     Returns:
-        dict: Resultado da verificação de loading
+        dict: status do loading
     """
     # Aguarda tempo mínimo para Streamlit iniciar
     time.sleep(min_wait)
@@ -259,14 +232,10 @@ def _wait_page_ready(driver, timeout=30, min_wait=3):
 def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
     """
     Valida a tela inicial (dashboard) do aplicativo.
-    Verifica a presença de elementos essenciais como:
-    - Header/título do app
-    - Campos de configuração do bot
-    - Botões de ação (start, stop, etc.)
-    - Seções principais (configuração, bots ativos, histórico)
-    
+    Modular, com tratamento de exceção para LLMs simples.
+    Se detectar loading eterno, tenta logoff/logon antes de validar.
     Returns:
-        dict: Resultado da validação com detalhes de cada elemento verificado
+        dict: Resultado da validação
     """
     print("🔍 Iniciando validação da tela inicial...")
     
@@ -299,20 +268,48 @@ def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
             print(f"   ❌ {load_status['details']}")
             driver.save_screenshot(screenshot_path.replace('.png', '_stuck.png'))
             resultados['screenshot_stuck'] = screenshot_path.replace('.png', '_stuck.png')
+            # Tentar logoff/logon
+            print("   🔄 Tentando logoff e novo login...")
+            try:
+                # Tenta clicar em botão de logoff se existir
+                logoff_btns = driver.find_elements(By.XPATH, "//button[contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sair') or contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'logout') or contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'logoff')]")
+                if logoff_btns:
+                    logoff_btns[0].click()
+                    time.sleep(2)
+                    print("   ✓ Logoff realizado")
+                else:
+                    print("   ℹ️ Botão de logoff não encontrado")
+            except Exception as e:
+                print(f"   ⚠️ Erro ao tentar logoff: {e}")
+            # Tenta login automático
+            try:
+                login_ok = _try_auto_login(driver, max_attempts=3)
+                if login_ok:
+                    print("   ✓ Login automático após logoff")
+                    load_status_post = _wait_page_ready(driver, timeout=20, min_wait=2)
+                    resultados['loading_status_post_logon'] = load_status_post
+                    resultados['is_stuck_loading_post_logon'] = load_status_post['is_stuck']
+                    if load_status_post['is_stuck']:
+                        resultados['errors'].append(f"Loading pós-logon: {load_status_post['details']}")
+                    else:
+                        print(f"   ✓ Página pronta após logon em {load_status_post['wait_time']:.1f}s")
+            except Exception as e:
+                resultados['errors'].append(f"Login pós-logoff: {str(e)}")
         else:
             print(f"   ✓ Página pronta em {load_status['wait_time']:.1f}s")
-        
-        # Tenta fazer login se necessário
-        print("   🔐 Tentando login automático...")
-        try:
-            login_ok = _try_auto_login(driver, max_attempts=3)
-            if login_ok:
-                # Re-verifica loading após login
-                load_status_post = _wait_page_ready(driver, timeout=20, min_wait=2)
-                if load_status_post['is_stuck']:
-                    resultados['errors'].append(f"Loading pós-login: {load_status_post['details']}")
-        except Exception as e:
-            resultados['errors'].append(f"Login: {str(e)}")
+
+        # Tenta fazer login se necessário (caso não tenha travado)
+        if not load_status['is_stuck']:
+            print("   🔐 Tentando login automático...")
+            try:
+                login_ok = _try_auto_login(driver, max_attempts=3)
+                if login_ok:
+                    # Re-verifica loading após login
+                    load_status_post = _wait_page_ready(driver, timeout=20, min_wait=2)
+                    if load_status_post['is_stuck']:
+                        resultados['errors'].append(f"Loading pós-login: {load_status_post['details']}")
+            except Exception as e:
+                resultados['errors'].append(f"Login: {str(e)}")
         
         # Captura o texto da página
         page_text = ''
@@ -411,13 +408,12 @@ def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
 def testar_start_bot(url, dry_run=True, screenshot_path='screenshot_bot_start.png'):
     """
     Testa o fluxo de start de um bot via interface web (Selenium).
-    
+    Modular, com tratamento de exceção para LLMs simples.
     1. Acessa a URL e faz login se necessário
     2. Preenche os campos de configuração do bot
     3. Marca a opção de dry-run (simulação)
     4. Clica no botão de iniciar
     5. Verifica se o bot foi iniciado (mensagem de sucesso ou bot na lista)
-    
     Args:
         url: URL do aplicativo
         dry_run: Se True, marca a opção de simulação (dry-run)
