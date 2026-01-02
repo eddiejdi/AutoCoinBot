@@ -449,7 +449,6 @@ class SidebarController:
             "Lucro Alvo (%)",
             min_value=0.1,
             max_value=100.0,
-            value=2.0,
             step=0.5,
             help="% de lucro esperado antes de vender",
             key="target_profit_pct",
