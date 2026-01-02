@@ -5411,13 +5411,20 @@ def _render_full_ui(controller=None):
                             else f"{base}/monitor?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
                         )
                         
-                        if hasattr(st, "link_button"):
-                            st.link_button("📜 Log", log_url, use_container_width=True)
-                        else:
-                            st.markdown(
-                                f'<a href="{log_url}" target="_blank" rel="noopener noreferrer">📜 Log</a>',
-                                unsafe_allow_html=True,
-                            )
+                        # Usar HTML com target="_blank" para garantir abertura em nova aba
+                        st.markdown(
+                            f'''
+                            <a href="{log_url}" target="_blank" rel="noopener noreferrer"
+                               style="display:inline-flex;align-items:center;justify-content:center;
+                                      width:100%;padding:0.25rem 0.75rem;border-radius:0.5rem;
+                                      min-height:2.5rem;text-decoration:none;
+                                      background-color:rgb(19,23,32);color:rgb(250,250,250);
+                                      border:1px solid rgba(250,250,250,0.2);font-weight:400;">
+                                📜 Log
+                            </a>
+                            ''',
+                            unsafe_allow_html=True,
+                        )
                     else:
                         st.caption("off")
                 try:
@@ -5571,18 +5578,33 @@ def _render_full_ui(controller=None):
                                 else f"{base}/report?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
                             )
 
-                            if hasattr(st, "link_button"):
-                                c_log.link_button("📜 LOG", log_url, use_container_width=True)
-                                c_rep.link_button("📑 REL.", rep_url, use_container_width=True)
-                            else:
-                                c_log.markdown(
-                                    f'<a href="{log_url}" target="_blank" rel="noopener noreferrer">📜 LOG</a>',
-                                    unsafe_allow_html=True,
-                                )
-                                c_rep.markdown(
-                                    f'<a href="{rep_url}" target="_blank" rel="noopener noreferrer">📑 REL.</a>',
-                                    unsafe_allow_html=True,
-                                )
+                            # Usar HTML com target="_blank" para garantir abertura em nova aba
+                            c_log.markdown(
+                                f'''
+                                <a href="{log_url}" target="_blank" rel="noopener noreferrer"
+                                   style="display:inline-flex;align-items:center;justify-content:center;
+                                          width:100%;padding:0.25rem 0.5rem;border-radius:0.5rem;
+                                          min-height:2rem;text-decoration:none;font-size:0.85rem;
+                                          background-color:rgb(19,23,32);color:rgb(250,250,250);
+                                          border:1px solid rgba(250,250,250,0.2);">
+                                    📜 LOG
+                                </a>
+                                ''',
+                                unsafe_allow_html=True,
+                            )
+                            c_rep.markdown(
+                                f'''
+                                <a href="{rep_url}" target="_blank" rel="noopener noreferrer"
+                                   style="display:inline-flex;align-items:center;justify-content:center;
+                                          width:100%;padding:0.25rem 0.5rem;border-radius:0.5rem;
+                                          min-height:2rem;text-decoration:none;font-size:0.85rem;
+                                          background-color:rgb(19,23,32);color:rgb(250,250,250);
+                                          border:1px solid rgba(250,250,250,0.2);">
+                                    📑 REL.
+                                </a>
+                                ''',
+                                unsafe_allow_html=True,
+                            )
 
                     # Kill não faz sentido para sessão já encerrada
                     row[4].button("✅ Enc.", key=f"kill_stopped_{bot_id}", disabled=True, use_container_width=True)
