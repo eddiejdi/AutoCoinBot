@@ -2,6 +2,43 @@
 
 Streamlit UI que gerencia subprocessos de trading bots. Logs e trades são persistidos em SQLite (`trades.db`). UI consome API HTTP local (porta 8765) para logs em tempo real.
 
+## 🔒 BLOCOS HOMOLOGADOS - NÃO ALTERAR
+
+**CRÍTICO**: Blocos marcados com `# 🔒 HOMOLOGADO` são código **validado e funcional**.
+
+### Regras para blocos homologados:
+1. **NÃO ALTERAR** sem aprovação explícita do usuário
+2. **NÃO REFATORAR** mesmo que pareça "melhorável"
+3. **NÃO MOVER** para outros arquivos/módulos
+4. **PULAR** durante análise de código (economia de tokens)
+
+### Formato dos marcadores:
+```python
+# ╔═══════════════════════════════════════════════════════════════════════════════╗
+# ║  🔒 HOMOLOGADO: <descrição curta>                                             ║
+# ║  Data: YYYY-MM-DD | Sessão: <identificador>                                   ║
+# ╚═══════════════════════════════════════════════════════════════════════════════╝
+<código homologado>
+# 🔒 FIM HOMOLOGADO
+```
+
+### Lista de blocos homologados:
+| Arquivo | Linha | Descrição |
+|---------|-------|-----------|
+| `ui.py` | ~5408 | Botões Log/Report com HTML target="_blank" |
+| `ui.py` | ~5398 | Detecção FLY_APP_NAME para URLs dinâmicas |
+| `ui.py` | ~5551 | Botões Log/Report em sessões encerradas |
+| `selenium_helper.py` | todo | Configuração Chrome/Chromium para containers |
+| `selenium_validate_all.py` | todo | Script de validação completo |
+
+### Como adicionar novo bloco homologado:
+1. Usuário aprova o código: "homologue este bloco"
+2. Adicionar marcadores no código
+3. Atualizar tabela acima
+4. Commit: `git commit -m "lock: homologar <descrição>"`
+
+---
+
 ## 🧠 REGRA DE APRENDIZADO CONTÍNUO
 
 **OBRIGATÓRIO**: Toda vez que for feito um **commit** ou **checkpoint**, executar a rotina de aprendizado:
@@ -444,3 +481,32 @@ const apiUrl = 'http://127.0.0.1:8765/api/trades';  // quebra em produção
 - **Causa**: Container sem X11/display
 - **Solução**: Validação alternativa com requests + testes de database
 - **Futuro**: Instalar Xvfb no container para testes visuais completos
+
+### 2026-01-02: Scripts de debug não devem ter prefixo test_
+- **Problema**: pytest coletava arquivos `test_imports.py`, `test_validation_debug.py` que são scripts de debug
+- **Causa**: Arquivos com prefixo `test_` são coletados automaticamente pelo pytest
+- **Solução**: Renomear para `debug_*.py`: `debug_imports.py`, `debug_validation.py`, `debug_loading_check.py`
+- **Regra**: Nunca criar arquivos de debug com prefixo `test_`, usar `debug_` ou `check_`
+
+### 2026-01-02: st.link_button não abre em nova aba
+- **Problema**: Botão "📜 Log" clicado voltava para a mesma página ao invés de abrir o monitor
+- **Causa**: `st.link_button` do Streamlit navega na mesma janela, não abre nova aba
+- **Solução**: Substituir por HTML `<a href="..." target="_blank">` com estilo de botão
+- **Arquivos**: `ui.py` (botões Log e Report)
+- **Código**:
+```python
+# ❌ ERRADO - não abre em nova aba
+st.link_button("📜 Log", log_url, use_container_width=True)
+
+# ✅ CORRETO - abre em nova aba
+st.markdown(f'''
+<a href="{log_url}" target="_blank" rel="noopener noreferrer"
+   style="display:inline-flex;align-items:center;justify-content:center;
+          width:100%;padding:0.25rem 0.75rem;border-radius:0.5rem;
+          min-height:2.5rem;text-decoration:none;
+          background-color:rgb(19,23,32);color:rgb(250,250,250);
+          border:1px solid rgba(250,250,250,0.2);">
+    📜 Log
+</a>
+''', unsafe_allow_html=True)
+```

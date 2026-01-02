@@ -1,118 +1,99 @@
-nohup.out
-.fly/
-<<<<<<< HEAD
+
+# Byte-compiled / optimized / DLL files
+# Celery
+# Debug files
+# Distribution / packaging
+# Django stuff
 # Environment
+# Flask stuff
+# IDEs and editors
+# Installer logs
+# Linters / tooling
+# Marimo
+# Misc
+# OS
+# Project specific
+# PyInstaller
+# Translations
+# Unit test / coverage reports
+*$py.class
+*.cover
+*.db
+*.db-journal
+*.egg
+*.egg-info/
+*.log
+*.manifest
+*.mo
+*.pot
+*.py[cod]
+*.pyc
+*.spec
+*.sqlite
+*.sqlite3
+*.swp
+.DS_Store
+.Python
+.cache
+.coverage
+.coverage.*
+.cursorignore
+.cursorindexingignore
+.eggs/
 .env
 .envrc
+.fly/
+.hypothesis/
+.idea/
+.installed.cfg
+.mypy_cache/
+.nox/
+.pypirc
+.pytest_cache/
+.pytype/
+.ruff_cache/
 .streamlit/
-=======
-# Byte-compiled / optimized / DLL files
+.tox/
+.vscode/
+/.wdm/
+MANIFEST
+Thumbs.db
+__marimo__/
 __pycache__/
-*.py[cod]
-*$py.class
-*.pyc
-
-# Distribution / packaging
-.Python
+archive/
+bot_history.json
+bot_registry.json
+bot_session.json
 build/
+celerybeat-schedule
+celerybeat.pid
+cover/
+coverage.xml
+current_config.json
+data/
+db.sqlite3
+db.sqlite3-journal
 dist/
 downloads/
 eggs/
-.eggs/
+equity_history.json
+htmlcov/
+instance/
 lib/
 lib64/
-parts/
-sdist/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff
-*.log
 local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff
-instance/
-
-# Celery
-celerybeat-schedule
-celerybeat.pid
-
-# IDEs and editors
-.vscode/
-.idea/
-*.swp
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Project specific
 logs/
-data/
-archive/
-pids/
-*.db
-*.db-journal
-*.sqlite
-*.sqlite3
-bot_history.json
-equity_history.json
-current_config.json
-bot_registry.json
-bot_session.json
-
-# Linters / tooling
-.mypy_cache/
-.pytype/
-.ruff_cache/
-
-# Misc
-.pypirc
-.cursorignore
-.cursorindexingignore
-
-
-# Marimo
-marimo/_static/
 marimo/_lsp/
-__marimo__/
->>>>>>> main
->>>>>>> Autooin/feature/initial-setup
-/.wdm/
-
-# Debug files
+marimo/_static/
+nohup.out
+nosetests.xml
+parts/
+pids/
+pip-delete-this-directory.txt
+pip-log.txt
 screenshot*.png
+sdist/
 selenium_dom*.html
 selenium_output.txt
+share/python-wheels/
+wheels/

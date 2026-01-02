@@ -1,3 +1,8 @@
+# ╔═══════════════════════════════════════════════════════════════════════════════╗
+# ║  🔒 HOMOLOGADO: selenium_helper.py - Configuração Chrome/Chromium             ║
+# ║  Data: 2026-01-02 | Sessão: fix-selenium-webdriver-manager                    ║
+# ║  NÃO ALTERAR SEM APROVAÇÃO - Funciona em containers sem X11/display           ║
+# ╚═══════════════════════════════════════════════════════════════════════════════╝
 # selenium_helper.py
 # Helper para configuração do Selenium com webdriver_manager
 import os
@@ -105,3 +110,5 @@ def wait_for_http(url, timeout=30, interval=0.5):
             pass
         time.sleep(interval)
     return False
+
+# 🔒 FIM HOMOLOGADO

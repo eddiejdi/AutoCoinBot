@@ -101,7 +101,12 @@ def wait_for_stable_elements(driver, selectors, timeout=45, stable_time=1.0, int
         time.sleep(interval)
     return False
 
-monitor_selectors = ['[class*="st-key-log_"]', '[class*="st-key-sel_kill_"]', "//*[contains(text(), 'ID:')]"]
+monitor_selectors = [
+    '[class*="st-key-sel_kill_"]', 
+    "//*[contains(text(), 'ID:')]",
+    "//a[contains(text(), 'Log') or contains(text(), 'LOG')]",  # HTML links (novo padrão)
+    "//*[contains(text(), 'Último Evento')]",  # Nova coluna
+]
 if not wait_for_stable_elements(driver, monitor_selectors, timeout=45, stable_time=1.0, interval=0.5):
     print('[WARN] Element counts did not stabilize within timeout; proceeding anyway.')
 
@@ -184,26 +189,32 @@ try:
             except Exception:
                 print("[ERRO] Falha ao procurar checkboxes de seleção.")
 
-            # Links / botões LOG / REP (classes st-key-log_, st-key-rep_)
+            # Links / botões LOG / REP - Agora são HTML <a> com target="_blank"
             try:
-                log_buttons = driver.find_elements(By.CSS_SELECTOR, '[class*=\"st-key-log_\"]')
-                rep_buttons = driver.find_elements(By.CSS_SELECTOR, '[class*=\"st-key-rep_\"]')
+                # Procurar links HTML com target="_blank" (novo padrão)
+                log_links = driver.find_elements(By.XPATH, "//a[contains(text(), 'Log') or contains(text(), 'LOG')][@target='_blank']")
+                rep_links = driver.find_elements(By.XPATH, "//a[contains(text(), 'REL') or contains(text(), 'Rel')][@target='_blank']")
                 found = 0
-                if log_buttons:
-                    print(f"[OK] {len(log_buttons)} botão(ões) LOG detectado(s) (st-key-log_).")
-                    found += len(log_buttons)
-                if rep_buttons:
-                    print(f"[OK] {len(rep_buttons)} botão(ões) REL detectado(s) (st-key-rep_).")
-                    found += len(rep_buttons)
+                if log_links:
+                    print(f"[OK] {len(log_links)} link(s) LOG detectado(s) (HTML <a> com target=_blank).")
+                    found += len(log_links)
+                if rep_links:
+                    print(f"[OK] {len(rep_links)} link(s) REL detectado(s) (HTML <a> com target=_blank).")
+                    found += len(rep_links)
                 if not found:
-                    # fallback: procurar links com 'LOG' ou 'REL.'
-                    links = driver.find_elements(By.XPATH, "//a[contains(text(), 'LOG') or contains(text(), 'REL') or contains(text(), 'REL.')]")
+                    # fallback: procurar links genéricos com 'LOG' ou 'REL.'
+                    links = driver.find_elements(By.XPATH, "//a[contains(text(), 'LOG') or contains(text(), 'REL') or contains(text(), 'Log')]")
                     if links:
-                        print(f"[AVISO] {len(links)} link(s) de LOG/REL detectado(s) por texto.")
+                        print(f"[AVISO] {len(links)} link(s) de LOG/REL detectado(s) por texto (sem target check).")
                     else:
-                        print("[ERRO] Nenhum botão/link de LOG/REL detectado.")
+                        # Pode não haver bots ativos
+                        no_bots = driver.find_elements(By.XPATH, "//*[contains(text(), 'Nenhum bot ativo')]")
+                        if no_bots:
+                            print("[OK] Nenhum bot ativo - links LOG/REL não esperados.")
+                        else:
+                            print("[ERRO] Nenhum link de LOG/REL detectado.")
             except Exception:
-                print("[ERRO] Falha ao procurar botões LOG/REL.")
+                print("[ERRO] Falha ao procurar links LOG/REL.")
 
         elif nenhum_bot_ativo_msg:
             print("[ERRO] Nenhum bot ativo detectado na tela do dashboard! Mensagem: " + nenhum_bot_ativo_msg)
