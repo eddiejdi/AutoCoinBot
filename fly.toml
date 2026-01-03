@@ -2,10 +2,10 @@ app = "autocoinbot"
 primary_region = "gru"
 
 [env]
-  PORT = "8501"
+  PORT = "8080"
 
 [[services]]
-  internal_port = 8501
+  internal_port = 8080
   protocol = "tcp"
 
   [[services.ports]]

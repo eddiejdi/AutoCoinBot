@@ -1,0 +1,18 @@
+{
+  "projeto": "AutoCoinBot",
+  "objetivo": "Automatizar trading na KuCoin com interface Streamlit",
+  "linguagem": "Python",
+  "frontend": "Streamlit",
+  "banco_dados": "PostgreSQL",
+  "requisitos": [
+    "Gerenciamento de múltiplos bots",
+    "Logs em tempo real",
+    "Persistência de trades",
+    "Interface amigável",
+    "Autoaprendizagem de parâmetros"
+  ],
+  "preferencias": {
+    "tema": "escuro",
+    "idioma": "pt-br"
+  }
+}
