@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # OS Cleaner Agent 🧹
 
 Agente especializado em limpeza e otimização de sistemas operacionais. Multiplataforma (Windows, Linux, macOS, WSL).
@@ -98,9 +97,7 @@ Total estimado: 674.63 MB
 ```
 $ python agents/os_cleaner_agent.py
 
-============================================================
 📊 RESUMO DA LIMPEZA
-============================================================
 Espaço liberado (estimado): 294.53 MB
 Espaço liberado (real):     24.05 MB
 Arquivos removidos:         28
@@ -109,7 +106,6 @@ Operações com falha:        0
 
 Disco antes:  2.50 GB livre (97.5% usado)
 Disco depois: 2.52 GB livre (97.4% usado)
-============================================================
 ```
 
 ## 🔧 Opções
@@ -195,7 +191,6 @@ print(f"Espaço liberado: {agent.format_size(report['summary']['total_freed_actu
 ## 📄 Licença
 
 MIT License - Veja [LICENSE](../LICENSE) para detalhes.
-=======
 # OS Cleaner Agent 🧹
 
 Agente especializado em limpeza e otimização de sistemas operacionais. Multiplataforma (Windows, Linux, macOS, WSL).
@@ -295,9 +290,7 @@ Total estimado: 674.63 MB
 ```
 $ python agents/os_cleaner_agent.py
 
-============================================================
 📊 RESUMO DA LIMPEZA
-============================================================
 Espaço liberado (estimado): 294.53 MB
 Espaço liberado (real):     24.05 MB
 Arquivos removidos:         28
@@ -306,7 +299,6 @@ Operações com falha:        0
 
 Disco antes:  2.50 GB livre (97.5% usado)
 Disco depois: 2.52 GB livre (97.4% usado)
-============================================================
 ```
 
 ## 🔧 Opções
@@ -392,4 +384,3 @@ print(f"Espaço liberado: {agent.format_size(report['summary']['total_freed_actu
 ## 📄 Licença
 
 MIT License - Veja [LICENSE](../LICENSE) para detalhes.
->>>>>>> d82f869 (Checkpoint from VS Code for coding agent session)
