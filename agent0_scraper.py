@@ -222,27 +222,12 @@ def _wait_page_ready(driver, timeout=30, min_wait=3):
             load_status_retry = _check_eternal_loading(driver, timeout=15)
             if not load_status_retry['is_stuck']:
                 print("   ✓ Página carregou após refresh")
-    """Cria e configura o driver do Chrome."""
-    options = Options()
-    if headless:
-        options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--incognito')
-    
-    driver = None
-    try:
-        from webdriver_manager.chrome import ChromeDriverManager
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-    except Exception:
-        try:
-            driver = webdriver.Chrome(options=options)
+                return load_status_retry
         except Exception:
-            driver = webdriver.Chrome()
-    driver.set_window_size(1920, 1080)
-    return driver
->>>>>>> d82f869 (Checkpoint from VS Code for coding agent session)
+            pass
+    
+    return load_status
+
 
 def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
     """
@@ -251,15 +236,6 @@ def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
     Se detectar loading eterno, tenta logoff/logon antes de validar.
     Returns:
         dict: Resultado da validação
-=======
-    Verifica a presença de elementos essenciais como:
-    - Header/título do app
-    - Campos de configuração do bot
-    - Botões de ação (start, stop, etc.)
-    - Seções principais (configuração, bots ativos, histórico)
-    
-    Returns:
-        dict: Resultado da validação com detalhes de cada elemento verificado
     """
     print("🔍 Iniciando validação da tela inicial...")
     
@@ -272,17 +248,15 @@ def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
         'inputs_found': [],
         'buttons_found': [],
         'sections_found': [],
-<<<<<<< HEAD
         'loading_status': None,
         'is_stuck_loading': False,
-=======
->>>>>>> d82f869 (Checkpoint from VS Code for coding agent session)
         'errors': []
     }
     
     try:
         driver.get(url)
         print(f"   ✓ Página carregada: {url}")
+        
         # NOVA VERIFICAÇÃO: Detecta loading eterno
         print("   ⏳ Verificando estado de carregamento...")
         load_status = _wait_page_ready(driver, timeout=30, min_wait=3)
@@ -336,20 +310,6 @@ def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
                         resultados['errors'].append(f"Loading pós-login: {load_status_post['details']}")
             except Exception as e:
                 resultados['errors'].append(f"Login: {str(e)}")
-=======
-        time.sleep(8)  # Aguarda renderização do Streamlit (aumentado)
-        
-        # Tenta fazer login se necessário
-        print("   🔐 Tentando login automático...")
-        try:
-            login_ok = _try_auto_login(driver, max_attempts=3)
-            if login_ok:
-                # Re-verifica loading após login
-                load_status_post = _wait_page_ready(driver, timeout=20, min_wait=2)
-                if load_status_post['is_stuck']:
-                    resultados['errors'].append(f"Loading pós-login: {load_status_post['details']}")
-        except Exception as e:
-            resultados['errors'].append(f"Login: {str(e)}")
         
         # Captura o texto da página
         page_text = ''
@@ -448,18 +408,12 @@ def validar_tela_inicial(url, screenshot_path='screenshot_dashboard.png'):
 def testar_start_bot(url, dry_run=True, screenshot_path='screenshot_bot_start.png'):
     """
     Testa o fluxo de start de um bot via interface web (Selenium).
-<<<<<<< HEAD
     Modular, com tratamento de exceção para LLMs simples.
-=======
     1. Acessa a URL e faz login se necessário
     2. Preenche os campos de configuração do bot
     3. Marca a opção de dry-run (simulação)
     4. Clica no botão de iniciar
     5. Verifica se o bot foi iniciado (mensagem de sucesso ou bot na lista)
-<<<<<<< HEAD
-=======
-    
->>>>>>> d82f869 (Checkpoint from VS Code for coding agent session)
     Args:
         url: URL do aplicativo
         dry_run: Se True, marca a opção de simulação (dry-run)
@@ -486,7 +440,6 @@ def testar_start_bot(url, dry_run=True, screenshot_path='screenshot_bot_start.pn
     try:
         driver.get(url)
         print(f"   ✓ Página carregada: {url}")
-<<<<<<< HEAD
         
         # NOVA VERIFICAÇÃO: Detecta loading eterno
         print("   ⏳ Verificando estado de carregamento...")
@@ -500,21 +453,17 @@ def testar_start_bot(url, dry_run=True, screenshot_path='screenshot_bot_start.pn
             driver.save_screenshot(screenshot_path.replace('.png', '_stuck.png'))
             # Continua mesmo assim para tentar coletar mais informações
         else:
-                print(f"   ✓ Página pronta em {load_status['wait_time']:.1f}s")
+            print(f"   ✓ Página pronta em {load_status['wait_time']:.1f}s")
         
         # Tenta fazer login se necessário
         print("   🔐 Tentando login automático...")
         try:
             login_ok = _try_auto_login(driver, max_attempts=3)
             if login_ok:
-<<<<<<< HEAD
                 # Re-verifica loading após login
                 load_status_post = _wait_page_ready(driver, timeout=20, min_wait=2)
                 if load_status_post['is_stuck']:
                     resultados['errors'].append(f"Loading pós-login: {load_status_post['details']}")
-=======
-                time.sleep(4)  # Aguarda carregamento pós-login
->>>>>>> d82f869 (Checkpoint from VS Code for coding agent session)
         except Exception as e:
             resultados['errors'].append(f"Login: {str(e)}")
         

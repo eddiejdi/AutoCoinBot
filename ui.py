@@ -44,20 +44,19 @@ try:
     ui_logger.setLevel(logging.DEBUG)
 except Exception:
     ui_logger = None
+
 import os
 import shlex
 import signal
 import subprocess
 import time
-import streamlit as stth
-from pathlib import Pathnts.v1 as components
 import threading
-import urllib.parsetório raiz do projeto
-import hashlibfile__).resolve().parent
-import jsonimport time
+import json
+import urllib.parse
+from pathlib import Path
+import streamlit as st
 import streamlit.components.v1 as components
 
-# Definição do diretório raiz do projeto
 ROOT = Path(__file__).resolve().parent
 
 # How many consecutive checks are required to consider a PID dead
