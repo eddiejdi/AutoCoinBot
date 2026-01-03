@@ -126,12 +126,20 @@ def wait_page_load(driver, timeout=15):
         return False
 
 def do_login(driver):
-    """Tenta login se necessário."""
+    """Tenta login se necessário, sem credenciais hardcoded.
+
+    Usa variáveis de ambiente LOGIN_USER e LOGIN_PASS (ou KUCOIN_USER/KUCOIN_PASS),
+    e pula se não configuradas.
+    """
+    login_user = os.environ.get('LOGIN_USER') or os.environ.get('KUCOIN_USER')
+    login_pass = os.environ.get('LOGIN_PASS') or os.environ.get('KUCOIN_PASS')
+    if not login_user or not login_pass:
+        return False
     try:
         user = driver.find_element(By.XPATH, "//input[@type='text']")
         pwd = driver.find_element(By.XPATH, "//input[@type='password']")
-        user.clear(); user.send_keys('admin')
-        pwd.clear(); pwd.send_keys('senha123')
+        user.clear(); user.send_keys(login_user)
+        pwd.clear(); pwd.send_keys(login_pass)
         for btn in driver.find_elements(By.TAG_NAME, 'button'):
             if 'Entrar' in (btn.text or ''):
                 btn.click()

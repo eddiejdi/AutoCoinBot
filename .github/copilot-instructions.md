@@ -1,78 +1,77 @@
-# Copilot Instructions — AutoCoinBot
+# Copilot Instructions — AutoCoinBot (resumo prático)
 
-Streamlit UI que gerencia subprocessos de trading bots. Logs e trades são persistidos em SQLite (`trades.db`). UI consome API HTTP local (porta 8765) para logs em tempo real.
+> **Objetivo:** Streamlit UI controla subprocessos de bots, grava logs/trades em SQLite; UI interage com um servidor HTTP local para logs em tempo real e relatórios.
 
-## 🔒 BLOCOS HOMOLOGADOS - NÃO ALTERAR
+## 1. Arquitetura — Big Picture
 
-**CRÍTICO**: Blocos marcados com `# 🔒 HOMOLOGADO` são código **validado e funcional**.
+- **UI**: [streamlit_app.py](streamlit_app.py) inicializa tudo; lógica da UI vive em [ui.py](ui.py).
+- **Bot management**: [bot_controller.py](bot_controller.py) fabrica subprocessos usando flags sincronizadas com [bot_core.py](bot_core.py).
+- **Bot runner**: [bot_core.py](bot_core.py) executa lógica do bot via [bot.py](bot.py); cada bot é um processo isolado.
+- **Persistência**: Logs e trades via SQLite ([database.py](database.py)). Não use print() — sempre `DatabaseLogger`.
+- **API HTTP local**: [terminal_component.py](terminal_component.py) serve logs/trades via `/api/*`, `/monitor`, `/report` (porta 8765, CORS habilitado).
+- **Exchanges**: Integração KuCoin ([api.py](api.py)); para a UI, use funções `get_price_fast` (timeout curto).
 
-### Regras para blocos homologados:
-1. **NÃO ALTERAR** sem aprovação explícita do usuário
-2. **NÃO REFATORAR** mesmo que pareça "melhorável"
-3. **NÃO MOVER** para outros arquivos/módulos
-4. **PULAR** durante análise de código (economia de tokens)
+## 2. Padrões Críticos do Projeto
 
-### Formato dos marcadores:
-```python
-# ╔═══════════════════════════════════════════════════════════════════════════════╗
-# ║  🔒 HOMOLOGADO: <descrição curta>                                             ║
-# ║  Data: YYYY-MM-DD | Sessão: <identificador>                                   ║
-# ╚═══════════════════════════════════════════════════════════════════════════════╝
-<código homologado>
-# 🔒 FIM HOMOLOGADO
-```
+- **Widgets Streamlit**: Use só `st.session_state` **ou** `value=`, nunca ambos no mesmo input ([ui.py](ui.py)).
+- **Flags CLI**: Se atualizar argumentos em [bot_core.py](bot_core.py), sincronize em [bot_controller.py](bot_controller.py) (flags como `--eternal`, `--reserve-pct`).
+- **Logging**: Nunca use print() em produção; sempre use métodos do banco.
+- **URLs**:
+    - Em produção (Fly.io/nginx), use URLs relativas; localmente use `http://127.0.0.1:<porta>`.
+    - Detecte prod/local com `FLY_APP_NAME` (veja [ui.py](ui.py)).
+- **Blocos homologados em [ui.py](ui.py)**: Nunca altere se não for autorizado (marcados com "🔒 HOMOLOGADO").
 
-### Lista de blocos homologados:
-| Arquivo | Linha | Descrição |
-|---------|-------|-----------|
-| `ui.py` | ~5408 | Botões Log/Report com HTML target="_blank" |
-| `ui.py` | ~5398 | Detecção FLY_APP_NAME para URLs dinâmicas |
-| `ui.py` | ~5551 | Botões Log/Report em sessões encerradas |
-| `selenium_helper.py` | todo | Configuração Chrome/Chromium para containers |
-| `selenium_validate_all.py` | todo | Script de validação completo |
+## 3. Workflows e Comandos Essenciais
 
-### Como adicionar novo bloco homologado:
-1. Usuário aprova o código: "homologue este bloco"
-2. Adicionar marcadores no código
-3. Atualizar tabela acima
-4. Commit: `git commit -m "lock: homologar <descrição>"`
+- **Setup ambiente**:
+    ```bash
+    python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+    ```
+- **Rodar UI/Server**:
+    ```bash
+    python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true
+    ```
+- **Rodar bot dry-run**:
+    ```bash
+    python -u bot_core.py --bot-id test1 --symbol BTC-USDT --entry 30000 --targets "2:0.3" --interval 5 --size 0.1 --funds 0 --dry
+    ```
+- **Testes**:
+    - Unitários: `./run_tests.sh`
+    - E2E Selenium: `RUN_SELENIUM=1 ./run_tests.sh`
+    - Checagem rápida: `python -m py_compile <file>.py`
+- **Docker**:
+    ```bash
+    docker build -t autocoinbot .
+    docker run -d --name autocoinbot -p 8501:8501 --env-file .env autocoinbot
+    ```
 
----
+## 4. Integrações e Superfícies HTTP
 
-## 🧠 REGRA DE APRENDIZADO CONTÍNUO
+- **API HTTP** ([terminal_component.py](terminal_component.py)):
+    - Logs: `/api/logs?bot=<id>&limit=n`
+    - Trades: `/api/trades?bot=<id>&only_real=1&group=1`
+    - Sessão bot: `/api/bot?bot=<id>`
+    - Equity: `/api/equity/history`
+    - Start/Stop bots: `POST /api/start`, `POST /api/stop`
+- **Monitor/Report**: [monitor_window.html](monitor_window.html) e [report_window.html](report_window.html) usam `/monitor` e `/report` (abrem em nova aba via HTML customizado, nunca `st.link_button`). UI injeta o tema via query string.
 
-**OBRIGATÓRIO**: Toda vez que for feito um **commit** ou **checkpoint**, executar a rotina de aprendizado:
+## 5. Contribuições/críticas de modelo
 
-1. **Identificar lições aprendidas** na sessão atual:
-   - Bugs corrigidos e suas causas raiz
-   - Padrões que funcionaram vs não funcionaram
-   - Erros de CI/CD e soluções
-   - Peculiaridades do ambiente (container, produção, etc)
+- Se alterar o schema no [database.py](database.py) ou argumentos CLI, revise todos os pontos de chamada.
+- Sempre cheque se está usando a shape correta dos dados (logs = JSON, timestamps = float, eventos são campos do JSON).
+- Commits devem vir acompanhados de **lições aprendidas** no final do arquivo `.github/copilot-instructions.md` (formato: data, problema, causa, solução, arquivos).
 
-2. **Atualizar este documento** (`copilot-instructions.md`):
-   - Adicionar na seção "📝 Lições Aprendidas" com data
-   - Criar nova seção se o tópico for recorrente/importante
-   - Incluir código de exemplo quando relevante
+## 6. Comportamentos Não-Óbvios
 
-3. **Formato da entrada**:
-   ```markdown
-   ### YYYY-MM-DD: Título curto do problema
-   - **Problema**: Descrição do que aconteceu
-   - **Causa**: Por que aconteceu
-   - **Solução**: Como foi resolvido
-   - **Arquivos**: Quais arquivos foram afetados
-   ```
+- **Bandit learning**: Usado para auto-ajuste de trailing em targets, via métodos no [database.py](database.py).
+- **Eternal mode**: Flag `--eternal` faz o bot reiniciar automaticamente após targets; vejam tabelas `eternal_runs` no banco.
+- **Multi-tab/session**: UI persiste/limpa bots ativos por sessão via [ui.py](ui.py) e banco.
+- **Testes visuais**: Selenium configurado por [selenium_helper.py](selenium_helper.py) (checa webdrivers/headless automaticamente).
 
-4. **Commit junto com as alterações**:
-   ```bash
-   git add .github/copilot-instructions.md
-   git commit -m "docs: atualizar treinamento com lições da sessão"
-   ```
 
-**Por quê?** Isso garante que o conhecimento adquirido seja persistido e reutilizado em sessões futuras, evitando repetir os mesmos erros.
+Se alguma seção destes resumos carecer de detalhes, peça exemplos do código real ou trechos específicos para serem acrescentados e assim manter esse guia sempre preciso. Quer detalhar algum fluxo, regra ou integração?
 
----
-
+Vou aplicar esta atualização em .github/copilot-instructions.md. Se precisar de destaque ou mais exemplos para um padrão acima, é só avisar.
 ## Arquitetura (fluxo de dados)
 
 ```
@@ -91,17 +90,8 @@ Internet → nginx (:8080) → Streamlit (:8501)  [rotas /]
 ```
 
 **Arquivos de deploy:**
-- `Dockerfile` — Container com Python + nginx
-- `fly.toml` — Configuração Fly.io (expõe porta 8080)
-- `nginx.conf` — Proxy reverso para rotear requisições
-- `start.sh` — Script que inicia API + Streamlit + nginx
 
 **Arquivos-chave:**
-- `bot_controller.py` — monta comando CLI e grava `bot_sessions`
-- `bot_core.py` / `bot.py` (`EnhancedTradeBot`) — lógica de trading, modos: `sell`, `buy`, `mixed`, `flow`
-- `database.py` — schema SQLite: `bot_sessions`, `bot_logs`, `trades`, `learning_stats`, `eternal_runs`
-- `terminal_component.py` — API HTTP (`/api/logs`, `/api/trades`, `/monitor`, `/report`)
-- `ui_components/` — módulos: `utils.py`, `theme.py`, `navigation.py`, `gauges.py`, `terminal.py`, `dashboard.py`
 
 ## Comandos essenciais
 
@@ -252,11 +242,6 @@ else:
 
 ## Checklist antes de PRs
 
-- [ ] Alterou CLI? → sincronizar `bot_core.py` ↔ `bot_controller.py`
-- [ ] Alterou schema? → atualizar `database.py` e todos os callers
-- [ ] Alterou API HTTP? → preservar JSON shape e headers CORS
-- [ ] Adicionou prints? → substituir por `DatabaseLogger`
-- [ ] Alterou UI? → `python -m py_compile ui.py` e testar navegação
 
 ## ⚠️ Workflow Git obrigatório (conflitos e CI)
 
@@ -477,36 +462,21 @@ const apiUrl = 'http://127.0.0.1:8765/api/trades';  // quebra em produção
 
 ## 📝 Lições Aprendidas (Histórico)
 
+### 2026-01-03: Quickstart para agentes IA
+- Problema: As instruções estavam extensas e diluídas, dificultando onboarding rápido de agentes.
+- Causa: Documento cresceu com muitos detalhes operacionais e históricos.
+- Solução: Adicionada seção “AI Agent Quickstart (2026-01-03)” no topo com arquitetura, limites de serviço, regras críticas e comandos essenciais; mantido conteúdo detalhado abaixo.
+- Arquivos: [ui.py](../ui.py), [bot_controller.py](../bot_controller.py), [bot_core.py](../bot_core.py), [bot.py](../bot.py), [database.py](../database.py), [terminal_component.py](../terminal_component.py), [api.py](../api.py)
+
 ### 2026-01-02: URLs dinâmicas para Fly.io
-- **Problema**: iframe de report retornava 404 em `autocoinbot.fly.dev`
-- **Causa**: URL hardcoded `http://127.0.0.1:port/report`
-- **Solução**: Detectar `FLY_APP_NAME` e usar URLs relativas em produção
-- **Arquivos**: `ui.py` (3 locais corrigidos)
 
 ### 2026-01-02: Campo "Último Evento"
-- **Problema**: Campo mostrava "Sem eventos" mesmo com logs
-- **Causa**: Timestamp salvo como float, código tentava fazer `ts[:19]`
-- **Solução**: Converter float para datetime string antes de formatar
-- **Arquivos**: `ui.py` (função de display de bots ativos)
 
 ### 2026-01-02: Selenium em container
-- **Problema**: `SessionNotCreatedException: Chrome instance exited`
-- **Causa**: Container sem X11/display
-- **Solução**: Validação alternativa com requests + testes de database
-- **Futuro**: Instalar Xvfb no container para testes visuais completos
 
 ### 2026-01-02: Scripts de debug não devem ter prefixo test_
-- **Problema**: pytest coletava arquivos `test_imports.py`, `test_validation_debug.py` que são scripts de debug
-- **Causa**: Arquivos com prefixo `test_` são coletados automaticamente pelo pytest
-- **Solução**: Renomear para `debug_*.py`: `debug_imports.py`, `debug_validation.py`, `debug_loading_check.py`
-- **Regra**: Nunca criar arquivos de debug com prefixo `test_`, usar `debug_` ou `check_`
 
 ### 2026-01-02: st.link_button não abre em nova aba
-- **Problema**: Botão "📜 Log" clicado voltava para a mesma página ao invés de abrir o monitor
-- **Causa**: `st.link_button` do Streamlit navega na mesma janela, não abre nova aba
-- **Solução**: Substituir por HTML `<a href="..." target="_blank">` com estilo de botão
-- **Arquivos**: `ui.py` (botões Log e Report)
-- **Código**:
 ```python
 # ❌ ERRADO - não abre em nova aba
 st.link_button("📜 Log", log_url, use_container_width=True)
@@ -524,17 +494,8 @@ st.markdown(f'''
 ''', unsafe_allow_html=True)
 ```
 ### 2026-01-02: API HTTP não acessível em produção (Fly.io)
-- **Problema**: Rotas `/api`, `/monitor`, `/report` retornavam página do Streamlit
-- **Causa**: Fly.io só expõe uma porta (8501), API HTTP roda em porta separada (8765)
-- **Solução**: Usar nginx como proxy reverso para rotear requisições
-- **Arquivos**: `nginx.conf`, `start.sh`, `Dockerfile`, `fly.toml`
 
 ### 2026-01-02: Botão Home no monitor voltava para URL errada
-- **Problema**: Ao clicar em "Home" no monitor/report, voltava para a home local ao invés de produção
-- **Causa**: Porta 8501 hardcoded em `monitor_window.html` e `report_window.html`
-- **Solução**: Usar `window.location.origin` ao invés de `u.hostname:8501`
-- **Arquivos**: `monitor_window.html`, `report_window.html`
-- **Código**:
 ```javascript
 // ❌ ERRADO - porta hardcoded não funciona com nginx
 home = `${u.protocol}//${u.hostname}:8501${homeRaw}`;
@@ -543,10 +504,136 @@ home = `${u.protocol}//${u.hostname}:8501${homeRaw}`;
 const origin = window.location.origin;
 home = `${origin}${homeRaw}`;
 ```
-- **Diagrama**:
 ```
 nginx (:8080) → /         → Streamlit (:8501)
              → /api/*    → API HTTP (:8765)
              → /monitor  → API HTTP (:8765)
              → /report   → API HTTP (:8765)
 ```
+
+```bash
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+```bash
+python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true
+```
+
+```bash
+python -u bot_core.py --bot-id test_dry_1 --symbol BTC-USDT --entry 30000 --targets "2:0.3" --interval 5 --size 0.1 --funds 0 --dry
+```
+
+# Copilot Instructions — AutoCoinBot (resumo prático)
+# Copilot Instructions — AutoCoinBot (resumo prático)
+
+> **🤖 Default Agent: `dev-senior`** — Ver [agents.json](agents.json) para configuração de agentes.  
+> **📚 Manual de Treinamento:** [AGENTE_TREINAMENTO.md](../AGENTE_TREINAMENTO.md)
+
+**Objetivo breve:** Streamlit UI controla subprocessos de bots que escrevem logs e trades em `trades.db`. A UI consome um terminal HTTP local para render de logs em tempo real.
+
+---
+
+## 1. Ambiente & Quickstart
+
+### Setup inicial
+```bash
+python3 -m venv venv
+source venv/bin/activate  # Linux/macOS/WSL
+pip install -r requirements.txt
+```
+
+### Executar a aplicação
+```bash
+# Terminal 1: Streamlit UI
+python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true
+
+# Terminal 2: Bot (dry-run recomendado)
+python -u bot_core.py --bot-id test_dry_1 --symbol BTC-USDT --entry 30000 --targets "2:0.3" --interval 5 --size 0.1 --funds 0 --dry
+```
+
+---
+
+## 2. Arquitetura (arquivos-chave)
+
+| Arquivo | Descrição |
+|---------|-----------|
+| [streamlit_app.py](../streamlit_app.py) | Entrada da app + persistência `.login_status` |
+| [ui.py](../ui.py) | Lógica de UI, guardas multi-tab/kill-on-start, render do terminal |
+| [bot_controller.py](../bot_controller.py) | Compõe o comando do subprocess e grava `bot_sessions` |
+| [bot_core.py](../bot_core.py) / [bot.py](../bot.py) | Lógica do bot; usa `DatabaseLogger`/`database.py` |
+| [terminal_component.py](../terminal_component.py) | API HTTP local (~8765) que serve logs para o widget |
+| [database.py](../database.py) | Schema + helpers (tabelas: `bot_sessions`, `bot_logs`, `trades`) |
+| [api.py](../api.py) | Integração com KuCoin API e lookup de secrets |
+
+### Tabelas principais do banco de dados
+- **`bot_sessions`**: sessões de bots (id, status, PID, config)
+- **`bot_logs`**: logs em tempo real dos bots
+- **`trades`**: histórico de trades executados
+- **`learning_stats`**: estatísticas de aprendizado ML
+- **`learning_history`**: histórico de treinamento
+
+---
+
+## 3. Convenções importantes (não alterar sem checar)
+
+- **Evite `print()`** em código comprometido; use `DatabaseLogger` ou `logging` (ver `bot_core.py`)
+- **CLI do bot**: se alterar flags/args, atualizar **simultaneamente** `bot_core.py` e `bot_controller.py` (builder vs actor devem estar sincronizados)
+- **Schema do DB**: se mudar, atualizar `database.py` e **todos** os callers que tocam as colunas modificadas
+- **Terminal API**: preservar formato JSON e headers CORS em `terminal_component.py` (UI depende da shape)
+- **Multi-tab/kill-on-start**: implementado via `ui.py` + flags no DB (prefira persistência DB a estados em memória)
+
+---
+
+## 4. Integrações e pontos exteriores
+
+| Componente | Detalhe |
+|------------|---------|
+| **DB SQLite** | `trades.db` na raiz do repo (ver `database.py`) |
+| **Terminal API** | `http://localhost:8765/api/logs?bot=<bot_id>` usado pela UI |
+| **Secrets** | `.env` local ou `st.secrets` para `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `API_KEY_VERSION`, `KUCOIN_BASE`, `TRADES_DB` |
+
+---
+
+## 5. Comandos úteis e testes
+
+```bash
+# Verificar sintaxe
+python -m py_compile <file>.py
+
+# Testes unitários
+pytest tests/
+
+# Testes completos (APP_ENV=dev por padrão)
+./run_tests.sh
+
+# Testes Selenium/E2E (requer Chrome + chromedriver)
+RUN_SELENIUM=1 ./run_tests.sh
+
+# Inspeção do banco de dados
+python scripts/db_inspect.py
+```
+
+---
+
+## 6. Checklist rápido antes de PRs
+
+- [ ] **Alterou CLI do bot?** → testar dry-run e validar `bot_sessions`/`bot_logs` no DB
+- [ ] **Alterou schema?** → adicionar migração/nota e atualizar `database.py` callers
+- [ ] **Alterou terminal API/UI?** → validar widget e headers CORS
+- [ ] **Adicionou prints?** → substituir por `DatabaseLogger`
+- [ ] **Alterou UI?** → rodar `python -m py_compile ui.py` e testar navegação por tabs
+
+---
+
+## 7. Referências rápidas
+
+- [AGENTE_TREINAMENTO.md](../AGENTE_TREINAMENTO.md) — Manual completo de treinamento
+- [agents.json](agents.json) — Configuração de agentes especializados
+- [tests/](../tests/) — Testes unitários e E2E
+- [scripts/](../scripts/) — Scripts de manutenção e inspeção
+
+---
+
+**Nota:** Este documento contém as instruções essenciais para agentes Copilot. Para documentação detalhada, consulte [AGENTE_TREINAMENTO.md](../AGENTE_TREINAMENTO.md).
+ 

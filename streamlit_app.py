@@ -72,13 +72,16 @@ def fazer_login():
         submitted = st.form_submit_button("Entrar")
 
         if submitted:
-            if verificar_credenciais(usuario, senha):
-                st.session_state["logado"] = True
-                set_logged_in(True)
-                st.success("Login realizado com sucesso!")
-                st.rerun()
-            else:
-                st.error("Usuário ou senha incorretos!")
+            try:
+                if verificar_credenciais(usuario or "", senha or ""):
+                    st.session_state["logado"] = True
+                    set_logged_in(True)
+                    st.success("Login realizado com sucesso.")
+                    st.rerun()
+                else:
+                    st.error("Usuário ou senha incorretos!")
+            except Exception:
+                st.error("Falha ao processar login.")
 
 
 def main():
@@ -101,7 +104,6 @@ def main():
 
         # Mostrar loader enquanto importa UI
         with st.spinner("⏳ Carregando dashboard..."):
-            # Usuário logado - importar UI
             ui_mod = None
             here = os.path.dirname(__file__)
             try:

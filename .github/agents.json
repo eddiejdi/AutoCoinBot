@@ -6,6 +6,8 @@
       "name": "Agente Dev Sênior",
       "description": "Agente principal para desenvolvimento, manutenção e evolução do projeto AutoCoinBot",
       "training": "AGENTE_TREINAMENTO.md",
+      "troubleshooting": "Ver .github/copilot-instructions.md → Falha do Copilot Chat (Response contained no choices)",
+      "prompts": ".github/copilot-prompts.md",
       "capabilities": [
         "code-review",
         "debugging",

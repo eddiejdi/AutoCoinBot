@@ -7,14 +7,18 @@ import hashlib
 # Checklist de aderência aos padrões do projeto
 def checklist_aderencia():
     st.sidebar.header('✅ Checklist de Padrões')
-    st.sidebar.markdown('- [x] Segue instruções do Copilot
-    - [x] Usa logging estruturado
-    - [x] Modularização clara
-    - [x] Tratamento de exceções
-    - [x] Testes automatizados
-    - [x] UI não trava
-    - [x] URLs dinâmicas
-    - [x] Documentação atualizada')
+    st.sidebar.markdown(
+        """
+        - [x] Segue instruções do Copilot
+        - [x] Usa logging estruturado
+        - [x] Modularização clara
+        - [x] Tratamento de exceções
+        - [x] Testes automatizados
+        - [x] UI não trava
+        - [x] URLs dinâmicas
+        - [x] Documentação atualizada
+        """
+    )
 
 # Executa o agente Dev Sênior ao iniciar
 try:

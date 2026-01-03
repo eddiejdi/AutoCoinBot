@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/GitGuardian/ggshield
+    rev: v1.25.6
+    hooks:
+      - id: ggshield
+        name: ggshield-secret-scan
+        stages: [commit]
+        entry: ggshield secret scan pre-commit
+        language: python
+        pass_filenames: false
+        require_serial: true
+        additional_dependencies: []
+        args: []
+
+ci:
+  autofix_commit_msg: "chore(pre-commit): auto fixes"
+  autofix_prs: false
+  skip: [ggshield]
+  # O hook roda localmente; no CI usamos a etapa dedicada no workflow.

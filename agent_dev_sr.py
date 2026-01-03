@@ -77,19 +77,38 @@ class DevSeniorAgent:
         return melhorias
 
     def iniciar_fluxo(self):
-        """Fluxo principal do agente: obtém specs, levanta requisitos, sugere melhorias."""
+        """Fluxo principal do agente: obtém specs, levanta requisitos, sugere melhorias e aplica ajustes."""
         print('=== Agente Dev Sênior - AutoCoinBot ===')
         print('Especificações do usuário:')
-        print(self.obter_especificacoes())
+        specs = self.obter_especificacoes()
+        print(specs)
+
         print('\nPadrões de desenvolvimento:')
-        for linha in self.seguir_padroes()[:10]:
+        padroes = self.seguir_padroes()
+        for linha in padroes[:10]:
             print(linha.strip())
+
         print('\nRequisitos levantados:')
-        for req in self.levantar_requisitos():
+        requisitos = self.levantar_requisitos()
+        for req in requisitos:
             print(f'- {req}')
+
         print('\nSugestões de melhoria:')
-        for m in self.sugerir_melhorias():
+        melhorias = self.sugerir_melhorias()
+        for m in melhorias:
             print(f'- {m}')
+
+        # Ajustes automáticos baseados nos padrões e especificações
+        # Aqui é onde o agente poderia modificar arquivos, sugerir alterações ou debugar
+        # Exemplo simples: detectar se o user_spec tem chave 'copilot-agent-settings' para ajustar
+        settings = specs.get('copilot-agent-settings', {}) if isinstance(specs, dict) else {}
+        if settings:
+            print('\nAplicando ajustes do copilot-agent-settings...')
+            for key, val in settings.items():
+                print(f'Ajuste {key} para {val}')
+                # Em implementação real, o agente altera configuração ou arquivos.
+        else:
+            print('\nNenhum ajuste específico para copilot-agent-settings encontrado.')
         print('========================================')
 
 # Exemplo de uso direto

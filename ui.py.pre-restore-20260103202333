@@ -1,0 +1,74 @@
+"""
+ui.py (safe recovery wrapper)
+
+Este arquivo foi reduzido para uma implementação mínima e estável após um
+erro de merge ter corrompido a versão anterior. Mantemos apenas a API
+necessária para a aplicação iniciar: `render_bot_control()`.
+
+Regras do projeto preservadas:
+- Login é exigido por sessão (usa st.session_state["logado"]).
+- Toda a renderização principal é delegada para `dashboard.render_dashboard()`.
+- Nada de prints; em caso de erro, exibir via Streamlit.
+
+Se precisar restaurar a UI completa, recupere a versão estável da branch `main`
+ou reimplemente incrementalmente a partir deste wrapper.
+"""
+
+from __future__ import annotations
+
+import os
+import streamlit as st
+
+# Arquivo de sinalização usado por streamlit_app.py para manter sessão autenticada
+LOGIN_FILE = ".login_status"
+
+
+def _require_login() -> None:
+    """Exige login por sessão antes de renderizar qualquer UI.
+
+    Em dev (APP_ENV=dev), mantém comportamento atual do app: se o arquivo
+    .login_status existir, consideramos a sessão autenticada.
+    """
+    try:
+        if not bool(st.session_state.get("logado", False)):
+            # Conveniência para desenvolvimento local
+            if os.environ.get("APP_ENV", "dev").lower() == "dev":
+                try:
+                    if os.path.exists(LOGIN_FILE):
+                        st.session_state["logado"] = True
+                        return
+                except Exception:
+                    pass
+
+            st.title("🔐 Login obrigatório")
+            st.warning("Você precisa estar autenticado para acessar o dashboard.")
+            st.stop()
+    except Exception:
+        st.title("🔐 Login obrigatório")
+        st.error("Erro ao verificar autenticação. Acesso negado.")
+        st.stop()
+
+
+def render_bot_control():
+    """Ponto de entrada usado por streamlit_app.py.
+
+    Delegamos toda a lógica de tela para `dashboard.render_dashboard()` para
+    garantir uma UI funcional mesmo após o erro de merge.
+    """
+    _require_login()
+
+    # Renderização principal
+    try:
+        import dashboard  # módulo já presente no projeto
+    except Exception as e:
+        st.error(f"Erro ao carregar módulo de dashboard: {e}")
+        st.stop()
+
+    try:
+        dashboard.render_dashboard()
+    except Exception as e:
+        st.error(f"Erro ao renderizar dashboard: {e}")
+        st.stop()
+
+
+__all__ = ["render_bot_control"]
