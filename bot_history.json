@@ -74355,5 +74355,16 @@
     "executed_trades": [],
     "total_profit": 0,
     "dry_run": true
+  },
+  {
+    "id": "bot_6eb25e02",
+    "symbol": "BTC-USDT",
+    "entry_price": 0.0,
+    "mode": "sell",
+    "start_ts": 1767472909.8425794,
+    "end_ts": 1767472909.8463786,
+    "executed_trades": [],
+    "total_profit": 0,
+    "dry_run": true
   }
 ]

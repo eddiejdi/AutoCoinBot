@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
-"""Quick test to debug button detection."""
+"""Quick test to debug button detection.
+
+Skip by default unless RUN_SELENIUM=1 (requires Streamlit server running).
+"""
 import os
+import pytest
+
+# Guard: only run this debug test when explicitly requested
+if os.environ.get('RUN_SELENIUM', '0') != '1':
+    pytest.skip("visual debug test skipped (set RUN_SELENIUM=1 to enable)", allow_module_level=True)
+
 os.environ['LOCAL_URL'] = 'http://localhost:8501'
 os.environ['APP_ENV'] = 'dev'
 

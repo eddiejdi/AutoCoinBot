@@ -1,4 +1,5 @@
-
+import os
+import pytest
 
 # ---------------------------------------------------------------------------
 # Selenium fixtures for UI tests
@@ -51,5 +52,3 @@ def d():
     driver = _create_chrome_driver()
     yield driver
     driver.quit()
-import os
-import pytest
