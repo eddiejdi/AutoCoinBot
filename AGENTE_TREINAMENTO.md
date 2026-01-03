@@ -419,6 +419,10 @@ Antes de fazer commit/PR, verificar:
 - [ ] Preservar shape do JSON de resposta
 - [ ] Manter headers CORS
 - [ ] Testar endpoint: `curl http://localhost:8765/api/logs?bot=test`
+- [ ] **Segurança/Segredos**
+    - [ ] Rodar `pre-commit install` e verificar `ggshield` localmente
+    - [ ] Configurar `GITGUARDIAN_API_KEY` no repositório para habilitar scan no CI
+    - [ ] Se um segredo vazar, remover do código, rotacionar e (se necessário) reescrever histórico da branch
 
 ### Alterações em API/integração KuCoin
 - [ ] Testar em dry-run primeiro
