@@ -1,3 +1,3 @@
 {
-    "chat.agent.maxRequests": 250
+  // Intencionalmente vazio para evitar segredos hardcoded.
 }

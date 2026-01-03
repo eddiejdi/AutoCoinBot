@@ -1,38 +1,44 @@
 # Copilot Instructions — AutoCoinBot
 
-Guia conciso para agentes IA (TL;DR)
-- Objetivo: Streamlit orquestra bots KuCoin; subprocessos registram tudo em SQLite. A UI lê logs via API HTTP local (porta 8765) para monitor/relatório.
-- Arquitetura (fluxo principal): [streamlit_app.py](streamlit_app.py) → [ui.py](ui.py) → [bot_controller.py](bot_controller.py) → subprocesso [bot_core.py](bot_core.py) → lógica em [bot.py](bot.py) e persistência em [database.py](database.py). Logs/relatórios servidos por [terminal_component.py](terminal_component.py) (rotas /api, /monitor, /report).
-- Padrões críticos (podem travar/romper):
-    - Sincronize flags CLI entre `bot_core.py` (argparse) e `BotController.start_bot()` em [bot_controller.py](bot_controller.py).
-    - Em Streamlit, use `st.session_state` OU `value=` nos widgets, nunca ambos; evite travar a UI (regra documentada em [ui.py](ui.py)).
-    - Use `DatabaseLogger` em vez de `print()` (logs vão para bot_logs via [database.py](database.py)).
-    - URLs dinâmicas: em produção (Fly.io, env FLY_APP_NAME) use URLs relativas; localmente use `http://127.0.0.1:<porta>` (ver detecção em [ui.py](ui.py), [monitor_window.html](monitor_window.html), [report_window.html](report_window.html)).
-- Fluxos de trabalho do dev:
-    - Ambiente: `python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`.
-    - UI: `python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true`.
-    - Bot dry-run: `python -u bot_core.py --bot-id test_1 --symbol BTC-USDT --entry 30000 --targets "2:0.3" --interval 5 --size 0.1 --funds 0 --dry`.
-    - Testes: `./run_tests.sh` (use `RUN_SELENIUM=1` para E2E); validação: `python -m py_compile <file>.py`.
-- Integrações/depêndencias:
-    - KuCoin REST em [api.py](api.py); checagem de credenciais via `'_has_keys'`. Para UI, prefira `get_price_fast()`/timeouts curtos.
-    - Selenium headless por [selenium_helper.py](selenium_helper.py); use Xvfb/pyvirtualdisplay em CI quando necessário.
-- Dados e contratos (SQLite):
-    - Tabelas principais: bot_sessions, bot_logs (JSON em `message`, `timestamp` float), trades, learning_stats/history, eternal_runs. Métodos em `DatabaseManager` ([database.py](database.py)).
-    - "Último Evento" na UI: extraia `event` do JSON de `message`; formate `timestamp` float → string (exemplo em [ui.py](ui.py)).
-- Monitor/Relatório:
-    - `start_api_server()` em [terminal_component.py](terminal_component.py) inicia a API (8765). UI embute iframes com URLs relativas em produção e `window.location.origin` nos HTMLs.
-    - Botões Log/Report abrem em nova aba via HTML custom (não `st.link_button`); blocos 🔒 não modificar.
-- Convenções do bot:
-    - `EnhancedTradeBot` ([bot.py](bot.py)) compensa taxas nos targets e faz trailing após target; bandit learning via `choose_bandit_param`/`update_bandit_reward` ([database.py](database.py)).
-    - Modo `--eternal` registra ciclos em `eternal_runs` e reinicia automaticamente.
-- Evite:
-    - Alterar blocos "🔒 HOMOLOGADO" sem aprovação.
-    - Hardcode de `127.0.0.1` em produção; respeite `FLY_APP_NAME`.
-    - `print()` em caminhos críticos; prefira logger/DB.
-- Pontos de entrada úteis:
-    - Start/stop via API: POST `/api/start` e `/api/stop` em [terminal_component.py](terminal_component.py).
-    - UI principal: `render_bot_control()` em [ui.py](ui.py) e navegação por query `view=dashboard|monitor|report`.
-    - Mais detalhes: [AGENTE_TREINAMENTO.md](AGENTE_TREINAMENTO.md).
+AI Agent Quickstart (2026-01-03)
+- Big picture: [streamlit_app.py](streamlit_app.py) boots the Streamlit UI, which orchestrates bot subprocesses via [ui.py](ui.py) → [bot_controller.py](bot_controller.py). Each bot runs in a separate process through [bot_core.py](bot_core.py) and executes trading logic in [bot.py](bot.py), persisting logs/trades to SQLite via [database.py](database.py). Live logs/HTML windows are served by [terminal_component.py](terminal_component.py) on port 8765.
+- Why this shape: DB-first logging decouples UI refresh from bot output, enabling multi-tab monitoring and stable iframes. A small HTTP server isolates /monitor and /report so Streamlit isn’t blocked by long polling.
+- Service boundaries:
+    - UI-only code: [ui.py](ui.py) (widgets, nav, guards, kill-on-start cleanup)
+    - Process/CLI: [bot_controller.py](bot_controller.py) builds `subprocess.Popen` commands; keep flags in sync with [bot_core.py](bot_core.py argparse)
+    - HTTP surface: [terminal_component.py](terminal_component.py) exposes /api/*, /monitor, /report (CORS enabled)
+    - Exchange integration: [api.py](api.py) (timeouts + fast variants for UI)
+- Critical rules (breakers):
+    - Streamlit widgets: use either `st.session_state` or `value=` (never both). See patterns in [ui.py](ui.py).
+    - CLI sync: if you add/rename flags in [bot_core.py](bot_core.py), update `BotController.start_bot()` in [bot_controller.py](bot_controller.py) (e.g., `--eternal`, `--reserve-pct`, `--target-profit-pct`).
+    - Logging: avoid `print()` in hot paths; use `DatabaseLogger` or `DatabaseManager.add_bot_log()` (see [bot_core.py](bot_core.py), [database.py](database.py)).
+    - URLs: production (Fly.io behind nginx) must use relative paths; local uses `http://127.0.0.1:<port>`. Detection via `FLY_APP_NAME` is implemented in [ui.py](ui.py) and the HTML windows.
+    - 🔒 Do not modify homologated blocks in [ui.py](ui.py) (Log/Report buttons, dynamic URL detection) without explicit approval.
+- Dev workflows (commands):
+    - venv/setup: `python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`
+    - Run UI: `python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true`
+    - Dry-run bot: `python -u bot_core.py --bot-id test_1 --symbol BTC-USDT --entry 30000 --targets "2:0.3" --interval 5 --size 0.1 --funds 0 --dry`
+    - Tests: `./run_tests.sh` (set `RUN_SELENIUM=1` for E2E); quick check: `python -m py_compile <file>.py`
+        - Docker (opcional): `docker build -t autocoinbot .` e `docker run -d --name autocoinbot -p 8501:8501 --env-file .env autocoinbot`
+- Monitor/Report windows:
+    - API server auto-starts from [ui.py](ui.py) via `start_api_server()`; manual entry points live in [terminal_component.py](terminal_component.py) at port 8765.
+    - Buttons open in new tab via custom HTML (not `st.link_button`) to avoid Streamlit limitations.
+    - HTTP API surface (terminal_component.py):
+        - GET: `/api/logs?bot=<id>&limit=n`, `/api/bot?bot=<id>`, `/api/trades?bot=<id>&only_real=1&group=1`, `/api/equity/history`
+        - GET: `/api/learning/symbols`, `/api/learning/stats?symbol=...&param=...`, `/api/learning/history?symbol=...&param=...&limit=n`, `/api/active_bot`
+        - POST: `/api/start` (body: symbol, entry, mode, targets, interval, size|funds, dry, reserve_pct, target_profit_pct, eternal_mode)
+        - POST: `/api/stop` (body: bot_id)
+        - HTML: `/monitor`, `/report`; assets: `/themes/<pack>/backgrounds/*`
+- Data contracts (SQLite):
+    - Tables: `bot_sessions`, `bot_logs` (message JSON, timestamp float), `trades`, `learning_stats`/`learning_history`, `eternal_runs`. See methods in [database.py](database.py).
+    - “Último evento” column: parse JSON `message.event`, convert timestamp float → string (see examples in [ui.py](ui.py)).
+- Bot conventions (examples in [bot.py](bot.py)):
+    - Targets compensate fees/slippage; SELL targets are trailed post-arming; bandit learning via `choose_bandit_param()`/`update_bandit_reward()` in [database.py](database.py).
+    - `--eternal` mode loops cycles, registering in `eternal_runs` and restarting automatically.
+- Integrations:
+    - KuCoin REST in [api.py](api.py). For UI paths prefer `get_price_fast()` / low timeouts.
+    - Selenium headless setup in [selenium_helper.py](selenium_helper.py). In CI, use Xvfb/pyvirtualdisplay.
+
 
 Falha do Copilot Chat (Response contained no choices) — fallback rápido
 - Reduza o prompt e remova anexos grandes; tente novamente.
@@ -65,13 +71,12 @@ Streamlit UI que gerencia subprocessos de trading bots. Logs e trades são persi
 ```
 
 ### Lista de blocos homologados:
-| Arquivo | Linha | Descrição |
-|---------|-------|-----------|
-| `ui.py` | ~5408 | Botões Log/Report com HTML target="_blank" |
-| `ui.py` | ~5398 | Detecção FLY_APP_NAME para URLs dinâmicas |
+| Arquivo | Linha(s) | Descrição |
+|---------|----------|-----------|
+| `ui.py` | ~5386–5434 | URLs dinâmicas + Botões Log/Report (target="_blank") |
 | `ui.py` | ~5551 | Botões Log/Report em sessões encerradas |
-| `selenium_helper.py` | todo | Configuração Chrome/Chromium para containers |
-| `selenium_validate_all.py` | todo | Script de validação completo |
+| `selenium_helper.py` | ~1–120 | Configuração Chrome/Chromium para containers (webdriver_manager, flags headless) |
+| `selenium_validate_all.py` | ~1–30 | Script de validação completo (checagens principais) |
 
 ### Como adicionar novo bloco homologado:
 1. Usuário aprova o código: "homologue este bloco"
@@ -502,6 +507,12 @@ const apiUrl = 'http://127.0.0.1:8765/api/trades';  // quebra em produção
 `.env` ou `st.secrets`: `API_KEY`, `API_SECRET`, `API_PASSPHRASE`, `KUCOIN_BASE`, `TRADES_DB`
 
 ## 📝 Lições Aprendidas (Histórico)
+
+### 2026-01-03: Quickstart para agentes IA
+- Problema: As instruções estavam extensas e diluídas, dificultando onboarding rápido de agentes.
+- Causa: Documento cresceu com muitos detalhes operacionais e históricos.
+- Solução: Adicionada seção “AI Agent Quickstart (2026-01-03)” no topo com arquitetura, limites de serviço, regras críticas e comandos essenciais; mantido conteúdo detalhado abaixo.
+- Arquivos: [ui.py](../ui.py), [bot_controller.py](../bot_controller.py), [bot_core.py](../bot_core.py), [bot.py](../bot.py), [database.py](../database.py), [terminal_component.py](../terminal_component.py), [api.py](../api.py)
 
 ### 2026-01-02: URLs dinâmicas para Fly.io
 

@@ -71,7 +71,17 @@ def fazer_login():
         senha = st.text_input("Senha", type="password")
         submitted = st.form_submit_button("Entrar")
 
-                st.error("Usuário ou senha incorretos!")
+        if submitted:
+            try:
+                if verificar_credenciais(usuario or "", senha or ""):
+                    st.session_state["logado"] = True
+                    set_logged_in(True)
+                    st.success("Login realizado com sucesso.")
+                    st.rerun()
+                else:
+                    st.error("Usuário ou senha incorretos!")
+            except Exception:
+                st.error("Falha ao processar login.")
 
 
 def main():
@@ -92,27 +102,10 @@ def main():
             fazer_login()
             return
 
-<<<<<<< HEAD
         # Mostrar loader enquanto importa UI
         with st.spinner("⏳ Carregando dashboard..."):
-            # Usuário logado - importar UI
             ui_mod = None
             here = os.path.dirname(__file__)
-=======
-        # Usuário já está logado: remove o indicador de carregamento
-        # antes de renderizar a UI principal, para evitar a impressão de
-        # "carregamento infinito" caso a UI chame st.stop()/st.rerun.
-        try:
-            top_loader.empty()
-            pass
-
-        # Usuário logado - importar UI
-        ui_mod = None
-        here = os.path.dirname(__file__)
-        try:
-            import ui as ui_mod
-        except Exception:
->>>>>>> d82f869 (Checkpoint from VS Code for coding agent session)
             try:
                 import ui as ui_mod
             except Exception:
@@ -133,18 +126,11 @@ def main():
                     st.error(f"❌ Erro ao carregar módulos: {e}")
                     return
 
-<<<<<<< HEAD
         if ui_mod and hasattr(ui_mod, "render_bot_control"):
             try:
                 ui_mod.render_bot_control()
             except Exception as e:
                 st.error(f"❌ Erro ao renderizar interface: {e}")
-=======
-        if hasattr(ui_mod, "render_bot_control"):
-            # A UI pode chamar st.stop()/st.rerun; o loader já foi
-            # limpo acima para não ficar preso na tela.
-            ui_mod.render_bot_control()
->>>>>>> d82f869 (Checkpoint from VS Code for coding agent session)
         else:
             st.error("render_bot_control não encontrado em ui.py")
 
