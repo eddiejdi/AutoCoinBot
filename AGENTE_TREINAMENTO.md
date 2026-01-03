@@ -333,6 +333,18 @@ python agents/os_cleaner_agent.py --dry-run    # Simular
 python agents/os_cleaner_agent.py              # Executar limpeza
 ```
 
+#### 6. Copilot Chat: “Response contained no choices”
+Passos rápidos (em ordem):
+- Reduza o prompt (escopo: 1 arquivo/trecho; sem anexos grandes). Veja .github/copilot-prompts.md.
+- Developer: Reload Window e reautentique no GitHub (Accounts). Atualize as extensões “GitHub Copilot” e “GitHub Copilot Chat”.
+- Copilot Chat: Reset Chat.
+- Verifique View → Output → “GitHub Copilot Chat” (401/403 reautenticar; 429 aguardar; 5xx instabilidade).
+- Em Dev Container/WSL: Dev Containers: Rebuild and Reopen in Container.
+
+Referências:
+- Guia TL;DR e fallback: .github/copilot-instructions.md
+- Prompts curtos e resilientes: .github/copilot-prompts.md
+
 ---
 
 ## 🤖 Agentes Especializados
