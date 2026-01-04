@@ -5325,19 +5325,10 @@ def _render_full_ui(controller=None):
                             os.environ.get("FLY_ALLOC_ID") or  # Fly.io alternativo
                             os.environ.get("DYNO") or          # Heroku
                             os.environ.get("RENDER") or        # Render
+                            os.environ.get("RAILWAY_ENVIRONMENT") or  # Railway
+                            os.environ.get("VERCEL") or        # Vercel
                             os.environ.get("APP_ENV") in ("prod", "production", "hom", "homologation")
                         )
-                        
-                        # Detecção adicional via hostname do Streamlit
-                        if not is_production:
-                            try:
-                                # Se hostname não é localhost, provavelmente é produção
-                                import socket
-                                hostname = socket.gethostname()
-                                if hostname and not hostname.startswith("localhost") and not hostname.startswith("127."):
-                                    is_production = True
-                            except Exception:
-                                pass
                         
                         if is_production:
                             # Produção: URLs relativas (nginx faz proxy)
