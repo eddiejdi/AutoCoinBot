@@ -1,0 +1,47 @@
+╔══════════════════════════════════════════════════════════════════╗
+║              🔍 DIAGNÓSTICO DATABASE_URL - RESUMO                 ║
+╚══════════════════════════════════════════════════════════════════╝
+
+📊 STATUS ATUAL
+├─ Local:        34/34 testes ✅ (100%)
+├─ Homologação:  22/34 testes ⚠️  (64.7%)
+└─ Diferença:    12 testes falhando em produção ❌
+
+🔴 ERRO DETECTADO
+├─ Mensagem: "missing '=' after 'trades.db' in connection info string"
+├─ Origem: psycopg.connect em database.py linha 314
+├─ Causa: DATABASE_URL malformada no Fly.io
+└─ Páginas afetadas: Dashboard, Trading, Learning, Trades (4/6)
+
+📈 IMPACTO POR PÁGINA
+├─ Trading:   0/7   (0%)   ❌ CRÍTICO - não renderiza
+├─ Dashboard: 12/15 (80%)  ⚠️  Header + Checkboxes
+├─ Learning:  3/4   (75%)  ⚠️  Header
+├─ Trades:    4/5   (80%)  ⚠️  Header
+├─ Monitor:   3/4   (75%)  ⚠️  Log container
+└─ Report:    6/6   (100%) ✅ Funcionando perfeitamente
+
+🛠️ SOLUÇÃO IMPLEMENTADA
+├─ ✅ Endpoint diagnóstico criado: /api/debug/database_url
+├─ ✅ Commit 2792070 pushed para GitHub
+├─ ⏳ Aguardando deploy no Fly.io
+└─ 📋 Documentação completa: DIAGNOSTICO_DATABASE_URL.md
+
+🎯 PRÓXIMOS PASSOS
+1. Deploy no Fly.io (manual via dashboard ou flyctl)
+2. Acessar: https://autocoinbot.fly.dev/api/debug/database_url
+3. Verificar formato da DATABASE_URL
+4. Corrigir secret no Fly.io
+5. Re-deploy
+6. Re-testar: export APP_ENV=hom && python3 tests/selenium/test_all_pages.py
+7. Expectativa: 34/34 ✅ (100%)
+
+📁 ARQUIVOS IMPORTANTES
+├─ autocoinbot/terminal_component.py:795-882 (endpoint diagnóstico)
+├─ DIAGNOSTICO_DATABASE_URL.md (este documento)
+├─ tests/selenium/screenshots/*.html (evidências)
+└─ .github/copilot-instructions.md (atualizar lições)
+
+🔒 SEGURANÇA: Remover endpoint /api/debug após correção!
+
+╚══════════════════════════════════════════════════════════════════╝
