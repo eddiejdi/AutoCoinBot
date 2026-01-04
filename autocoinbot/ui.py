@@ -5319,17 +5319,7 @@ def _render_full_ui(controller=None):
                         theme_query = str(theme_qs).lstrip('&')
                         
                         # ✅ URLs dinâmicas (prod vs local)
-                        # Detectar produção via múltiplas variáveis
-                        is_production = bool(
-                            os.environ.get("FLY_APP_NAME") or  # Fly.io
-                            os.environ.get("FLY_ALLOC_ID") or  # Fly.io alternativo
-                            os.environ.get("DYNO") or          # Heroku
-                            os.environ.get("RENDER") or        # Render
-                            os.environ.get("RAILWAY_ENVIRONMENT") or  # Railway
-                            os.environ.get("VERCEL") or        # Vercel
-                            os.environ.get("APP_ENV") in ("prod", "production", "hom", "homologation")
-                        )
-                        
+                        is_production = bool(os.environ.get("FLY_APP_NAME"))
                         if is_production:
                             # Produção: URLs relativas (nginx faz proxy)
                             base = ""
