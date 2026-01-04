@@ -793,6 +793,64 @@ def start_api_server(preferred_port: int = 8765) -> Optional[int]:
                     self.wfile.write(json.dumps({'error': 'server_error', 'message': str(e)}).encode('utf-8'))
                 return
 
+            if parsed.path == '/api/debug/database_url':
+                # TEMPORARY DIAGNOSTIC ENDPOINT - Remove after debugging
+                try:
+                    import os
+                    database_url = os.environ.get("DATABASE_URL") or os.environ.get("TRADES_DB")
+                    
+                    if not database_url:
+                        result = {"error": "DATABASE_URL not defined"}
+                    else:
+                        # Mask password
+                        safe_url = database_url
+                        if '@' in safe_url and ':' in safe_url:
+                            parts = safe_url.split('@')
+                            if len(parts) == 2:
+                                before_at = parts[0]
+                                if '://' in before_at:
+                                    protocol, user_pass = before_at.split('://', 1)
+                                    if ':' in user_pass:
+                                        user, _ = user_pass.split(':', 1)
+                                        safe_url = f"{protocol}://{user}:***@{parts[1]}"
+                        
+                        errors = []
+                        if not database_url.startswith(('postgresql://', 'postgres://')):
+                            errors.append("Must start with 'postgresql://' or 'postgres://'")
+                        if '@' not in database_url:
+                            errors.append("Missing '@' (host separator)")
+                        if database_url.count(':') < 2:
+                            errors.append("Missing ':' (separators)")
+                        
+                        # Check for space instead of '/' before database name
+                        if '@' in database_url:
+                            after_at = database_url.split('@')[1]
+                            if ' ' in after_at and '/' not in after_at.split(' ')[0]:
+                                errors.append("CRITICAL: Space instead of '/' before database name")
+                                idx = after_at.index(' ')
+                                errors.append(f"Found: '{after_at[max(0,idx-10):idx+20]}'")
+                                errors.append("Expected format: 'host:port/database' not 'host:port database'")
+                        
+                        result = {
+                            "url_safe": safe_url,
+                            "length": len(database_url),
+                            "has_space": ' ' in database_url,
+                            "has_equals": '=' in database_url,
+                            "format_errors": errors
+                        }
+                    
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json; charset=utf-8')
+                    self.send_header('Cache-Control', 'no-store')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(result, default=str).encode('utf-8'))
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header('Content-Type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'server_error', 'message': str(e)}).encode('utf-8'))
+                return
+
             if parsed.path != '/api/logs':
                 self.send_response(404)
                 self.end_headers()
