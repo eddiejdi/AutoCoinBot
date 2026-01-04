@@ -64,7 +64,7 @@ Build + start:
 docker compose up --build
 ```
 
-O `docker-compose.yml` expõe a porta `8501` e monta `trades.db` e `logs` para persistência local.
+O `docker-compose.yml` expõe a porta `8501` e monta volumes para logs. O banco de dados PostgreSQL é configurado via variável de ambiente `DATABASE_URL`.
 
 Logs do container:
 

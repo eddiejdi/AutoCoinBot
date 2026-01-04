@@ -1,0 +1,31 @@
+# Excluir ambientes virtuais e caches
+venv/
+ci_venv/
+venv_test_env/
+__pycache__/
+
+# Logs, dumps, capturas e artefatos grandes
+logs/
+pids/
+selenium_screenshots/
+*.log
+*.html
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+
+# Backups e arquivos temporários
+ui.py.*
+ui.py.broken-*
+ui.py.pre-restore-*
+*.tmp
+*.bak
+*.swp
+
+# Outros diretórios gerados
+.pytest_cache/
+.streamlit/
+

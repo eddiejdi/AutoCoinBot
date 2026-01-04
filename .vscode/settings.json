@@ -1,3 +1,24 @@
 {
-  // Intencionalmente vazio para evitar segredos hardcoded.
+  "files.exclude": {
+    "**/venv": true,
+    "**/ci_venv": true,
+    "**/venv_test_env": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.streamlit": true,
+    "**/logs": true,
+    "**/pids": true,
+    "**/selenium_screenshots": true
+  },
+  "files.watcherExclude": {
+    "**/venv/**": true,
+    "**/ci_venv/**": true,
+    "**/venv_test_env/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/.streamlit/**": true,
+    "**/logs/**": true,
+    "**/pids/**": true,
+    "**/selenium_screenshots/**": true
+  }
 }

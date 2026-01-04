@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small helper to inspect `trades.db` using DatabaseManager.
+"""Small helper to inspect the PostgreSQL DB using DatabaseManager.
 
 Usage examples:
   ./scripts/db_inspect.py logs --bot BOT_ID --limit 50
@@ -30,7 +30,10 @@ def cmd_logs(args):
     if not logs:
         conn = db.get_connection()
         cur = conn.cursor()
-        cur.execute("SELECT timestamp, level, message, data FROM bot_logs WHERE bot_id = ? ORDER BY timestamp DESC LIMIT ?", (args.bot, args.limit))
+        cur.execute(
+            "SELECT timestamp, level, message, data FROM bot_logs WHERE bot_id = %s ORDER BY timestamp DESC LIMIT %s",
+            (args.bot, args.limit),
+        )
         rows = cur.fetchall()
         logs = [dict(r) for r in rows]
         conn.close()
@@ -53,7 +56,7 @@ def cmd_order(args):
     db = DatabaseManager()
     conn = db.get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM trades WHERE order_id = ?", (args.order_id,))
+    cur.execute("SELECT * FROM trades WHERE order_id = %s", (args.order_id,))
     rows = cur.fetchall()
     conn.close()
     print_json([dict(r) for r in rows])
@@ -63,14 +66,17 @@ def cmd_equity(args):
     db = DatabaseManager()
     conn = db.get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT timestamp, balance_usdt, btc_price, average_cost FROM equity_snapshots ORDER BY timestamp DESC LIMIT ?", (args.limit,))
+    cur.execute(
+        "SELECT timestamp, balance_usdt, btc_price, average_cost FROM equity_snapshots ORDER BY timestamp DESC LIMIT %s",
+        (args.limit,),
+    )
     rows = cur.fetchall()
     conn.close()
     print_json([dict(r) for r in rows])
 
 
 def main():
-    p = argparse.ArgumentParser(description="Inspect trades.db")
+    p = argparse.ArgumentParser(description="Inspect PostgreSQL database (uses DATABASE_URL/TRADES_DB)")
     sub = p.add_subparsers(dest='cmd')
 
     a = sub.add_parser('logs', help='Fetch recent logs for a bot')

@@ -1,9 +1,19 @@
+## Estrutura do código
+
+O núcleo da aplicação está em `autocoinbot/` (ex.: `autocoinbot/streamlit_app.py`, `autocoinbot/bot_core.py`). Existem shims na raiz para compatibilidade, mas prefira importar e executar diretamente do pacote:
+
+```bash
+python -m streamlit run autocoinbot/streamlit_app.py --server.port=8501 --server.headless=true
+python -m autocoinbot.bot_core --bot-id test1 --symbol BTC-USDT --targets "2:0.3" --dry
+```
+
 ## Treinamento e diretrizes do agente
 
-Consulte o arquivo [AGENTE_TREINAMENTO.md](./AGENTE_TREINAMENTO.md) para diretrizes, procedimentos de validaÃ§Ã£o e relatÃ³rios de treinamento do agente automatizado.
+Consulte o arquivo [AGENTE_TREINAMENTO.md](./AGENTE_TREINAMENTO.md) para diretrizes, procedimentos de validação e relatórios de treinamento do agente automatizado.
+
 ## Start/Stop/Restart com Docker
 
-Para rodar a aplicaÃ§Ã£o via Docker:
+Para rodar a aplicação via Docker:
 
 ```bash
 # Build da imagem
@@ -22,11 +32,11 @@ docker restart autocoinbot
 docker rm autocoinbot
 ```
 
-> O parÃ¢metro `--env-file .env` garante que as variÃ¡veis do seu .env sejam lidas pelo container.
+> O parâmetro `--env-file .env` garante que as variáveis do seu .env sejam lidas pelo container.
+
 # Kucoin App (AutoCoinBot)
 
-
-## Uso obrigatÃ³rio de ambiente virtual (venv)
+## Uso obrigatório de ambiente virtual (venv)
 
 Sempre ative a venv antes de rodar qualquer comando:
 
@@ -34,11 +44,11 @@ Sempre ative a venv antes de rodar qualquer comando:
 source venv/bin/activate
 ```
 
-Se estiver no Windows, prefira usar o WSL (Ubuntu). Verifique que vocÃª estÃ¡ no WSL e com a `venv` ativada antes de executar os scripts. Exemplo de checagens rÃ¡pidas:
+Se estiver no Windows, prefira usar o WSL (Ubuntu). Verifique que você está no WSL e com a `venv` ativada antes de executar os scripts. Exemplo de checagens rápidas:
 
 ```bash
 # confirmar WSL
-grep -qi microsoft /proc/version && echo "Estou no WSL" || echo "NÃ£o parece ser WSL"
+grep -qi microsoft /proc/version && echo "Estou no WSL" || echo "Não parece ser WSL"
 
 # ativar venv
 source venv/bin/activate
@@ -51,14 +61,13 @@ Para rodar scripts, utilize sempre `python3` (ou o caminho do python da venv):
 python3 agent0_scraper.py --local --check-buttons
 ```
 
-Para instalar dependÃªncias:
+Para instalar dependências:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Se o comando `python` nÃ£o existir, use sempre `python3`.
+Se o comando `python` não existir, use sempre `python3`.
 
 ---
-AutomaÃ§Ã£o de compra e venda de ETF e ativos na KuCoin, com painel de controle via Streamlit.
-
+Automaçao de compra e venda de ETF e ativos na KuCoin, com painel de controle via Streamlit.

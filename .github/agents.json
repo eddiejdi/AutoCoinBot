@@ -1,20 +1,23 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "default": "dev-senior",
   "agents": {
     "dev-senior": {
       "name": "Agente Dev Sênior",
       "description": "Agente principal para desenvolvimento, manutenção e evolução do projeto AutoCoinBot",
+      "knowledge_base": ".github/KNOWLEDGE_BASE.md",
       "training": "AGENTE_TREINAMENTO.md",
-      "troubleshooting": "Ver .github/copilot-instructions.md → Falha do Copilot Chat (Response contained no choices)",
-      "prompts": ".github/copilot-prompts.md",
+      "troubleshooting": "Ver .github/KNOWLEDGE_BASE.md (seção 'ERROS CONHECIDOS E SOLUÇÕES')",
+      "quick_ref": ".github/QUICK_REFERENCE.md",
       "capabilities": [
         "code-review",
         "debugging",
         "architecture",
         "testing",
         "documentation",
-        "deployment"
+        "deployment",
+        "learning",
+        "api-integration"
       ],
       "instructions": ".github/copilot-instructions.md"
     },

@@ -23,7 +23,6 @@ RULES = [
     ('.jpeg', 'docs/reports/images'),
     ('.json', 'data'),
     ('.db', 'data'),
-    ('.sqlite', 'data'),
     ('.py', 'scripts'),
 ]
 

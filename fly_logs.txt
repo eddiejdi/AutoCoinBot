@@ -1,0 +1,126 @@
+[2m2026-01-02T02:40:02Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:02,593 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:02Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:02,597 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:02Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:02,958 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:40:02Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:02,961 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:40:04Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:04,176 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:18Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:18,860 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:18Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:18,864 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:19Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:19,219 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:40:19Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:19,222 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:40:20Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:20,769 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:20Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:20,778 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:26Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:26,193 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:26Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:26,199 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:26Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:26,205 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:26Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:26,210 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:26Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:26,542 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:40:26Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:26,546 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:40:26Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:26,710 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:40:26Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:26,712 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:40:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:28,069 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:28,136 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:33Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:33,159 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:33Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:33,167 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:33Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:33,519 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:40:33Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:33,521 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:40:37Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:37,418 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:51Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:51,155 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:51Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:51,163 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:51Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:51,498 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:40:51Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:51,502 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:40:55Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:55,697 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:55Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:55,708 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:58,487 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:58,494 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:58,498 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:58,505 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:40:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:58,836 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:40:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:58,838 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:40:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:58,986 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:40:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:40:58,988 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:41:00Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:00,497 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:00Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:00,505 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:06Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:06,094 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:06Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:06,098 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:06Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:06,446 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:41:06Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:06,448 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:41:07Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:07,569 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:21Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:21,525 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:21Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:21,531 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:21Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:21,876 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:41:21Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:21,881 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:41:23Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:23,468 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:23Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:23,476 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:28,531 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:28,531 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:28,538 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:28,539 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:28,860 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:41:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:28,864 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:41:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:28,973 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:41:28Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:28,975 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:41:30Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:30,525 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:30Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:30,527 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:37Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:37,017 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:37Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:37,023 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:37Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:37,380 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:41:37Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:37,382 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:41:38Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:38,578 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:52Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:52,424 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:52Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:52,429 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:52Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:52,767 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:41:52Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:52,770 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:41:54Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:54,390 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:54Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:54,399 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:58,673 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:58,679 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:58,679 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:58Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:58,684 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:41:59Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:59,404 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:41:59Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:59,406 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:41:59Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:59,480 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:41:59Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:41:59,482 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:42:00Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:00,952 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:00Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:00,953 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:06Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:06,002 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:06Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:06,006 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:06Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:06,385 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:42:06Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:06,387 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:42:07Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:07,607 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:22Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:22,511 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:22Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:22,517 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:22Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:22,893 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:42:22Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:22,895 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:42:24Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:24,491 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:24Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:24,503 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:38Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:38,148 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:38Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:38,154 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:38Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:38,550 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:42:38Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:38,552 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:42:43Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:43,081 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:52Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:52,738 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:52Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:52,742 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:53Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:53,089 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:42:53Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:53,092 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:42:54Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:54,686 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:42:54Z[0m app[90807566be4168] [32mgru[0m [[34minfo[0m]2026-01-02 02:42:54,696 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:43:08Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:08,384 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:43:08Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:08,387 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:43:08Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:08,739 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:43:08Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:08,741 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:43:10Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:10,193 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:43:38Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:38,448 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:43:38Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:38,451 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:43:38Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:38,816 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:43:38Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:38,820 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:43:40Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:43:40,406 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:44:08Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:08,453 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:44:08Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:08,457 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:44:08Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:08,828 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:44:08Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:08,831 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:44:10Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:10,559 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:44:40Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:40,768 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:44:40Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:40,775 | INFO | database | Database initialized successfully
+[2m2026-01-02T02:44:41Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:41,113 | INFO | api | ✅ Successfully fetched accounts
+[2m2026-01-02T02:44:41Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:41,115 | INFO | api | ✅ Found 3 non-zero trade balances
+[2m2026-01-02T02:44:42Z[0m app[3287ee77a711e8] [32mgru[0m [[34minfo[0m]2026-01-02 02:44:42,699 | INFO | database | Database initialized successfully

@@ -51,28 +51,32 @@ def get_chrome_driver(headless=True, show_browser=False):
         except Exception:
             options.add_argument('--headless')
     
-    # Usar webdriver_manager para gerenciar ChromeDriver automaticamente
-    try:
-        from webdriver_manager.chrome import ChromeDriverManager
-        from webdriver_manager.core.os_manager import ChromeType
-        # Usar ChromeType.CHROMIUM se Chromium estiver instalado
-        if os.path.exists('/usr/bin/chromium'):
-            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-        else:
-            service = Service(ChromeDriverManager().install())
-    except ImportError:
-        # Fallback para caminhos padrão
-        chrome_paths = [
-            '/usr/bin/chromedriver',
-            '/usr/local/bin/chromedriver',
-            os.path.expanduser('~/.local/bin/chromedriver'),
-        ]
-        service = None
-        for path in chrome_paths:
-            if os.path.exists(path):
-                service = Service(path)
-                break
-        if service is None:
+    # Priorizar chromedriver do sistema (evita incompatibilidade de versão)
+    # O webdriver_manager pode baixar versão antiga incompatível com Chromium snap
+    system_chromedriver_paths = [
+        '/usr/bin/chromedriver',
+        '/usr/local/bin/chromedriver',
+        '/snap/bin/chromedriver',
+        os.path.expanduser('~/.local/bin/chromedriver'),
+    ]
+    
+    service = None
+    for path in system_chromedriver_paths:
+        if os.path.exists(path) and os.access(path, os.X_OK):
+            service = Service(path)
+            break
+    
+    # Fallback para webdriver_manager se não encontrar chromedriver do sistema
+    if service is None:
+        try:
+            from webdriver_manager.chrome import ChromeDriverManager
+            from webdriver_manager.core.os_manager import ChromeType
+            # Usar ChromeType.CHROMIUM se Chromium estiver instalado
+            if os.path.exists('/usr/bin/chromium') or os.path.exists('/usr/bin/chromium-browser'):
+                service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+            else:
+                service = Service(ChromeDriverManager().install())
+        except ImportError:
             service = Service()  # Deixa Selenium tentar encontrar
     
     # Detectar binário do Chrome

@@ -1,0 +1,10 @@
+# Test reports
+*.txt
+*.json
+*.html
+
+# Keep README
+!README.md
+
+# Keep directory structure
+!.gitkeep

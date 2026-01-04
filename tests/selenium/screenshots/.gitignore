@@ -1,0 +1,10 @@
+# Selenium test artifacts
+*.png
+*.html
+*.txt
+
+# Keep README
+!README.md
+
+# Keep directory structure
+!.gitkeep

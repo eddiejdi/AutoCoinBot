@@ -97,3 +97,13 @@ selenium_dom*.html
 selenium_output.txt
 share/python-wheels/
 wheels/
+
+# Selenium test artifacts
+tests/selenium/screenshots/*.png
+tests/selenium/screenshots/*.html
+tests/selenium/reports/*.txt
+tests/selenium/reports/*.json
+
+# Old/backup files
+old_selenium_scripts/
+old_reports/

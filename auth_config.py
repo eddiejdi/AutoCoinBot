@@ -1,18 +1,8 @@
-# auth_config.py - Configurações de autenticação
-import os
-import hashlib
+"""Shim for moved module: auth_config."""
+from autocoinbot.auth_config import *
 
-# Credenciais padrão (ALTERE ISTO!)
-USUARIO_PADRAO = os.getenv("KUCOIN_USER", "admin")
-SENHA_HASH_PADRAO = hashlib.sha256(os.getenv("KUCOIN_PASS", "senha123").encode()).hexdigest()
-
-# Função para verificar credenciais
-def verificar_credenciais(usuario, senha):
-    senha_hash = hashlib.sha256(senha.encode()).hexdigest()
-    return usuario == USUARIO_PADRAO and senha_hash == SENHA_HASH_PADRAO
-
-# Função para alterar senha (opcional)
-def alterar_senha(nova_senha):
-    global SENHA_HASH_PADRAO
-    SENHA_HASH_PADRAO = hashlib.sha256(nova_senha.encode()).hexdigest()
-    return True
+if __name__ == "__main__":
+    import autocoinbot.auth_config as _m
+    _main = getattr(_m, "main", None)
+    if callable(_main):
+        _main()

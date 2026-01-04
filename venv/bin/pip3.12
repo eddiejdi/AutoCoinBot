@@ -1,4 +1,4 @@
-#!/home/edenilson/AutoCoinBot/venv/bin/python
+#!/home/eddie/AutoCoinBot/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -32,7 +32,7 @@ AutoCoinBot é uma aplicação de trading automatizado para a exchange KuCoin, c
 |------------|------------|
 | Frontend | Streamlit |
 | Backend | Python 3.11+ |
-| Banco de Dados | SQLite (trades.db) |
+| Banco de Dados | PostgreSQL (psycopg) |
 | API Trading | KuCoin REST API |
 | Testes E2E | Selenium + Chrome |
 | Deploy | Docker, Fly.io |
@@ -85,7 +85,7 @@ AutoCoinBot/
                        ▼
               ┌────────────────┐
               │  DATABASE.PY   │
-              │  (trades.db)   │
+              │  (PostgreSQL)  │
               └────────┬───────┘
                        │
         ┌──────────────┼──────────────┐
@@ -93,7 +93,7 @@ AutoCoinBot/
    bot_sessions    bot_logs       trades
 ```
 
-### Tabelas do Banco de Dados
+### Tabelas do Banco de Dados (PostgreSQL)
 
 | Tabela | Descrição |
 |--------|-----------|
@@ -140,8 +140,10 @@ API_KEY=sua_api_key
 API_SECRET=seu_api_secret
 API_PASSPHRASE=sua_passphrase
 
-# Database
-TRADES_DB=trades.db
+# Database (PostgreSQL)
+DATABASE_URL=postgresql://user:password@localhost:5432/autocoinbot
+# TRADES_DB é um alias para DATABASE_URL (compatibilidade)
+TRADES_DB=postgresql://user:password@localhost:5432/autocoinbot
 ```
 
 ### Executando a Aplicação
@@ -162,7 +164,7 @@ python -u bot_core.py --bot-id test_1 --symbol BTC-USDT --entry 30000 --targets 
 
 ```
 Usuário preenche form → ui.py valida → BotController.start_bot() 
-→ subprocess(bot_core.py) → insert_bot_session() → bot roda em background
+→ subprocess(bot_core.py) → insert_bot_session() [PostgreSQL] → bot roda em background
 ```
 
 ### 2. Visualizar Logs em Tempo Real
@@ -293,7 +295,8 @@ Após falhas, gerar relatório:
 
 # Diagnóstico:
 python scripts/db_inspect.py
-sqlite3 trades.db "SELECT * FROM bot_sessions WHERE status='running'"
+# Verificar sessões ativas no PostgreSQL:
+psql "$DATABASE_URL" -c "SELECT * FROM bot_sessions WHERE status='running'"
 ```
 
 #### 2. Erro de conexão no Selenium (WSL)
@@ -304,10 +307,10 @@ wsl -d Ubuntu -e bash -c "cd /home/user/AutoCoinBot && source venv/bin/activate 
 ```
 
 #### 3. Gráficos de aprendizado não aparecem
-```python
-# Verificar tabelas:
-# - learning_stats deve ter dados
-# - learning_history deve ter histórico
+```bash
+# Verificar tabelas no PostgreSQL:
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM learning_stats;"
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM learning_history;"
 
 # Verificar métodos em DatabaseManager:
 # - get_learning_stats()
