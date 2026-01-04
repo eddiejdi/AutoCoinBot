@@ -5334,17 +5334,18 @@ def _render_full_ui(controller=None):
                             home_url = f"http://127.0.0.1:{st_port}/?view=dashboard"
                         
                         home_val = urllib.parse.quote(home_url, safe='')
-
-                        log_url = (
-                            f"{base}/monitor?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                            if theme_query
-                            else f"{base}/monitor?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                        )
-                        rep_url = (
-                            f"{base}/report?{theme_query}&home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                            if theme_query
-                            else f"{base}/report?home={home_val}&bot={urllib.parse.quote(str(bot_id))}"
-                        )
+                        bot_val = urllib.parse.quote(str(bot_id))
+                        
+                        # Construir query string corretamente
+                        if theme_query:
+                            log_qs = f"{theme_query}&home={home_val}&bot={bot_val}"
+                            rep_qs = f"{theme_query}&home={home_val}&bot={bot_val}"
+                        else:
+                            log_qs = f"home={home_val}&bot={bot_val}"
+                            rep_qs = f"home={home_val}&bot={bot_val}"
+                        
+                        log_url = f"{base}/monitor?{log_qs}"
+                        rep_url = f"{base}/report?{rep_qs}"
 
                         if hasattr(st, "link_button"):
                             c_log.link_button("📜 LOG", log_url, use_container_width=True)
