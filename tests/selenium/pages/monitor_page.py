@@ -11,8 +11,8 @@ class MonitorPage(BasePage):
     BOT_ID_DISPLAY = (By.XPATH, "//*[contains(text(), 'Bot:') or contains(@id, 'bot')]")
     
     # Log display
-    LOG_CONTAINER = (By.XPATH, "//*[@id='log-container' or contains(@class, 'log')]")
-    LOG_ENTRIES = (By.XPATH, "//*[contains(@class, 'log-entry') or contains(@class, 'log-line')]")
+    LOG_CONTAINER = (By.XPATH, "//*[@id='log' or @id='log-container' or @class='terminal' or contains(@class, 'log') or contains(@class, 'content')]")
+    LOG_ENTRIES = (By.XPATH, "//*[contains(@class, 'log-entry') or contains(@class, 'log-line') or contains(@class, 'line')]")
     
     # Status indicators
     STATUS_RUNNING = (By.XPATH, "//*[contains(text(), 'Running') or contains(text(), 'Rodando')]")
