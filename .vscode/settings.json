@@ -20,5 +20,39 @@
     "**/logs/**": true,
     "**/pids/**": true,
     "**/selenium_screenshots/**": true
-  }
+  },
+  
+  // ========== Ollama Local Models (Homelab Server) ==========
+  // OAI Compatible Provider for Copilot configuration
+  "oaiCompatibleProvider.providers": [
+    {
+      "id": "ollama-homelab",
+      "name": "Ollama Homelab (4-core optimized)",
+      "apiBase": "http://192.168.15.2:11434/v1",
+      "model": "llama3.1-4core:latest",
+      "isDefault": true
+    }
+  ],
+  
+  // GitHub Copilot Chat language models configuration
+  "github.copilot.chat.languageModel.models": {
+    "llama-3.1-4core": {
+      "provider": "oaiCompatibleProvider",
+      "providerName": "ollama-homelab",
+      "modelName": "llama3.1-4core:latest"
+    },
+    "dolphin-mistral-4core": {
+      "provider": "oaiCompatibleProvider",
+      "providerName": "ollama-homelab",
+      "modelName": "dolphin-mistral-4core:latest"
+    },
+    "uncensored-llama3-4core": {
+      "provider": "oaiCompatibleProvider",
+      "providerName": "ollama-homelab",
+      "modelName": "uncensored-llama3-4core:latest"
+    }
+  },
+  
+  // Default model for Copilot Chat
+  "github.copilot.chat.languageModel.default": "llama-3.1-4core"
 }
