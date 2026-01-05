@@ -1,0 +1,23 @@
+{
+  "extensions": [
+    "GitHub.copilot",
+    "GitHub.copilot-chat",
+    "ms-vscode-remote.remote-ssh",
+    "ms-vscode-remote.remote-ssh-edit",
+    "ms-vscode.remote-explorer"
+  ],
+  "copilot.settings": {
+    "enable": true,
+    "advanced": {
+      "authorizationFallback": true,
+      "authorizationFallbackTimeout": 100
+    }
+  },
+  "ssh.config": {
+    "host": "homelab-models",
+    "hostname": "192.168.15.2",
+    "user": "homelab",
+    "port": 22,
+    "models.path": "/home/homelab/models"
+  }
+}
