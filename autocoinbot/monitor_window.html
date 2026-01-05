@@ -948,12 +948,24 @@
     setInterval(setClock, 500);
 
     if (!bot) {
-      document.getElementById('app').innerHTML = `
-        <div class="errorBox">
-          <div style="font-weight:700; color:#ff3333;">❌ Nenhum bot especificado na URL</div>
-          <div class="small muted" style="margin-top:8px;">Use: <span style="color:#aaffaa;">/monitor?bot=bot_xxxxxxxx</span></div>
-        </div>`;
-      throw new Error('Missing bot');
+      // Sem bot: manter layout e mostrar aviso no painel de logs
+      hdrTitle.textContent = '🪟 Bot Monitor — nenhum bot';
+      document.title = 'Bot Monitor — nenhum bot';
+      const statusEl = document.getElementById('status');
+      if (statusEl) statusEl.textContent = 'Nenhum bot selecionado';
+      const hint = document.getElementById('navHint');
+      if (hint) hint.textContent = '—';
+      const gauge = document.getElementById('gaugeWrap');
+      if (gauge) gauge.style.display = 'none';
+      const logsEl = document.getElementById('logs');
+      if (logsEl) {
+        logsEl.innerHTML = `
+          <div class="errorBox">
+            <div style="font-weight:700; color:#ff3333;">❌ Nenhum bot especificado na URL</div>
+            <div class="small muted" style="margin-top:8px;">Use: <span style="color:#aaffaa;">/monitor?bot=bot_xxxxxxxx</span></div>
+          </div>`;
+      }
+      return;
     }
 
     hdrTitle.textContent = `🪟 Bot Monitor — ${bot}`;

@@ -146,14 +146,50 @@ DATABASE_URL=postgresql://user:password@localhost:5432/autocoinbot
 TRADES_DB=postgresql://user:password@localhost:5432/autocoinbot
 ```
 
+### Detectando Tipo de Terminal
+
+**SEMPRE verifique o tipo de terminal antes de executar comandos:**
+
+```python
+# Identificar ambiente via system prompt ou env vars
+import os
+import platform
+
+# Método 1: Via variável de ambiente
+is_wsl = "microsoft" in platform.uname().release.lower()
+is_windows = platform.system() == "Windows"
+
+# Método 2: Testar existência de comandos
+def get_shell_type():
+    """Retorna 'powershell', 'bash', 'cmd' ou 'unknown'"""
+    if os.environ.get('PSModulePath'):  # PowerShell
+        return 'powershell'
+    elif os.environ.get('SHELL'):      # Bash/Zsh
+        return 'bash'
+    elif os.environ.get('COMSPEC'):    # CMD
+        return 'cmd'
+    return 'unknown'
+```
+
+**Ajustar comandos conforme o terminal:**
+
+| Terminal | Ativar venv | Separador | Exemplo |
+|----------|-------------|-----------|---------|
+| **Bash/WSL** | `source venv/bin/activate` | `&&` ou `;` | `cd dir && python script.py` |
+| **PowerShell** | `.\venv\Scripts\Activate.ps1` | `;` (NUNCA `&&`) | `cd dir ; python script.py` |
+| **CMD** | `.\venv\Scripts\activate.bat` | `&&` | `cd dir && python script.py` |
+
 ### Executando a Aplicação
 
 ```bash
-# Terminal 1: Streamlit
-python -m streamlit run streamlit_app.py --server.port=8501 --server.headless=true
+# Bash/WSL
+source venv/bin/activate && python -m streamlit run streamlit_app.py --server.port=8501
 
-# Terminal 2: Bot (dry-run)
-python -u bot_core.py --bot-id test_1 --symbol BTC-USDT --entry 30000 --targets "2:0.3,5:0.4" --interval 5 --size 0.001 --funds 20 --dry
+# PowerShell
+.\venv\Scripts\Activate.ps1 ; python -m streamlit run streamlit_app.py --server.port=8501
+
+# Bot (dry-run) - funciona em todos
+python -u autocoinbot/bot_core.py --bot-id test_1 --symbol BTC-USDT --entry 30000 --targets "2:0.3" --dry
 ```
 
 ---
