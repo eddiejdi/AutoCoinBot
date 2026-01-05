@@ -1497,44 +1497,33 @@ def render_monitor_dashboard(theme: dict, preselected_bot: str | None = None):
     else:
         st.caption("Nenhum trade encontrado para este bot ainda.")
 
-    # Recent logs - with real-time updates
-    st.subheader("Logs recentes — Em tempo real")
+    # Recent logs - with manual refresh
+    st.subheader("Logs recentes")
     
-    # Add auto-refresh checkbox
-    col_refresh, col_interval = st.columns([1, 2])
-    auto_refresh = col_refresh.checkbox("🔄 Auto-atualizar", value=True, key="monitor_logs_auto_refresh")
-    refresh_interval = col_interval.slider("Intervalo (s)", min_value=1, max_value=30, value=5, key="monitor_logs_interval") if auto_refresh else 5
+    # Add refresh button
+    if st.button("🔄 Atualizar Logs", use_container_width=False, key="monitor_logs_refresh"):
+        pass  # Refresh happens automatically due to st.rerun() in button
     
-    # Fragment for real-time updates
-    @st.fragment
-    def render_logs_realtime():
-        try:
-            db = DatabaseManager()
-            logs = db.get_bot_logs(selected_bot, limit=30) if selected_bot else []
-        except Exception as e:
-            st.error(f"Erro ao carregar logs: {e}")
-            logs = []
-        
-        if logs:
-            # Show newest first; keep compact for readability
-            for row in logs[:25]:
-                try:
-                    ts = _fmt_ts(row.get("timestamp"))
-                    lvl = str(row.get("level") or "INFO")
-                    msg = str(row.get("message") or "")
-                    st.code(f"{ts} [{lvl}] {msg}", language="json")
-                except Exception:
-                    continue
-        else:
-            st.caption("Nenhum log recente encontrado para este bot.")
+    # Get logs for selected bot
+    try:
+        db = DatabaseManager()
+        recent_logs = db.get_bot_logs(selected_bot, limit=30) if selected_bot else []
+    except Exception as e:
+        st.error(f"Erro ao carregar logs: {e}")
+        recent_logs = []
     
-    render_logs_realtime()
-    
-    # Auto-refresh with time.sleep
-    if auto_refresh:
-        import time as _time_module
-        _time_module.sleep(refresh_interval)
-        st.rerun()
+    if recent_logs:
+        # Show newest first; keep compact for readability
+        for row in recent_logs[:25]:
+            try:
+                ts = _fmt_ts(row.get("timestamp"))
+                lvl = str(row.get("level") or "INFO")
+                msg = str(row.get("message") or "")
+                st.code(f"{ts} [{lvl}] {msg}", language="json")
+            except Exception:
+                continue
+    else:
+        st.caption("Nenhum log recente encontrado para este bot.")
 
 
 
